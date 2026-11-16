@@ -39,9 +39,9 @@
     const d = document.createElement('div');d.id = 'sp-help';
     d.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(10,20,30,.55);display:flex;align-items:center;justify-content:center;padding:16px;font-family:Inter,system-ui,sans-serif';
     const msg = why === 'localhost'
-      ? `<p style="margin:0 0 10px">Spotify n’accepte pas l’adresse « localhost ». Ouvre plutôt Kiné+ à l’adresse <b>http://127.0.0.1${window.location.port ? ':' + window.location.port : ''}${window.location.pathname}</b>, puis reconnecte-toi.</p>`
-      : `<p style="margin:0 0 10px">Après la connexion, Spotify doit te renvoyer vers Kiné+. Il ne sait pas le faire quand Kiné+ est ouvert comme un simple fichier (double-clic sur <b>index.html</b>).</p>
-         <p style="margin:0 0 10px"><b>Pour utiliser Spotify :</b> ouvre Kiné+ en double-cliquant sur <b>« Ouvrir Kiné+ »</b> dans le dossier <b>!Kine</b> (il lance Kiné+ à l’adresse ${SP_HOME}).</p>
+      ? `<p style="margin:0 0 10px">Spotify n’accepte pas l’adresse « localhost ». Ouvre plutôt City Work à l’adresse <b>http://127.0.0.1${window.location.port ? ':' + window.location.port : ''}${window.location.pathname}</b>, puis reconnecte-toi.</p>`
+      : `<p style="margin:0 0 10px">Après la connexion, Spotify doit te renvoyer vers City Work. Il ne sait pas le faire quand City Work est ouvert comme un simple fichier (double-clic sur <b>index.html</b>).</p>
+         <p style="margin:0 0 10px"><b>Pour utiliser Spotify :</b> ouvre City Work en double-cliquant sur <b>« Ouvrir Kiné+ »</b> dans le dossier <b>!Kine</b> (il lance City Work à l’adresse ${SP_HOME}).</p>
          <p style="margin:0 0 10px"><b>Attention, la première fois :</b> à cette nouvelle adresse, le navigateur range les données à part. Avant, fais <b>Profil → Données → Exporter</b> ici, puis <b>Importer</b> le fichier là-bas : tu retrouveras tes questions, ta ville et tes statistiques.</p>`;
     d.innerHTML = `<div style="background:#fff;color:#1d2a25;max-width:440px;border-radius:18px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.3);font-size:14px;line-height:1.5">
       <div style="font:800 17px Manrope,Inter,sans-serif;margin-bottom:10px">🎵 Spotify ne peut pas se connecter ici</div>${msg}

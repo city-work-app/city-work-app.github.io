@@ -382,7 +382,7 @@ function closeDlg(){
   const b=$('kia-dlg');if(b)b.remove();
   document.removeEventListener('keydown',onKeyDlg,true);
 }
-function onKeyDlg(e){if(e.key==='Escape'&&$('kia-dlg')){e.stopPropagation();if(W&&W.text&&!confirm('Fermer ? La réponse collée sera perdue.'))return;closeDlg();}}
+function onKeyDlg(e){if(e.key==='Escape'&&$('kia-dlg')&&!document.getElementById('kc-dlg')){e.stopPropagation();if(W&&W.text){kcConfirm('Fermer ? La réponse collée sera perdue.',{ok:'Fermer'}).then(ok=>{if(ok)closeDlg();});return;}closeDlg();}}
 function head(){
   const R=W.relay,K=R?{ic:R.icon||'content_paste',t:R.title,c:R.color||'#7c3aed'}:W.kind?KINDS[W.kind]:{ic:'auto_awesome',t:'Atelier IA',c:'var(--kc-primary,#2563eb)'};
   const sub=R?(R.sub||'Avec Gemini, ChatGPT ou Claude, sur leur site'):W.kind?'Avec Gemini, ChatGPT ou Claude, sur leur site · gratuit, sans clé':'Que veux-tu créer ?';
@@ -483,7 +483,7 @@ function validSettings(){
 function onClick(e){
   const b=e.target.closest('[data-a]');if(!b||!W)return;
   const a=b.dataset.a;
-  if(a==='close'){if(W.text&&W.step===3&&!confirm('Fermer ? La réponse collée sera perdue.'))return;closeDlg();return;}
+  if(a==='close'){if(W.text&&W.step===3){kcConfirm('Fermer ? La réponse collée sera perdue.',{ok:'Fermer'}).then(ok=>{if(ok)closeDlg();});return;}closeDlg();return;}
   if(a==='kind'){const k=b.dataset.k;if(k==='annales'){goAnnales();return;}W.kind=k;W.opt=optDefault(k);W.step=1;draw();return;}
   if(a==='set'){
     const f=b.dataset.f,v=b.dataset.v;W[f]=v;
@@ -636,9 +636,9 @@ function renderHub(){
     </section>
   </div>`;
 }
-window.kiaDelete=function(id){
+window.kiaDelete=async function(id){
   const m=idx().find(x=>x.id===id);if(!m)return;
-  if(!confirm('Supprimer « '+m.title+' » ?\nTa progression sera perdue (ça ne touche pas à tes cours ni à tes flashcards).'))return;
+  if(!(await kcConfirm('Supprimer « '+m.title+' » ?\nTa progression sera perdue (ça ne touche pas à tes cours ni à tes flashcards).')))return;
   delItem(id);renderHub();notif('Supprimé','ok');
 };
 
@@ -796,7 +796,7 @@ function onPlayClick(e){
     Object.keys(P.ans).forEach(k=>{if(P.ans[k].ok===false){delete P.ans[k];const s=+k.split('-')[0];P.stepsDone=P.stepsDone.filter(x=>x!==s);}});
     P.done=false;go(firstTodo(it));return;
   }
-  if(a==='restart'){if(!confirm('Recommencer à zéro ? Tes réponses seront effacées (les XP déjà gagnés restent).'))return;P.ans={};P.stepsDone=[];P.done=false;go(-1);return;}
+  if(a==='restart'){kcConfirm('Recommencer à zéro ? Tes réponses seront effacées (les XP déjà gagnés restent).',{ok:'Recommencer'}).then(ok=>{if(!ok)return;P.ans={};P.stepsDone=[];P.done=false;go(-1);});return;}
   if(a==='cards'){const sel=$('kia-fcd');const n=addCards(it.cards,sel?sel.value:'__new',it.title);if(n){P.cardsAdded=true;saveSoon();notif(n+' flashcards ajoutées','ok');renderPlay();}return;}
   if(a==='qcm'){
     const sel=$('kia-qcd'),cid=sel&&sel.value;if(!cid){notif('Choisis le cours','err');return;}

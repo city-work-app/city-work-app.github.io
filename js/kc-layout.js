@@ -26,7 +26,8 @@ const load=()=>{
   try{const v=localStorage.getItem(KEY);if(v){const o=JSON.parse(v);if(o&&typeof o==='object')return o;}}catch(e){}
   try{const o=JSON.parse(localStorage.getItem(OLD_KEY)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}
 };
-const save=o=>{try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}};
+/* v70 : chaque changement est daté (kp_layout2_at) et envoyé dans le compte (kc-polish.js → kcLayoutPush), pour retrouver la même mise en page sur tous les appareils */
+const save=o=>{try{localStorage.setItem(KEY,JSON.stringify(o));localStorage.setItem(KEY+'_at',String(Date.now()));}catch(e){}try{if(window.kcLayoutPush)window.kcLayoutPush();}catch(e){}};
 
 /* ───────── Accueil ───────── */
 const BLOCKS=[
@@ -494,48 +495,81 @@ function rzTip(e,txt){
   let t=$('kh-rz-tip');if(!t){t=document.createElement('div');t.id='kh-rz-tip';t.className='kh-rz-tip';document.body.appendChild(t);}
   t.textContent=txt;t.style.left=Math.min(innerWidth-170,e.clientX+16)+'px';t.style.top=Math.min(innerHeight-40,e.clientY+16)+'px';
 }
+/* v70 (16 nov. 2026) : le cadre suit la souris au pixel près pendant tout le geste (taille en px posée sur le cadre,
+   une image par rafraîchissement, aucun enregistrement ni recalcul de la grille en route — avant, la grille était
+   recalculée à chaque mouvement et le cadre sautait d'une ligne à l'autre). La taille « aimantée » sur les colonnes
+   n'est appliquée qu'au relâchement, avec une petite transition. */
 function rzStart(e,h){
-  const el=h.closest('.kh-blk'),g=$('kh-grid');if(!el||!g)return;
+  const el=h.closest('.kh-blk'),g=$('kh-grid');if(!el||!g||RZ)return;
   e.preventDefault();
   const cs=getComputedStyle(g),gap=parseFloat(cs.columnGap)||0,cols=cs.gridTemplateColumns.split(' ').filter(Boolean).length||1;
   const gr=g.getBoundingClientRect(),colW=(gr.width-gap*(cols-1))/cols;
-  /* hauteur naturelle du contenu (sans hauteur imposée ni étirement de la ligne) */
-  el.style.minHeight='0px';el.style.alignSelf='start';
-  const nat=el.getBoundingClientRect().height;
-  el.style.minHeight='';el.style.alignSelf='';
   const epad=parseFloat(getComputedStyle(el).getPropertyValue('--kh-epad'))||0;
-  RZ={el,id:e.pointerId,dir:h.dataset.rz,gap,cols,colW,nat,epad,blk:el.dataset.blk};
-  h.classList.add('on');el.classList.add('kh-rzing');document.body.classList.add('kh-resizing','kh-rz-'+RZ.dir);
-  if(cols===12&&RZ.dir!=='s'){g.classList.add('kh-cols');g.style.setProperty('--kh-colw',colW+'px');g.style.setProperty('--kh-colg',gap+'px');}
+  const r=el.getBoundingClientRect(),dir=h.dataset.rz;
+  RZ={el,id:e.pointerId,dir,gap,cols,colW,epad,blk:el.dataset.blk,g,
+    ox:e.clientX-r.right,oy:e.clientY-r.bottom,x:e.clientX,y:e.clientY,
+    minW:Math.min(r.width,3*colW+2*gap),n:null,h:null,auto:false,raf:0,moved:false};
+  /* le cadre est figé à sa taille actuelle, en pixels : il ne dépend plus de la grille pendant le geste */
+  el.style.transition='none';
+  if(dir!=='s'&&cols===12){el.style.width=r.width+'px';el.style.justifySelf='start';el.style.maxWidth='none';}
+  if(dir!=='e'){el.style.alignSelf='start';el.style.minHeight=r.height+'px';}
+  h.classList.add('on');el.classList.add('kh-rzing');document.body.classList.add('kh-resizing','kh-rzdir-'+dir);   /* surtout pas « kh-rz-e » : c'est la classe des poignées (largeur 16 px) → toute la page rétrécissait */
+  if(cols===12&&dir!=='s'){g.classList.add('kh-cols');g.style.setProperty('--kh-colw',colW+'px');g.style.setProperty('--kh-colg',gap+'px');}
+  try{h.setPointerCapture(e.pointerId);}catch(_){}
   window.addEventListener('pointermove',rzMove,{passive:false});window.addEventListener('pointerup',rzEnd);window.addEventListener('pointercancel',rzEnd);
+}
+function rzFrame(){
+  const d=RZ;if(!d)return;d.raf=0;
+  const el=d.el,r=el.getBoundingClientRect(),gr=d.g.getBoundingClientRect(),tip=[];
+  if(d.dir!=='s'&&d.cols===12){
+    const want=d.x-d.ox-r.left,w=Math.max(d.minW,Math.min(gr.right-r.left,want));
+    el.style.width=w+'px';
+    d.n=want>gr.right-r.left+48?12:Math.max(3,Math.min(12,Math.round((w+d.gap)/(d.colW+d.gap))));
+    tip.push(d.n===12?'Toute la largeur':'Largeur '+d.n+' / 12');
+  }
+  if(d.dir!=='e'){
+    const hh=Math.max(60,Math.min(2400,d.y-d.oy-r.top));
+    el.style.minHeight=hh+'px';
+    d.auto=el.getBoundingClientRect().height>hh+4;   /* le contenu est plus haut que la souris : hauteur automatique */
+    d.h=hh;
+    tip.push(d.auto?'Hauteur automatique':'Hauteur '+Math.round(hh)+' px');
+  }
+  rzTip({clientX:d.x,clientY:d.y},tip.join(' · '));
 }
 function rzMove(e){
   if(!RZ||e.pointerId!==RZ.id)return;
   e.preventDefault();
-  const c=homeCfg(),x=c.find(y=>y.id===RZ.blk);if(!x)return;
-  const r=RZ.el.getBoundingClientRect(),tip=[];
-  if(RZ.dir!=='s'&&RZ.cols===12){
-    const n=Math.max(3,Math.min(12,Math.round((e.clientX-r.left+RZ.gap)/(RZ.colW+RZ.gap))));
-    x.size=n<=5?'S':n<=9?'L':'F';
-    if(n===4||n===8||n===12)delete x.w;else x.w=n;
-    tip.push('Largeur '+Math.round(n/12*100)+' %');
-  }
-  if(RZ.dir!=='e'){
-    const h=Math.round((e.clientY-r.top)/10)*10;
-    if(h<=RZ.nat+8){delete x.h;tip.push('Hauteur automatique');}
-    else{x.h=Math.max(60,Math.min(2400,Math.round(h-RZ.epad)));tip.push('Hauteur '+h+' px');}
-  }
-  const o=load();o.home=c;save(o);applyHome();
-  rzTip(e,tip.join(' · '));
+  RZ.x=e.clientX;RZ.y=e.clientY;RZ.moved=true;
+  if(!RZ.raf)RZ.raf=requestAnimationFrame(rzFrame);
 }
 function rzEnd(e){
   if(!RZ||e.pointerId!==RZ.id)return;
+  if(RZ.raf){cancelAnimationFrame(RZ.raf);}
+  if(RZ.moved)rzFrame();
   const d=RZ;RZ=null;
   window.removeEventListener('pointermove',rzMove);window.removeEventListener('pointerup',rzEnd);window.removeEventListener('pointercancel',rzEnd);
-  d.el.classList.remove('kh-rzing');document.body.classList.remove('kh-resizing','kh-rz-e','kh-rz-s','kh-rz-se');
-  const g=$('kh-grid');if(g)g.classList.remove('kh-cols');
+  document.body.classList.remove('kh-resizing','kh-rzdir-e','kh-rzdir-s','kh-rzdir-se');
   const t=$('kh-rz-tip');if(t)t.remove();
-  decorate();
+  const el=d.el;
+  if(d.moved){
+    const c=homeCfg(),x=c.find(y=>y.id===d.blk);
+    if(x){
+      if(d.n!=null){x.size=d.n<=5?'S':d.n<=9?'L':'F';if(d.n===4||d.n===8||d.n===12)delete x.w;else x.w=d.n;}
+      if(d.h!=null){if(d.auto)delete x.h;else x.h=Math.max(60,Math.round(d.h-d.epad));}
+      const o=load();o.home=c;save(o);
+    }
+  }
+  const fin=()=>{
+    ['width','maxWidth','justifySelf','alignSelf','minHeight','transition'].forEach(k=>{el.style[k]='';});
+    el.classList.remove('kh-rzing');d.g.classList.remove('kh-cols');
+    applyHome();decorate();
+  };
+  if(d.moved&&d.n!=null){
+    /* glisse en douceur jusqu'à la largeur aimantée, puis la grille reprend la main */
+    el.style.transition='width .16s cubic-bezier(.2,.8,.2,1)';
+    el.style.width=(d.n*d.colW+(d.n-1)*d.gap)+'px';
+    setTimeout(fin,180);
+  }else fin();
 }
 function onEditDown(e){
   if(!EDIT||e.button>0)return;
@@ -634,6 +668,7 @@ document.addEventListener('dblclick',e=>{
 document.addEventListener('keydown',e=>{if(EDIT&&e.key==='Escape'){e.preventDefault();kcHomeEdit(false);}});
 
 /* ───────── Démarrage ───────── */
+window.kcLayoutApplyAll=function(){try{applyAll();if(EDIT)decorate();}catch(e){}};
 function start(){
   readNav();applyAll();
   const orig=window.showScreen;

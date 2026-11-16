@@ -19,7 +19,7 @@ const dayStr=(d)=>(d||new Date()).toISOString().split('T')[0];
 function G(name,def){try{const v=eval(name);return v===undefined?def:v;}catch(e){return def;}} /* variables « let » des autres scripts */
 
 /* ───────── Données ───────── */
-function concs(){return (G('concepts',[])||[]).filter(c=>c.definition&&String(c.definition).trim());}
+function concs(){return (G('concepts',[])||[]).filter(c=>kcIsCard(c));}
 function fcs(){return G('flashcards',[])||[];}
 function spd(){const d=G('fcSpacedData',null);return d||{};}
 function sp(id){return spd()[id]||null;}
@@ -172,7 +172,7 @@ window.fcxDeleteFolders=function(ids){
   const top=ids.filter(id=>!ancestors(id).some(a=>ids.includes(a.id)));
   const inside=new Set();top.forEach(id=>descIds(id).forEach(x=>inside.add(x)));
   const cs=G('concepts',[])||[];
-  const isCard=c=>c.definition&&String(c.definition).trim();
+  const isCard=c=>kcIsCard(c);
   const nCards=cs.filter(c=>inside.has(c.folderId)&&isCard(c)).length,nSub=inside.size-top.length;
   const names=top.map(id=>(all.find(f=>f.id===id)||{}).name||'Dossier');
   const run=withCards=>{
@@ -323,7 +323,13 @@ function renderHub(){
   const fmax=Math.max(1,...fo.map(x=>x.n));
   const nToday=tp.all.length;
   hdr.innerHTML=`
-    <div class="fcx-head"><h1 class="fcx-h1">Flashcards</h1><p class="fcx-lead">${all.length} carte${all.length!==1?'s':''} · répétition espacée : chaque carte revient juste avant que tu l’oublies</p></div>
+    <div class="hub-header kc-pagehead">
+      <button class="hub-back" onclick="switchTab('home')" aria-label="Retour"><span class="ms">arrow_back</span></button>
+      <div style="flex:1;min-width:0"><p class="hub-kicker">Réviser</p><h1 class="hub-title">Flashcards</h1></div>
+      <button class="kc-hbtn" onclick="toggleAFCSearch()" aria-label="Rechercher dans les flashcards" title="Rechercher"><span class="ms">search</span></button>
+      <button class="kc-hbtn" onclick="afcOpenSort()" aria-label="Trier les flashcards" title="Trier"><span class="ms">sort</span></button>
+    </div>
+    <div class="fcx-head"><p class="fcx-lead">${all.length} carte${all.length!==1?'s':''} · répétition espacée : chaque carte revient juste avant que tu l’oublies</p></div>
     <div class="fcx-top">
       <section class="fcx-hero">
         <div class="fcx-kicker"><span class="ms">today</span>Révision du jour</div>

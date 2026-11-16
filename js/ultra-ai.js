@@ -263,8 +263,8 @@ if(!window.startSmartQCM)window.startSmartQCM=function(){
 };
 hookSmart();
 window.addEventListener('load',hookSmart);
-window.uaOtherLang=function(){
-  const v=prompt('Dans quelle langue veux-tu les explications ?',set().lang);
+window.uaOtherLang=async function(){
+  const v=await kcPrompt('Dans quelle langue veux-tu les explications ?',set().lang);
   if(v&&v.trim())uaSet('lang',v.trim().slice(0,30));
 };
 window.uaClearSrc=function(){U.src=null;U.pdf=null;renderSetup();};

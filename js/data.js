@@ -28,7 +28,7 @@ function lsRaw(k){  // texte JSON stocké (décompressé si besoin), ou null
 function lsSet(k,raw){ // écrit une valeur (compressée si utile) — peut lever QuotaExceededError
   if(_lsBroken[k]){const e=new Error('donnée illisible laissée intacte ('+k+')');e.name='KineProtected';throw e;}
   let v=raw;
-  if(LZ_KEYS.has(k)&&raw.length>4096){
+  if(LZ_KEYS.has(k)&&raw.length>4096&&!(window.KStore&&KStore.ok)){   /* grande mémoire (kstore.js) : plus besoin de compresser */
     const c=_lzCache[k];
     if(c&&c.raw===raw)v=c.packed;
     else{
@@ -44,6 +44,41 @@ function lsSet(k,raw){ // écrit une valeur (compressée si utile) — peut leve
 }
 function ls(k,d){try{const v=lsRaw(k);return v?JSON.parse(v):d;}catch(e){return d;}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+// ── Images des flashcards rangées à part (16 nov. 2026) ──
+// Avec la grande mémoire (kstore.js), chaque image (imageQ / imageA / image…) est écrite une seule fois sous sa propre clé
+// `kimg_<id>` ; la liste des cartes ne garde que « kimg:<id> ». En mémoire rien ne change : les cartes ont leur image complète.
+const _imgIds=new Map(); // image (data:…) → id
+function _imgPack(list){
+  if(!(window.KStore&&KStore.ok))return JSON.stringify(list);
+  return JSON.stringify(list,function(key,val){
+    if(typeof val==='string'&&val.length>3000&&key.lastIndexOf('image',0)===0&&val.lastIndexOf('data:',0)===0){
+      let id=_imgIds.get(val);
+      if(!id){id=uid();localStorage.setItem('kimg_'+id,val);_imgIds.set(val,id);}
+      return 'kimg:'+id;
+    }
+    return val;
+  });
+}
+function _imgUnpack(list){
+  (function walk(o){
+    if(!o||typeof o!=='object')return;
+    for(const k in o){const v=o[k];
+      if(typeof v==='string'){if(v.lastIndexOf('kimg:',0)===0){const id=v.slice(5),d=localStorage.getItem('kimg_'+id);if(d){o[k]=d;_imgIds.set(d,id);}else o[k]='';}}
+      else if(v&&typeof v==='object')walk(v);}
+  })(list);
+  return list;
+}
+function _imgSweep(){ // supprime les images qui ne servent plus à aucune carte (appelé longtemps après le démarrage)
+  if(!(window.KStore&&KStore.ok))return;
+  try{
+    const keys=KStore.keys().filter(k=>k.lastIndexOf('kimg_',0)===0);if(!keys.length)return;
+    if(_lsBroken[KConcepts]||_lsBroken[KFlashcards]||(!concepts.length&&!flashcards.length))return; // dans le doute, on ne touche à rien
+    const used=new Set();
+    (function walk(o){if(!o||typeof o!=='object')return;for(const k in o){const v=o[k];if(typeof v==='string'){if(v.length>3000){const id=_imgIds.get(v);if(id)used.add(id);}}else if(v&&typeof v==='object')walk(v);}})([concepts,flashcards]);
+    keys.forEach(k=>{if(!used.has(k.slice(5)))localStorage.removeItem(k);});
+  }catch(e){}
+}
+setTimeout(_imgSweep,45000);
 
 let folders=ls(KF,[]);
 let subFolders=ls(KSF,[]); // {id, folderId, name}
@@ -56,11 +91,11 @@ let boycottedQuestions=ls(KB,{});
 let archivedFolders=ls(KArchived,{});
 let favoritedQuestions=ls(KFav,{});
 let bestSurvivalStreak=ls('kcu_best_survival',0);
-let concepts=ls(KConcepts,[]);
+let concepts=_imgUnpack(ls(KConcepts,[]));
 let conceptFolders=ls(KConceptFolders,[]);
 const SRS_DAYS=[1,4,10,21,45,90];
 const KFlashcards='kcu_flashcards';
-let flashcards=ls(KFlashcards,[]);
+let flashcards=_imgUnpack(ls(KFlashcards,[]));
 let prompts=ls(KPrompts,[]);
 let fiches=ls(KFiches,[]);
 let questionStats=ls(KQStats,{});
@@ -193,6 +228,17 @@ function addWeeklyQ(n){
 let _saveErrAt=0;
 function _isQuotaErr(e){return !!e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014);}
 function saveAll(opts){
+  if(window._kpImporting)return true; /* import en cours : ne rien écraser */
+  /* Annuler une suppression : si une liste a rétréci depuis le dernier enregistrement, on garde l'état d'avant
+     (le texte encore en mémoire de stockage) et on propose « Annuler » (kc-polish.js → kcUndoOffer). */
+  let undo=null;
+  if(!(opts&&opts.noUndo)){
+    const now=_undoCount();
+    if(_undoLens&&now.some((n,i)=>n<_undoLens[i])){
+      undo={before:_undoLens.slice(),after:now,raw:{}};
+      _UNDO_K.forEach(k=>{try{undo.raw[k]=lsRaw(k);}catch(e){}});
+    }
+  }
   const items=[
     [KF,folders],[KSF,subFolders],[KC,courses],[KQ,questions],[KS,stats],[KD,diffData],
     [KG,dailyGoal,1],[KB,boycottedQuestions],[KArchived,archivedFolders],[KFav,favoritedQuestions],
@@ -204,9 +250,11 @@ function saveAll(opts){
   let err=null;
   // une clé qui échoue n'empêche plus d'enregistrer les suivantes
   for(const [k,val,plain] of items){
-    try{lsSet(k,plain?String(val):JSON.stringify(val));}catch(e){if(!err)err=e;}
+    try{lsSet(k,plain?String(val):(k===KConcepts||k===KFlashcards)?_imgPack(val):JSON.stringify(val));}catch(e){if(!err)err=e;}
   }
   window._kineSaveError=err;
+  _undoLens=_undoCount();
+  if(undo&&!err&&typeof window.kcUndoOffer==='function'){try{window.kcUndoOffer(undo);}catch(e){}}
   if(!err)return true;
   console.error('[Kiné+] saveAll :',err);
   if(!(opts&&opts.quiet)&&typeof showNotif==='function'&&Date.now()-_saveErrAt>20000){
@@ -214,6 +262,20 @@ function saveAll(opts){
     showNotif(_isQuotaErr(err)?'Mémoire du navigateur pleine : tes dernières modifications ne sont pas enregistrées.':'Erreur d\'enregistrement : '+(err.message||err),'err');
   }
   return false;
+}
+
+const _UNDO_K=[KF,KSF,KC,KQ,KConcepts,KConceptFolders,'kcu_flashcards',KFiches,KD,KQStats,KFCSpaced,KFav,KB,KKeyConcepts,KBrainDumps,KArchived];
+function _undoCount(){return [folders,subFolders,courses,questions,concepts,conceptFolders,flashcards].map(a=>Array.isArray(a)?a.length:0);}
+let _undoLens=null;
+setTimeout(()=>{try{_undoLens=_undoCount();}catch(e){}},0);
+function kcUndoRestore(u){ // remet tout comme avant la suppression
+  const P=k=>{try{return u.raw[k]?JSON.parse(u.raw[k]):null;}catch(e){return null;}};
+  let v;
+  if((v=P(KF)))folders=v;if((v=P(KSF)))subFolders=v;if((v=P(KC)))courses=v;if((v=P(KQ)))questions=v;
+  if((v=P(KConcepts)))concepts=_imgUnpack(v);if((v=P(KConceptFolders)))conceptFolders=v;if((v=P('kcu_flashcards')))flashcards=_imgUnpack(v);
+  if((v=P(KFiches)))fiches=v;if((v=P(KD)))diffData=v;if((v=P(KQStats)))questionStats=v;if((v=P(KFCSpaced)))fcSpacedData=v;
+  if((v=P(KFav)))favoritedQuestions=v;if((v=P(KB)))boycottedQuestions=v;if((v=P(KKeyConcepts)))keyConcepts=v;if((v=P(KBrainDumps)))brainDumps=v;if((v=P(KArchived)))archivedFolders=v;
+  return saveAll({noUndo:true});
 }
 
 // ── Diagnostic de l'espace utilisé (affiché quand la mémoire est pleine) ──
@@ -224,7 +286,7 @@ const _LS_GROUPS=[
   [/^(kcu_map|lmm_|kcu_mm$|kcu_dg$)/,'Cartes mentales'],
   [/^kcu_city/,'Ma ville'],
   [/^kcu_fiches$/,'Fiches de cours'],
-  [/^(kcu_flashcards|kcu_concepts|kcu_cfol|kcu_fc_spaced|kcu_kc)$/,'Flashcards'],
+  [/^(kcu_flashcards|kcu_concepts|kcu_cfol|kcu_fc_spaced|kcu_kc)$|^kimg_/,'Flashcards'],
   [/^kp_avatar_photo$/,'Photo de profil'],
   [/^kcu_gam/,'XP & maison']
 ];
@@ -252,6 +314,8 @@ function kineSaveErrorHTML(what,err){ // message pour une fenêtre (ex. kineSave
 }
 
 // ── Spaced repetition SM-2 ──
+/* Une carte compte dès qu'elle a une réponse : du texte OU une photo au verso (avant : les cartes « terme + photo » étaient ignorées → « Aucune carte dans ce dossier »). */
+function kcIsCard(c){return !!(c&&((c.definition&&String(c.definition).trim())||c.imageA));}
 function getFCSpaced(id){return fcSpacedData[id]||{interval:1,ease:2.5,reps:0,due:null};}
 function updateFCSpaced(id,knew){
   const d=getFCSpaced(id);
@@ -296,8 +360,35 @@ function updStreak(){
   const today=new Date().toDateString(),yesterday=new Date(Date.now()-86400000).toDateString();
   if(stats.lastDate===today)return;
   stats.streak=stats.lastDate===yesterday?stats.streak+1:1;
-  stats.lastDate=today;saveAll();
+  stats.lastDate=today;kcStreakSync();saveAll();
 }
+// ── LA série (16 nov. 2026) : une seule façon de compter, utilisée partout (menu, accueil, barre du haut, amis, XP) ──
+// Un jour compte si tu es venu sur le site ce jour-là (ancien compteur stats.streak) ou si tu y as fait au moins une
+// question (dailyCounts). Avant : le menu affichait l'un, l'accueil l'autre (« 12 jours » d'un côté, « 1 jour » de l'autre).
+function _dayKey(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate(),12).toISOString().slice(0,10);}
+function kcStreak(){
+  const act=new Set();
+  try{Object.keys(dailyCounts||{}).forEach(k=>{if(dailyCounts[k]>0)act.add(k);});}catch(e){}
+  const today=new Date();
+  try{
+    const ld=stats.lastDate?new Date(stats.lastDate):null;
+    if(ld&&!isNaN(ld)){
+      const gap=Math.round((new Date(today.getFullYear(),today.getMonth(),today.getDate())-new Date(ld.getFullYear(),ld.getMonth(),ld.getDate()))/864e5);
+      if(gap>=0&&gap<=1){const d=new Date(ld);for(let i=0,n=Math.min(stats.streak|0,3660);i<n;i++){act.add(_dayKey(d));d.setDate(d.getDate()-1);}}
+    }
+  }catch(e){}
+  let cur=0;const d=new Date(today);
+  if(!act.has(_dayKey(d)))d.setDate(d.getDate()-1);
+  while(act.has(_dayKey(d))){cur++;d.setDate(d.getDate()-1);}
+  let best=0,run=0,prev=null;
+  Array.from(act).sort().forEach(k=>{const t=new Date(k+'T12:00:00Z');run=(prev&&Math.round((t-prev)/864e5)===1)?run+1:1;if(run>best)best=run;prev=t;});
+  let stored=0;try{stored=parseInt(localStorage.getItem('kp_streak_best'))||0;}catch(e){}
+  best=Math.max(best,cur,stored);
+  if(best>stored){try{localStorage.setItem('kp_streak_best',String(best));}catch(e){}}
+  return {cur,best};
+}
+function kcStreakSync(){const s=kcStreak();if(stats.streak!==s.cur)stats.streak=s.cur;return s;}
+try{kcStreakSync();}catch(e){}
 function getTodayQ(){
   const today=new Date().toDateString();
   if(stats.todayDate!==today){stats.todayDate=today;stats.todayQ=0;stats.todaySecs=0;saveAll();}
@@ -537,7 +628,7 @@ function updateConceptMastery(cid,result){
 }
 function getConceptsDue(){
   const now=new Date();
-  return concepts.filter(c=>c.definition&&(!c.nextReview||new Date(c.nextReview)<=now));
+  return concepts.filter(c=>kcIsCard(c)&&(!c.nextReview||new Date(c.nextReview)<=now));
 }
 function conceptsMatchingQuestion(qText){
   if(!qText)return[];

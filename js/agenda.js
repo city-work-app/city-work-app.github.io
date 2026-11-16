@@ -171,9 +171,9 @@ function agAdd(){
   showNotif(type==='examen'?'Examen ajouté — il apparaît aussi dans ton compte à rebours':'Évènement ajouté','ok');
 }
 function agDelete(id){agEvents=agEvents.filter(e=>e.id!==id);_agSave();renderAgenda();}
-function agDeleteExam(id){
+async function agDeleteExam(id){
   const ex=_agExams().find(e=>e.id===id);
-  if(!ex||!confirm(`Supprimer l’examen « ${ex.name} » ? Il disparaîtra aussi du compte à rebours.`))return;
+  if(!ex||!(await kcConfirm(`Supprimer l’examen « ${ex.name} » ? Il disparaîtra aussi du compte à rebours.`)))return;
   if(typeof deleteExamV2==='function')deleteExamV2(id);else saveExamsV2(_agExams().filter(e=>e.id!==id));
   renderAgenda();
 }

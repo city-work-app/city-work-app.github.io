@@ -3,8 +3,8 @@
    Chargé à la demande par city.js. Script classique (pas un module ES)
    pour marcher aussi en file:// ; Three.js vient du CDN (comme la maison).
    Données : localStorage 'kcu_city' (+ 'kcu_city_meta', lu par city.js).
-   Lien avec Kiné+ : chaque XP gagnée en révisant rapporte XP_MONEY § à la
-   ville, et les monuments se débloquent avec le niveau Kiné+.
+   Lien avec City Work : chaque XP gagnée en révisant rapporte XP_MONEY § à la
+   ville, et les monuments se débloquent avec le niveau City Work.
    ========================================================= */
 'use strict';
 window.KineCityReady=window.KineCityReady||(async function(){
@@ -38,7 +38,7 @@ const LOT_NAMES={1:['Maison','Petit immeuble','Immeuble','Tour d’habitation'],
   3:['Entrepôt','Usine','Complexe industriel','Complexe industriel'],4:['Bureaux','Immeuble de bureaux','Tour de bureaux','Siège social']};
 
 // Bâtiments posables. cat : energie · eau · services · parcs · monuments
-// cov : rayons de couverture (cases) ; ms : palier requis ; lvl : niveau Kiné+ requis (monuments, uniques)
+// cov : rayons de couverture (cases) ; ms : palier requis ; lvl : niveau City Work requis (monuments, uniques)
 const BLD=[
   {id:'wind',name:'Éolienne',cat:'energie',w:1,cost:500,upkeep:10,power:60,ms:0,icon:'wind_power',desc:'Électricité propre mais modeste.'},
   {id:'coal',name:'Centrale thermique',cat:'energie',w:3,cost:5000,upkeep:110,power:650,pol:{r:9,s:75},ms:2,icon:'factory',desc:'Beaucoup d’électricité… et beaucoup de pollution.'},
@@ -57,11 +57,11 @@ const BLD=[
   {id:'statue',name:'Statue du Kiné d’or',cat:'monuments',w:1,cost:1000,upkeep:5,cov:{park:6,lv:5},tour:2,lvl:3,icon:'emoji_events',desc:'Hommage aux kinés de la ville.'},
   {id:'fac',name:'Faculté de kiné',cat:'monuments',w:3,cost:9000,upkeep:120,cov:{edu:12,edu2:18},tour:3,lvl:5,icon:'school',desc:'Forme les kinés de demain : éducation sur un grand rayon.'},
   {id:'poste',name:'Bureau de poste',cat:'services',w:1,cost:800,upkeep:15,cov:{lv:3},ms:1,icon:'local_post_office',desc:'Les facteurs font leurs tournées dans les quartiers, le matin et l’après-midi.'},
-  {id:'mahouse',name:'Ma maison',cat:'monuments',w:3,cost:500,upkeep:0,cov:{park:4,lv:4},tour:1,lvl:1,icon:'cottage',desc:'Ta maison de Kiné+ (tes pièces, tes meubles, ton personnage) posée dans ta ville. Elle change quand tu la décores. Zoome dessus pour voir l’intérieur.'},
+  {id:'mahouse',name:'Ma maison',cat:'monuments',w:3,cost:500,upkeep:0,cov:{park:4,lv:4},tour:1,lvl:1,icon:'cottage',desc:'Ta maison de City Work (tes pièces, tes meubles, ton personnage) posée dans ta ville. Elle change quand tu la décores. Zoome dessus pour voir l’intérieur.'},
   {id:'reeduc',name:'Centre de rééducation',cat:'monuments',w:3,cost:9000,upkeep:110,cov:{health:18,park:6},tour:3,lvl:8,icon:'self_improvement',desc:'Balnéo et plateau technique : santé et bonheur.'},
   {id:'pool',name:'Piscine olympique',cat:'monuments',w:3,cost:11000,upkeep:90,cov:{park:12,lv:8},tour:6,lvl:12,icon:'pool',desc:'Natation et aquagym pour toute la ville.'},
   {id:'stadium',name:'Stade',cat:'monuments',w:4,cost:16000,upkeep:150,cov:{park:20},tour:12,lvl:16,icon:'stadium',desc:'Les soirs de match, toute la ville vibre.'},
-  {id:'tower',name:'Tour Kiné+',cat:'monuments',w:2,cost:25000,upkeep:100,cov:{lv:18},tour:10,lvl:20,icon:'apartment',desc:'Le gratte-ciel emblème de ta ville.'},
+  {id:'tower',name:'Tour City Work',cat:'monuments',w:2,cost:25000,upkeep:100,cov:{lv:18},tour:10,lvl:20,icon:'apartment',desc:'Le gratte-ciel emblème de ta ville.'},
   {id:'chu',name:'CHU',cat:'monuments',w:4,cost:30000,upkeep:220,cov:{health:26,edu2:12},lvl:25,icon:'emergency',desc:'Le centre hospitalier universitaire.'},
   {id:'observ',name:'Observatoire',cat:'monuments',w:3,cost:20000,upkeep:90,cov:{park:16,edu2:10},tour:15,lvl:30,icon:'travel_explore',desc:'Les étoiles, pour récompenser tes révisions.'},
   {id:'arc',name:'Arc du Diplôme',cat:'monuments',w:2,cost:28000,upkeep:60,cov:{lv:25},tour:12,lvl:35,icon:'castle',desc:'Le monument des diplômés. Tu y es presque !'},
@@ -701,7 +701,7 @@ const MISSIONS=[
   {t:'Réponds juste à 25 questions du maire',hint:'Ta ville et tes partiels te remercient.',ok:()=>(S.quizTot||0)>=25,r:5000},
   {t:'Un premier gratte-ciel',hint:'Niveau 4 : palier Ville, valeur foncière 68 et des études longues.',ok:()=>countLvl(4)>0,r:8000},
   {t:'Atteins 5 000 habitants',hint:'Une grande ville en devenir.',ok:()=>ST.pop>=5000,r:12000},
-  {t:'Inaugure un monument Kiné+',hint:'Ils se débloquent avec ton niveau d’XP.',ok:()=>BLD.some(b=>b.lvl&&svcCount(b.id)>0),r:6000},
+  {t:'Inaugure un monument City Work',hint:'Ils se débloquent avec ton niveau d’XP.',ok:()=>BLD.some(b=>b.lvl&&svcCount(b.id)>0),r:6000},
   {t:'Atteins 10 000 habitants',hint:'Une vraie métropole !',ok:()=>ST.pop>=10000,r:25000}
 ];
 function checkMissions(){
@@ -2699,7 +2699,7 @@ function touchesWater(x0,z0,w,d){
 function unlocked(b){
   if(b.prof&&b.prof!==(S.prof||'kine'))return{ok:false,why:`Réservé aux ${PROF[b.prof].pros}`};
   if(b.trophy)return (S.trophies|0)>0?{ok:true}:{ok:false,why:'Gagne un duel du maire contre un ami pour obtenir cette statue'};
-  if(b.lvl){const L=gamLvl();if(L<b.lvl)return{ok:false,why:`Niveau Kiné+ ${b.lvl} requis (tu es niveau ${L})`};if(svcCount(b.id))return{ok:false,why:'Monument unique : déjà construit'};return{ok:true};}
+  if(b.lvl){const L=gamLvl();if(L<b.lvl)return{ok:false,why:`Niveau City Work ${b.lvl} requis (tu es niveau ${L})`};if(svcCount(b.id))return{ok:false,why:'Monument unique : déjà construit'};return{ok:true};}
   if(b.unique&&svcCount(b.id))return{ok:false,why:'Déjà construite : un seul exemplaire par ville'};
   if((b.ms||0)>S.ms)return{ok:false,why:`Palier « ${MS[b.ms].name} » requis (${fmt(MS[b.ms].pop)} habitants)`};
   return{ok:true};
@@ -3052,7 +3052,7 @@ function refreshTray(){
   const el=$('cty-tray');if(!el)return;
   if(!TRAY){el.classList.remove('open');el.innerHTML='';return;}
   const cur=TOOL.id==='place'?'place:'+TOOL.b:TOOL.id==='zone'?'zone:'+TOOL.z:TOOL.id==='road'?'road:'+TOOL.rt+(TOOL.dg?':d':''):EXT_TOOLS[TOOL.id]?'x:'+TOOL.id+':'+(TOOL.k==null?'':TOOL.k):TOOL.id;
-  el.innerHTML=(TRAY==='monuments'?`<div class="cty-tray-note"><span class="ms">school</span>Débloqués par ton niveau Kiné+ (niveau ${gamLvl()}) : révise pour les obtenir !</div>`:extTrayNote(TRAY))
+  el.innerHTML=(TRAY==='monuments'?`<div class="cty-tray-note"><span class="ms">school</span>Débloqués par ton niveau City Work (niveau ${gamLvl()}) : révise pour les obtenir !</div>`:extTrayNote(TRAY))
     +trayItems(TRAY).map(it=>{const th=trayThumb(it.k),on=it.opts?it.opts.some(o=>o.k===cur):it.k===cur;return `<button class="cty-item${th?' has-th':''}${on?' active':''}${it.lock?' locked':''}${it.opts&&it.opts.length>1?' has-opts':''}" data-act="item" data-k="${it.k}" title="${esc(it.desc||it.name)}">
       ${th?`<img class="cty-item-th" src="${th}" alt="" draggable="false"><span class="cty-item-ic mini"><span class="ms">${it.icon}</span></span>`:`<span class="cty-item-ic"${it.col?` style="background:${it.col};color:#fff"`:''}><span class="ms">${it.icon}</span></span>`}
       <span class="cty-item-name">${esc(it.name)}</span>
@@ -3217,7 +3217,7 @@ function panelBudget(){
   const line=(k,v,neg)=>`<div class="cty-bl"><span>${k}</span><b class="${neg?'neg':''}">${neg?'−':'+'}${money(Math.abs(v))}</b></div>`;
   const tax=(k,z)=>`<label class="cty-tax"><span class="cty-tax-n" style="--c:${ZONES[z].col}">${ZONES[z].name}</span><input type="range" min="0" max="25" step="1" value="${t[k]}" data-tax="${k}"${z===4&&S.ms<3?' disabled':''}><b id="cty-tax-${k}">${t[k]} %</b></label>`;
   return head('account_balance','Budget',`Solde : ${money(S.money)}`)
-    +`<div class="cty-study"><div><b>Révise pour financer ta ville</b><small>Chaque XP gagnée sur Kiné+ rapporte ${XP_MONEY} § · déjà reçu : ${money(S.grants||0)}</small></div><button class="cty-btn" data-act="study"><span class="ms">bolt</span>Flash 10 questions</button></div>`
+    +`<div class="cty-study"><div><b>Révise pour financer ta ville</b><small>Chaque XP gagnée sur City Work rapporte ${XP_MONEY} § · déjà reçu : ${money(S.grants||0)}</small></div><button class="cty-btn" data-act="study"><span class="ms">bolt</span>Flash 10 questions</button></div>`
     +`<div class="cty-sec">Le mois dernier</div>`
     +(L?`<div class="cty-blist">${line('Impôts habitants',inc.r)}${line('Impôts commerces',inc.c)}${line('Impôts industrie',inc.i)}${S.ms>=3?line('Impôts bureaux',inc.o):''}${inc.t?line('Tourisme',inc.t):''}${inc.x?line('Commerce avec les villes voisines',inc.x):''}
       ${Object.entries(up).map(([k,v])=>line('Entretien '+(catN[k]||k).toLowerCase(),v,true)).join('')}${line('Entretien des routes',L.rd,true)}${L.pc?line('Arrêtés municipaux',L.pc,true):''}
@@ -3235,9 +3235,9 @@ function panelGoals(){
     return `<div class="cty-goal${done?' done':''}${cur?' cur':''}"><span class="ms">${done?'check_circle':cur?'flag':'lock'}</span><div><b>${m.name}</b><small>${fmt(m.pop)} habitants${m.reward?` · prime ${money(m.reward)}`:''}</small>${unl.length?`<small class="u">${esc(unl.join(' · '))}</small>`:''}</div></div>`;
   }).join('');
   const mons=BLD.filter(b=>b.lvl).map(b=>{const built=svcCount(b.id)>0,ok=L>=b.lvl;
-    return `<div class="cty-goal${built?' done':ok?' cur':''}"><span class="ms">${built?'check_circle':ok?'lock_open':'lock'}</span><div><b>${esc(b.name)}</b><small>Niveau Kiné+ ${b.lvl} · ${money(b.cost)}${built?' · construit':ok?' · disponible':''}</small></div></div>`;}).join('');
-  return head('flag','Paliers & monuments',`${fmt(ST.pop)} habitants · niveau Kiné+ ${L}`)
-    +`<div class="cty-sec">Paliers de population</div>${ms}<div class="cty-sec">Monuments Kiné+</div><p class="cty-p small">Ils se débloquent avec ton niveau d’XP : révise pour les obtenir.</p>${mons}`;
+    return `<div class="cty-goal${built?' done':ok?' cur':''}"><span class="ms">${built?'check_circle':ok?'lock_open':'lock'}</span><div><b>${esc(b.name)}</b><small>Niveau City Work ${b.lvl} · ${money(b.cost)}${built?' · construit':ok?' · disponible':''}</small></div></div>`;}).join('');
+  return head('flag','Paliers & monuments',`${fmt(ST.pop)} habitants · niveau City Work ${L}`)
+    +`<div class="cty-sec">Paliers de population</div>${ms}<div class="cty-sec">Monuments City Work</div><p class="cty-p small">Ils se débloquent avec ton niveau d’XP : révise pour les obtenir.</p>${mons}`;
 }
 function panelViews(){
   const lg=VIEW?(VIEW_LEGEND[VIEW]||VIEW_LEGEND.def):'Choisis une vue pour repérer les problèmes de ta ville.';
@@ -3467,7 +3467,7 @@ function panelQuiz(){
   const h=head('quiz','Défi du maire',left?`Bonne réponse : +${money(QZ_BONUS)} de prime, en plus de l’XP · encore ${left} prime${left>1?'s':''} aujourd’hui`:'Primes du jour épuisées : chaque réponse rapporte encore de l’XP (et donc des §)','#0e8c87',win);
   const wrap=b=>`${h}<div class="cty-qz-scroll">${b}</div><div class="cty-qz-rs" title="Glisse pour agrandir ou réduire la fenêtre"></div>`;
   const bar=quizFilterBar();
-  if(QZ.empty)return wrap(bar+`<p class="cty-p">${QZ.none?'Le conseil municipal n’a trouvé aucun QCM dans tes matières. Importe quelques questions dans Kiné+ pour relever le défi !':'Aucune question disponible dans ce choix : sélectionne une autre matière ou un autre thème.'}</p>`);
+  if(QZ.empty)return wrap(bar+`<p class="cty-p">${QZ.none?'Le conseil municipal n’a trouvé aucun QCM dans tes matières. Importe quelques questions dans City Work pour relever le défi !':'Aucune question disponible dans ce choix : sélectionne une autre matière ou un autre thème.'}</p>`);
   if(QZV!=null&&QZH[QZV]){   // revoir une question déjà faite (lecture seule)
     const k=QZH.length-QZV;
     const nav=`<div class="cty-qnav"><button data-act="qprev"${QZV>0?'':' disabled'} title="Question d’avant" aria-label="Question d’avant"><span class="ms">arrow_back</span></button>`
@@ -4648,8 +4648,8 @@ const ACH=[
   {id:'pop10000',icon:'location_city',n:'10 000 habitants',d:'Une vraie métropole',ok:()=>ST.pop>=10000,r:10000},
   {id:'hap80',icon:'sentiment_very_satisfied',n:'Ville heureuse',d:'80 % de bonheur avec au moins 300 habitants',ok:()=>ST.pop>=300&&ST.hap>=80,r:3000},
   {id:'nopol',icon:'eco',n:'Zéro pollution',d:'500 habitants et aucune maison polluée',ok:()=>{if(ST.pop<500)return false;for(let i=0;i<NN;i++)if(zone[i]===ZR&&lvl[i]&&pol[i]>15)return false;return true;},r:3000},
-  {id:'streak7',icon:'local_fire_department',n:'Une semaine de révisions',d:'7 jours de révision d’affilée sur Kiné+',ok:()=>typeof stats!=='undefined'&&(stats.streak|0)>=7,r:1500},
-  {id:'streak30',icon:'local_fire_department',n:'30 jours d’affilée',d:'30 jours de révision d’affilée sur Kiné+',ok:()=>typeof stats!=='undefined'&&(stats.streak|0)>=30,r:8000},
+  {id:'streak7',icon:'local_fire_department',n:'Une semaine de révisions',d:'7 jours de révision d’affilée sur City Work',ok:()=>typeof stats!=='undefined'&&(stats.streak|0)>=7,r:1500},
+  {id:'streak30',icon:'local_fire_department',n:'30 jours d’affilée',d:'30 jours de révision d’affilée sur City Work',ok:()=>typeof stats!=='undefined'&&(stats.streak|0)>=30,r:8000},
   {id:'quiz50',icon:'quiz',n:'Maire studieux',d:'50 bonnes réponses au Défi du maire',ok:()=>(S.quizTot|0)>=50,r:2000},
   {id:'quiz200',icon:'quiz',n:'Maire encyclopédique',d:'200 bonnes réponses au Défi du maire',ok:()=>(S.quizTot|0)>=200,r:6000},
   {id:'qzs10',icon:'bolt',n:'En feu !',d:'Une série de 10 bonnes réponses d’affilée',ok:()=>(S.qzBest|0)>=10,r:2000},
@@ -4668,7 +4668,7 @@ const ACH=[
   {id:'trade',icon:'local_shipping',n:'Exportateur',d:'1 000 § de commerce en un mois',ok:()=>!!S.tradeLast&&S.tradeLast.tot>=1000,r:3000},
   {id:'eco3',icon:'agriculture',n:'Terroir',d:'Une ferme, une scierie et un port de pêche',ok:()=>svcCount('ferme')&&svcCount('scierie')&&svcCount('peche'),r:2500},
   {id:'air',icon:'flight',n:'Décollage !',d:'Construis l’aéroport',ok:()=>svcCount('aeroport')>0,r:5000},
-  {id:'mon3',icon:'emoji_events',n:'Ville monumentale',d:'3 monuments Kiné+',ok:()=>BLD.filter(b=>b.lvl&&svcCount(b.id)).length>=3,r:5000},
+  {id:'mon3',icon:'emoji_events',n:'Ville monumentale',d:'3 monuments City Work',ok:()=>BLD.filter(b=>b.lvl&&svcCount(b.id)).length>=3,r:5000},
   {id:'rich',icon:'savings',n:'Caisses pleines',d:'100 000 § en caisse',ok:()=>S.money>=100000,r:0},
   {id:'visit',icon:'travel_explore',n:'Touriste',d:'Visite la ville d’un ami',ok:()=>(S.stat.visits|0)>=1,r:1000},
   {id:'twin',icon:'handshake',n:'Villes jumelles',d:'Jumelle ta ville avec celle d’un ami',ok:()=>!!S.twin,r:1500},
@@ -5274,7 +5274,7 @@ function panelFriends(){
   const H=head('diversity_3','Villes de mes amis','Visite, classement, jumelage et duel','#3b8fdc');
   const conf=typeof socialConfigured==='function'&&socialConfigured();
   if(!conf)return H+`<p class="cty-p">Les comptes ne sont pas encore activés sur ce site. Une fois Supabase branché (voir le guide), tu pourras visiter les villes de tes amis.</p>`;
-  if(!socOK())return H+`<p class="cty-p">Connecte-toi à ton compte Kiné+ pour voir les villes de tes amis, te jumeler et lancer des duels.</p><button class="cty-btn" data-act="flogin"><span class="ms">login</span>Se connecter</button>`;
+  if(!socOK())return H+`<p class="cty-p">Connecte-toi à ton compte City Work pour voir les villes de tes amis, te jumeler et lancer des duels.</p><button class="cty-btn" data-act="flogin"><span class="ms">login</span>Se connecter</button>`;
   if(DUEL)return H+duelHTML();
   if(SOC.err==='missing')return H+`<p class="cty-p">Il manque la partie « ville » dans ta base Supabase. Ouvre Supabase → <b>SQL Editor</b>, colle le contenu du fichier <b>supabase/city.sql</b> et clique sur <b>Run</b>. Reviens ensuite ici.</p><button class="cty-btn" data-act="frefresh"><span class="ms">refresh</span>Réessayer</button>`;
   if(!SOC.board&&!SOC.loading){setTimeout(socLoad,0);}
@@ -5304,7 +5304,7 @@ function panelFriends(){
       ${c?`<button class="cty-px" data-act="fvisit" data-k="${f.id}" title="Visiter sa ville"><span class="ms">travel_explore</span></button>`:''}
       <button class="cty-px" data-act="fduel" data-k="${f.id}" data-n="${esc(socName(f))}" title="Défier au duel du maire"><span class="ms">sports_kabaddi</span></button>
       ${!st.twin&&!(st.twin_out||[]).length?`<button class="cty-px" data-act="ftwin" data-k="${f.id}" title="Proposer un jumelage"><span class="ms">handshake</span></button>`:''}</div>`;}).join('')
-      :`<p class="cty-p small">Tu n’as pas encore d’amis sur Kiné+. Ajoute-les depuis l’écran « Amis & classement ».</p>`;
+      :`<p class="cty-p small">Tu n’as pas encore d’amis sur City Work. Ajoute-les depuis l’écran « Amis & classement ».</p>`;
     return H+tabs+h+`<p class="cty-p small"><span class="ms" style="font-size:14px;vertical-align:-2px">travel_explore</span> visiter · <span class="ms" style="font-size:14px;vertical-align:-2px">sports_kabaddi</span> duel (10 questions de tes cours) · <span class="ms" style="font-size:14px;vertical-align:-2px">handshake</span> jumelage</p>`;
   }
   const ds=(SOC.status&&SOC.status.duels)||[];
@@ -5379,7 +5379,7 @@ async function socialClick(a,el,k){
       else{await _rpc('city_twin_respond',{p_user:k,p_accept:a==='ftwinok'});if(a==='ftwinok')toast('Vos villes sont jumelées ! 🤝','handshake');}}
     catch(e){toast(esc(socErr(e)==='missing'?'Il manque supabase/city.sql dans ta base.':socErr(e)),'error');}
     socLoad();return;}
-  if(a==='fduel'){const qs=duelPick();if(!qs){toast('Il te faut au moins 3 QCM dans Kiné+ pour lancer un duel.','quiz');return;}
+  if(a==='fduel'){const qs=duelPick();if(!qs){toast('Il te faut au moins 3 QCM dans City Work pour lancer un duel.','quiz');return;}
     DUEL={mode:'new',opp:{id:k,name:el.dataset.n||'ton ami'},qs:qs.map(q=>Object.assign(q,{order:shuffled(q.a.length)})),k:0,score:0,ans:null};renderPanel();return;}
   if(a==='fdplay'){DUEL={loading:true};renderPanel();
     try{const d=await _rpc('duel_get',{p_id:k});if(!d||!Array.isArray(d.questions))throw new Error('Duel introuvable.');
@@ -5998,7 +5998,7 @@ function rewindHTML(){
 let EXAM=null;const EXAM_N=20,EXAM_S=15*60;
 function examStart(){
   if(VISIT)return;const base=quizBase();
-  if(base.length<10){toast('Il te faut au moins 10 QCM dans Kiné+ pour passer l’examen blanc.','assignment');return;}
+  if(base.length<10){toast('Il te faut au moins 10 QCM dans City Work pour passer l’examen blanc.','assignment');return;}
   if(S.examDay===localDay()){toast('Un examen blanc par jour : reviens demain !','event_busy');return;}
   const qs=base.slice().sort(()=>Math.random()-.5).slice(0,Math.min(EXAM_N,base.length)).map(q=>{
     const idx=q.answers.map((_,j)=>j).filter(j=>String(q.answers[j]||'').trim()),ord=idx.slice().sort(()=>Math.random()-.5);
@@ -7186,7 +7186,7 @@ function panelSos(){
   const D_=SOS_N[s.k];if(!SOSQ)sosNext();
   let h=head(D_[1],`${D_[0]} : aide les secours !`,`${s.n} / 3 bonnes réponses · ${D_[2]}`,'#d62828')
     +`<div class="cty-dots">${[0,1,2].map(k=>`<i class="${k<s.n?'done':k===s.n?'cur':''}"></i>`).join('')}</div>`;
-  if(SOSQ.empty)return h+`<p class="cty-p">Ajoute des questions dans Kiné+ pour pouvoir aider la ville.</p>`;
+  if(SOSQ.empty)return h+`<p class="cty-p">Ajoute des questions dans City Work pour pouvoir aider la ville.</p>`;
   const q=SOSQ.q,L='ABCDEFGHIJ',done=SOSQ.ans!=null;
   h+=(q.ctx?`<p class="cty-p small">${esc(q.ctx)}</p>`:'')+`<div class="cty-qq">${esc(q.question)}</div>`
     +`<div class="cty-qas">`+SOSQ.order.map((j,k)=>{let cl='';if(done){if(j===(q.correct|0))cl=' ok';else if(j===SOSQ.ans)cl=' ko';}
@@ -7622,7 +7622,7 @@ Object.assign(SVB,{
     for(const [x,z] of[[-1.85,-1.85],[1.85,-1.85],[-1.85,1.85],[1.85,1.85]]){bc(x,z,.03,.03,0,1.55,'#8d949b');bc(x,z,.1,.1,1.55,1.6,'#8d949b');bc(x-Math.sign(x)*.02,z-Math.sign(z)*.02,.09,.09,1.6,1.7,'#fff6d5','basic');}
     for(const x of[-.9,0,.9])bx(x-.12,1.8,x+.12,1.805,0,.22,'#2b3240');for(const x of[-1.4,-.45,.45,1.4])flag(x,1.92,.55);
     return 1.7;},
-  tower(r){   // tour Kiné+ : socle commercial, quatre tronçons vitrés à arêtes blanches et bandeaux lumineux, terrasses plantées, couronne, flèche
+  tower(r){   // tour City Work : socle commercial, quatre tronçons vitrés à arêtes blanches et bandeaux lumineux, terrasses plantées, couronne, flèche
     bx(-.98,-.98,.98,.98,0,.006,'#e3ddd2');
     bc(0,0,.9,.9,0,FH*2,'#d5dbe0',FSh(FH*2),'#c3cad0');bc(0,0,.92,.92,FH*2,FH*2+.04,'#eef1f3');canopy(0,.9,1.0,FH*.9,'#2b3a46');
     let w=.62,y=FH*2+.04;const segs=[10,9,8,6];
@@ -8855,7 +8855,7 @@ function panelAnato(){
 
 // ── La Gazette du dimanche : chaque semaine, tes chiffres de révision et des titres amusants ──
 function gzDay(k){return new Date(Date.now()-k*864e5).toISOString().split('T')[0];}
-// questions par jour (0 = aujourd'hui … 29) : le plus grand des deux compteurs, séances Kiné+ (dailyCounts)
+// questions par jour (0 = aujourd'hui … 29) : le plus grand des deux compteurs, séances City Work (dailyCounts)
 // ou questions dont la dernière réponse date de ce jour (diffData : compte aussi les quiz de la ville)
 function gzCounts(){
   const dc=typeof dailyCounts!=='undefined'&&dailyCounts?dailyCounts:{},dd=typeof diffData!=='undefined'&&diffData?diffData:{},by=new Map();
@@ -8934,7 +8934,7 @@ function panelCurves(){
   else{const H=S.hist||[],per=CURVS.p==='1a'?12:CURVS.p==='3a'?36:H.length,cut=H.slice(-per),now=(S.day/30)|0;
     cut.forEach((a,k)=>{const v=a[C[2]];if(v==null)return;const m=a[8]!=null?((a[8]/30)|0)-1:now-(cut.length-k);vals.push(v);labels.push(`${MONTHS[((m%12)+12)%12]} ${2026+Math.floor(m/12)}`);});}
   const first=vals[0],last=vals[vals.length-1],ch=vals.length>1&&first?Math.round((last/first-1)*100):null;
-  return head('show_chart','Courbes d’évolution',C[2]<0?'Questions répondues chaque jour dans Kiné+':`Un point par mois de jeu · ${vals.length} mois`,'#0e8c87')
+  return head('show_chart','Courbes d’évolution',C[2]<0?'Questions répondues chaque jour dans City Work':`Un point par mois de jeu · ${vals.length} mois`,'#0e8c87')
     +`<div class="cty-pchips">${CURV.map(c=>`<button class="${c[0]===C[0]?'on':''}" data-act="curs" data-k="${c[0]}">${esc(c[1])}</button>`).join('')}</div>`
     +(C[2]<0?'':`<div class="cty-tsp cty-curp">${[['1a','1 an'],['3a','3 ans'],['all','Tout']].map(([k,n])=>`<button class="${CURVS.p===k?'on':''}" data-act="curp" data-k="${k}"><b>${n}</b></button>`).join('')}</div>`)
     +curveSVG(vals,labels,C[3],C[4],C[2]<0)

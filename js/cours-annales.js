@@ -1087,7 +1087,7 @@ function vClick(e){
   }
   else if(a==='orig'){P.showOrig=!P.showOrig;menu.hidden=true;saveSoon();document.querySelectorAll('#ca-pages-course .ca-page').forEach(el=>{el.dataset.r='';if(el._vis)renderPage(el);});}
   else if(a==='rerun'){menu.hidden=true;const p=P;closeViewer(true);wzOpen(p);}
-  else if(a==='rename'){menu.hidden=true;const n=prompt('Nouveau nom :',P.name);if(n&&n.trim()){P.name=n.trim();saveSoon();const t=document.querySelector('#ca-viewer .ca-ttl b');if(t)t.textContent=P.name;}}
+  else if(a==='rename'){menu.hidden=true;kcPrompt('Nouveau nom',P.name).then(n=>{if(n&&n.trim()){P.name=n.trim();saveSoon();const t=document.querySelector('#ca-viewer .ca-ttl b');if(t)t.textContent=P.name;}});}
   else if(a==='del'){menu.hidden=true;delProject(P.id,P.name,true);}
 }
 function delProject(id,name,fromViewer){

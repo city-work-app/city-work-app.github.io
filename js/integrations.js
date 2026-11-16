@@ -755,7 +755,7 @@ KinePlugins.register({
 
         // 3. Demander le nom du dossier
         const pdfTitle = document.getElementById('pdf-title')?.textContent || 'Annale PDF';
-        const folderName = prompt(`${parsedQs.length} question(s) détectée(s) !\n\nNom du dossier à créer :`, pdfTitle.replace(/\.pdf$/i, ''));
+        const folderName = await kcPrompt(`${parsedQs.length} question(s) détectée(s) ! Nom du dossier à créer`, pdfTitle.replace(/\.pdf$/i, ''));
         if (!folderName) return;
 
         // 4. Créer dossier + cours + questions

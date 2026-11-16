@@ -263,31 +263,116 @@ function resetStats(){showConfirm('Réinitialiser les statistiques ?','Streak, s
 // ════════════════════════════════════════════
 // EXPORT / IMPORT
 // ════════════════════════════════════════════
-function exportData(){
-  const ALL_KEYS=[
-    'kcu_f','kcu_sf','kcu_c','kcu_q','kcu_s','kcu_diff','kcu_goal',
-    'kcu_boycott','kcu_archived','kcu_fav','kcu_best_survival',
-    'kcu_concepts','kcu_cfol','kcu_flashcards','kcu_prompts','kcu_fiches',
-    'kcu_qstats','kcu_bd','kcu_kc','kcu_partiels','kcu_pg',
-    'kcu_weekly_h','kcu_wh_v','kcu_fc_spaced','kcu_sh',
-    'kcu_mm','kcu_maps','kcu_dg','kcu_ar','kcu_display_name',
-    'kp_exam_date','kp_exam_name','kp_exam_folders','kp_exams_v2'
-  ];
-  const dump={_version:4,_exportDate:new Date().toISOString(),_raw:{}};
-  // lsRaw (data.js) : données décompressées → la sauvegarde reste du JSON lisible
-  ALL_KEYS.forEach(k=>{const v=typeof lsRaw==='function'?lsRaw(k):localStorage.getItem(k);if(v!=null)dump._raw[k]=v;});
-  // 13 nov. 2026 : aussi tout le reste (ville et ses sauvegardes, XP, révisions par jour, réglages…), pour pouvoir
-  // tout retrouver après un changement d'adresse ; sauf les jetons de connexion (Spotify, Supabase), propres à cet appareil
-  try{Object.keys(localStorage).forEach(k=>{if(k in dump._raw||/^sp_/.test(k)||/^sb-/.test(k))return;
-    const v=typeof LZ_KEYS!=='undefined'&&LZ_KEYS.has(k)&&typeof lsRaw==='function'?lsRaw(k):localStorage.getItem(k);if(v!=null)dump._raw[k]=v;});}catch(e){}
-  const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`kineplus_sauvegarde_${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  const total=Object.keys(dump._raw).length;
-  showNotif(`Sauvegarde complète exportée (${total} clés) !`,'ok');
+// 16 nov. 2026 (v5) : la sauvegarde contient ABSOLUMENT tout ce qui est sur cet appareil :
+//  - toutes les clés de la mémoire (localStorage + grande mémoire IndexedDB de kstore.js, images des flashcards comprises) ;
+//  - les bases IndexedDB de l'appli : cours reliés aux annales (avec leurs PDF), enregistrements audio.
+// Seuls les jetons de connexion (Spotify `sp_*`, compte `sb-*`) restent sur l'appareil. Les amis / le classement sont dans le compte.
+const _EXPORT_DBS=['kineplus-cours-annales','kineplus_audio'];
+async function _idbNames(){
+  const names=_EXPORT_DBS.slice();
+  try{if(indexedDB.databases)(await indexedDB.databases()).forEach(d=>{if(d&&d.name&&/^(kine|city)/i.test(d.name)&&names.indexOf(d.name)<0)names.push(d.name);});}catch(e){}
+  return names.filter(n=>n!=='citywork-store');
+}
+function _idbOpenExisting(name){return new Promise(res=>{
+  let fresh=false,r;try{r=indexedDB.open(name);}catch(e){res(null);return;}
+  r.onupgradeneeded=e=>{if(e.oldVersion===0){fresh=true;try{e.target.transaction.abort();}catch(_){}}};
+  r.onsuccess=()=>{if(fresh){try{r.result.close();}catch(_){}res(null);}else res(r.result);};
+  r.onerror=e=>{try{e.preventDefault();}catch(_){}res(null);};r.onblocked=()=>res(null);
+});}
+async function _idbDump(name){
+  const d=await _idbOpenExisting(name);if(!d)return null;
+  const out={version:d.version,stores:[]};
+  try{
+    for(const sn of Array.from(d.objectStoreNames)){
+      out.stores.push(await new Promise((res,rej)=>{
+        const t=d.transaction(sn,'readonly'),st=t.objectStore(sn);
+        const meta={name:sn,keyPath:st.keyPath,autoIncrement:st.autoIncrement,indexes:Array.from(st.indexNames).map(n=>{const ix=st.index(n);return{name:n,keyPath:ix.keyPath,unique:ix.unique,multiEntry:ix.multiEntry};})};
+        const rk=st.getAllKeys(),rv=st.getAll();
+        t.oncomplete=()=>res({meta,keys:rk.result||[],vals:rv.result||[]});t.onerror=t.onabort=()=>rej(t.error);
+      }));
+    }
+  }finally{try{d.close();}catch(_){}}
+  return out;
+}
+function _b64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>{const x=fr.result;res(x.slice(x.indexOf(',')+1));};fr.onerror=()=>rej(fr.error);fr.readAsDataURL(blob);});}
+function _binEnc(v,jobs){ // fichiers / octets → texte base64 (les tâches asynchrones vont dans `jobs`)
+  if(v==null||typeof v!=='object')return v;
+  let o=null;
+  if(typeof Blob!=='undefined'&&v instanceof Blob){o={__kbin:'blob',type:v.type||'',name:v.name||'',d:''};jobs.push(_b64(v).then(x=>{o.d=x;}));return o;}
+  if(v instanceof ArrayBuffer){o={__kbin:'ab',d:''};jobs.push(_b64(new Blob([v])).then(x=>{o.d=x;}));return o;}
+  if(ArrayBuffer.isView(v)){o={__kbin:v.constructor.name,d:''};jobs.push(_b64(new Blob([v])).then(x=>{o.d=x;}));return o;}
+  if(v instanceof Date)return{__kbin:'date',d:v.toISOString()};
+  if(Array.isArray(v))return v.map(x=>_binEnc(x,jobs));
+  o={};for(const k of Object.keys(v))o[k]=_binEnc(v[k],jobs);return o;
+}
+function _binDec(v){
+  if(v==null||typeof v!=='object')return v;
+  if(Array.isArray(v)){for(let i=0;i<v.length;i++)v[i]=_binDec(v[i]);return v;}
+  if(typeof v.__kbin==='string'&&typeof v.d==='string'){
+    if(v.__kbin==='date')return new Date(v.d);
+    const bin=atob(v.d),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    if(v.__kbin==='blob'){try{return v.name?new File([u],v.name,{type:v.type}):new Blob([u],{type:v.type});}catch(e){return new Blob([u],{type:v.type});}}
+    if(v.__kbin==='ab')return u.buffer;
+    const C=window[v.__kbin];try{return typeof C==='function'&&C!==Uint8Array?new C(u.buffer):u;}catch(e){return u;}
+  }
+  for(const k in v)v[k]=_binDec(v[k]);return v;
+}
+function _idbRestore(name,dump,noVersion){return new Promise(res=>{
+  let r;try{r=noVersion?indexedDB.open(name):indexedDB.open(name,dump.version||1);}catch(e){res(0);return;}
+  r.onupgradeneeded=()=>{const d=r.result;(dump.stores||[]).forEach(st=>{const m=st.meta||{};if(!m.name||d.objectStoreNames.contains(m.name))return;
+    const opt={};if(m.keyPath!=null)opt.keyPath=m.keyPath;if(m.autoIncrement)opt.autoIncrement=true;
+    const os=d.createObjectStore(m.name,opt);(m.indexes||[]).forEach(ix=>{try{os.createIndex(ix.name,ix.keyPath,{unique:!!ix.unique,multiEntry:!!ix.multiEntry});}catch(e){}});});};
+  r.onblocked=()=>res(0);
+  r.onerror=e=>{try{e.preventDefault();}catch(_){}if(!noVersion)_idbRestore(name,dump,true).then(res);else res(0);};
+  r.onsuccess=()=>{const d=r.result;
+    const sts=(dump.stores||[]).filter(st=>st.meta&&d.objectStoreNames.contains(st.meta.name));
+    if(!sts.length){d.close();res(0);return;}
+    let n=0;
+    try{
+      const t=d.transaction(sts.map(st=>st.meta.name),'readwrite');
+      sts.forEach(st=>{const os=t.objectStore(st.meta.name);(st.rows||[]).forEach(row=>{try{const val=_binDec(row[1]);if(os.keyPath!=null)os.put(val);else os.put(val,row[0]);n++;}catch(e){}});});
+      t.oncomplete=()=>{d.close();res(n);};t.onerror=t.onabort=()=>{d.close();res(0);};
+    }catch(e){try{d.close();}catch(_){}res(0);}
+  };
+});}
+async function exportData(){
+  if(exportData._busy)return;exportData._busy=true;
+  try{
+    showNotif('Préparation de la sauvegarde complète…','');
+    await new Promise(r=>setTimeout(r,30));
+    const raw={};
+    const keys=window.KStore?KStore.keys():Object.keys(localStorage);
+    // lsRaw (data.js) : données décompressées → la sauvegarde reste du JSON lisible
+    keys.forEach(k=>{if(/^sp_/.test(k)||/^sb-/.test(k)||k==='kineplus-auth')return;   /* jetons de connexion : jamais dans un fichier */
+      const v=typeof LZ_KEYS!=='undefined'&&LZ_KEYS.has(k)&&typeof lsRaw==='function'?lsRaw(k):localStorage.getItem(k);if(v!=null)raw[k]=v;});
+    const parts=['{"_version":5,"_app":"City Work","_exportDate":'+JSON.stringify(new Date().toISOString())+',"_raw":',JSON.stringify(raw),',"_idb":{'];
+    let nDb=0,nRows=0;
+    for(const name of await _idbNames()){
+      let dump=null;try{dump=await _idbDump(name);}catch(e){console.warn('[export]',name,e);}
+      if(!dump)continue;
+      parts.push((nDb++?',':'')+JSON.stringify(name)+':{"version":'+dump.version+',"stores":[');
+      for(let i=0;i<dump.stores.length;i++){
+        const st=dump.stores[i];
+        parts.push((i?',':'')+'{"meta":'+JSON.stringify(st.meta)+',"rows":[');
+        for(let j=0;j<st.keys.length;j++){
+          const jobs=[],enc=_binEnc(st.vals[j],jobs);await Promise.all(jobs);
+          parts.push((j?',':'')+JSON.stringify([st.keys[j],enc]));st.vals[j]=null;nRows++;
+        }
+        parts.push(']}');
+      }
+      parts.push(']}');
+    }
+    parts.push('}}');
+    const blob=new Blob(parts,{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`citywork_sauvegarde_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),60000);
+    const mo=typeof kineFmtMo==='function'?' · '+kineFmtMo(blob.size):'';
+    showNotif(`Sauvegarde complète exportée : ${Object.keys(raw).length} éléments${nRows?` + ${nRows} fichier${nRows>1?'s':''} (cours reliés aux annales, PDF, enregistrements)`:''}${mo}`,'ok');
+  }catch(err){console.error(err);showNotif('Export impossible : '+(err&&err.message||err),'err');}
+  finally{exportData._busy=false;}
 }
 function importData(input){
   const file=input.files[0];if(!file)return;
@@ -298,9 +383,15 @@ function importData(input){
       // Nouveau format v4 (sauvegarde complète)
       if(data._raw){
         const keys=Object.keys(data._raw);
-        showConfirm('Importer toutes les données ?',`${keys.length} entrées — dossiers, partiels, flashcards, mind maps, statistiques… Tes données actuelles seront remplacées.`,'Importer',()=>{
-          let fail=0;keys.forEach(k=>{try{if(typeof lsSet==='function'&&typeof LZ_KEYS!=='undefined'&&LZ_KEYS.has(k))lsSet(k,data._raw[k]);else localStorage.setItem(k,data._raw[k]);}catch(err){fail++;}});   // clés compressées réécrites compressées
-          showNotif(fail?`Données importées, sauf ${fail} élément${fail>1?'s':''} (mémoire du navigateur pleine). Rechargement…`:'Données importées ! Rechargement…','ok');
+        const dbs=data._idb&&typeof data._idb==='object'?Object.keys(data._idb):[];
+        let nFiles=0;dbs.forEach(n=>(data._idb[n].stores||[]).forEach(st=>{nFiles+=(st.rows||[]).length;}));
+        showConfirm('Importer toutes les données ?',`${keys.length} éléments${nFiles?` et ${nFiles} fichier${nFiles>1?'s':''} (cours reliés aux annales, PDF, enregistrements)`:''} — matières, annales, flashcards, cartes mentales, ville, statistiques, réglages… Tes données actuelles seront remplacées.`,'Importer',async()=>{
+          window._kpImporting=true;   // plus aucun enregistrement automatique ne doit écraser ce qu'on importe
+          showNotif('Import en cours…','');
+          let fail=0;keys.forEach(k=>{try{if(typeof lsSet==='function'&&typeof LZ_KEYS!=='undefined'&&LZ_KEYS.has(k))lsSet(k,data._raw[k]);else localStorage.setItem(k,data._raw[k]);}catch(err){fail++;}});
+          for(const n of dbs){try{await _idbRestore(n,data._idb[n]);}catch(err){fail++;}}
+          try{if(window.KStore)await KStore.flush();}catch(err){}
+          showNotif(fail?`Données importées, sauf ${fail} élément${fail>1?'s':''} (mémoire pleine). Rechargement…`:'Tout est importé ! Rechargement…','ok');
           setTimeout(()=>location.reload(),900);
         },{icon:'upload',danger:false});
       // Ancien format v1-v3 (rétrocompatibilité)
@@ -316,9 +407,9 @@ function importData(input){
       } else if(Object.keys(data).some(k=>k.startsWith('kcu_')||k.startsWith('kp_'))){
         const keys=Object.keys(data).filter(k=>k.startsWith('kcu_')||k.startsWith('kp_'));
         showConfirm('Importer toutes les données ?',`${keys.length} entrées détectées. Tes données actuelles seront remplacées.`,'Importer',()=>{
-          keys.forEach(k=>{if(data[k]!=null)localStorage.setItem(k,data[k]);});
+          window._kpImporting=true;keys.forEach(k=>{if(data[k]!=null)localStorage.setItem(k,data[k]);});
           showNotif('Données importées ! Rechargement…','ok');
-          setTimeout(()=>location.reload(),900);
+          setTimeout(()=>{if(window.KStore)KStore.reload();else location.reload();},900);
         },{icon:'upload',danger:false});
       } else {
         throw new Error('Format de fichier non reconnu.');
@@ -686,19 +777,19 @@ const LAYOUT_DESCS = {
 
 const QUOTES = [
   {text:"La répétition espacée, c'est la mémoire qui choisit ce qui reste.", cite:"Conseil du jour"},
-  {text:"La constance fait le thérapeute.", cite:"Kiné+"},
+  {text:"La constance fait le thérapeute.", cite:"City Work"},
   {text:"Un kiné ne soigne pas, il réapprend au corps à fonctionner.", cite:"Conseil du jour"},
   {text:"La douleur est une alerte, pas une sentence.", cite:"Physiologie"},
   {text:"Comprendre avant d'agir : la clé de la thérapie manuelle.", cite:"Conseil du jour"},
-  {text:"Chaque session compte. La progression est dans la régularité.", cite:"Kiné+"},
+  {text:"Chaque session compte. La progression est dans la régularité.", cite:"City Work"},
   {text:"La mémoire se consolide pendant le sommeil. Révisez le soir.", cite:"Neurosciences"},
   {text:"Tester sa mémoire vaut mieux que la relire. Active recall.", cite:"Conseil du jour"},
   {text:"Le corps garde la mémoire de ce que l'esprit oublie.", cite:"Psychosomatique"},
-  {text:"Réviser peu mais souvent : la loi de la mémoire à long terme.", cite:"Kiné+"},
+  {text:"Réviser peu mais souvent : la loi de la mémoire à long terme.", cite:"City Work"},
   {text:"Soigner avec ses mains commence par comprendre avec sa tête.", cite:"Conseil du jour"},
   {text:"Réapprendre à bouger, c'est réapprendre à vivre.", cite:"Kinésithérapie"},
   {text:"Une question difficile aujourd'hui, une réponse certaine demain.", cite:"Conseil du jour"},
-  {text:"La maîtrise est la somme de toutes les petites habitudes.", cite:"Kiné+"},
+  {text:"La maîtrise est la somme de toutes les petites habitudes.", cite:"City Work"},
 ];
 
 function getTodayQuote(){
@@ -1192,7 +1283,7 @@ function renderDesktopSidebar(){
       hero.innerHTML=`
         <img class="eh-watermark" src="${logoSrc}" alt="">
         <div>
-          <div class="eh-kicker">Kiné+ · Révisions 2026</div>
+          <div class="eh-kicker">City Work · Révisions 2026</div>
           <div class="eh-title">La constance<br><em>fait</em> le<br>thérapeute.</div>
           <div class="eh-sub">${totalQ} question${totalQ!==1?'s':''} répondues. Continue à avancer chaque jour.</div>
         </div>

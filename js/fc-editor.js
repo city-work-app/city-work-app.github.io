@@ -70,7 +70,7 @@ function ensureFolder(){
   cf.push(f);E.key=f.id;
 }
 function commit(){
-  clearTimeout(E.saveT);
+  clearTimeout(E.saveT);E.saveT=0;
   ensureFolder();
   if(!E.key&&E.kind!=='course'){setSaved('');return;}
   const list=listFor(E.kind);if(!list)return;
@@ -97,6 +97,7 @@ function commit(){
       list.push(c);r.id=c.id;
     }
   });
+  const userDel=E.deleted.size>0;   /* « Annuler » n'est proposé que pour une carte supprimée avec la corbeille, pas pour une carte vidée */
   E.deleted.forEach(id=>{const i=list.findIndex(x=>x.id===id);if(i>=0)list.splice(i,1);if(sp)delete sp[id];});
   E.deleted.clear();
   // ordre de l'éditeur = ordre dans le tableau (mêmes emplacements)
@@ -104,9 +105,41 @@ function commit(){
   list.forEach((x,i)=>{if(set.has(x.id))slots.push(i);});
   if(slots.length===ids.length){const by={};list.forEach(x=>{by[x.id]=x;});slots.forEach((s,j)=>{list[s]=by[ids[j]];});}
   if(E.kind==='folder'&&E.key&&E.key!=='__none__'){const f=folders().find(x=>x.id===E.key);if(f){if(E.title.trim())f.name=E.title.trim();if(E.desc.trim())f.desc=E.desc.trim();else delete f.desc;}}
-  try{saveAll();E.savedAt=Date.now();setSaved();}
-  catch(e){setSaved('Mémoire pleine : enregistrement impossible','err');}
+  let ok=false;try{ok=saveAll(userDel?undefined:{noUndo:true})!==false;}catch(e){}
+  if(ok){E.savedAt=Date.now();setSaved();}else setSaved('Enregistrement impossible (mémoire pleine)','err');
+  remember();
 }
+/* Paquet en cours (16 nov. 2026) : tant qu'on n'a pas cliqué sur « Terminé », le site propose de le reprendre
+   (pastille « Continuer » en haut à gauche, même après un rechargement de la page). */
+const OPEN_KEY='kp_fce_open';
+function remember(){try{if(E.key&&document.body.dataset.screen==='fc-editor')localStorage.setItem(OPEN_KEY,JSON.stringify({key:E.key,ts:Date.now()}));}catch(e){}}
+function forget(){try{localStorage.removeItem(OPEN_KEY);}catch(e){}pill();}
+function pending(){
+  let o=null;try{o=JSON.parse(localStorage.getItem(OPEN_KEY)||'null');}catch(e){}
+  if(!o||!o.key)return null;
+  let name='',n=0;
+  if(o.key.startsWith('__course_')){const cid=o.key.slice(9),c=(G('courses',[])||[]).find(x=>x.id===cid);if(!c)return null;name=c.name;n=(G('flashcards',[])||[]).filter(f=>f.courseId===cid).length;}
+  else if(o.key==='__none__'){name='Sans dossier';n=(G('concepts',[])||[]).filter(c=>!c.folderId).length;}
+  else{const f=folders().find(x=>x.id===o.key);if(!f)return null;name=f.name;n=(G('concepts',[])||[]).filter(c=>c.folderId===o.key).length;}
+  return {key:o.key,name,n};
+}
+function pill(){
+  let el=$('kc-resume');
+  const p=document.body.dataset.screen==='fc-editor'?null:pending();
+  if(!p){if(el)el.remove();return;}
+  if(!el){
+    el=document.createElement('div');el.id='kc-resume';el.className='kc-resume';
+    const logo=document.querySelector('header.topbar .logo');
+    if(logo&&logo.parentNode)logo.parentNode.insertBefore(el,logo.nextSibling);else document.body.appendChild(el);
+    el.addEventListener('click',e=>{
+      if(e.target.closest('.kc-resume-x')){forget();return;}
+      const q=pending();if(q)window.fceOpen(q.key,null,{add:false});
+    });
+  }
+  el.innerHTML=`<button class="kc-resume-go" title="Reprendre là où tu t’étais arrêté"><span class="ms">edit_note</span><span class="kc-resume-t"><b>Continuer tes flashcards</b><i>${esc(p.name)} · ${p.n} carte${p.n!==1?'s':''}</i></span></button><button class="kc-resume-x" title="Ne plus proposer (tes cartes restent enregistrées)" aria-label="Fermer"><span class="ms">close</span></button>`;
+}
+window.fcePill=pill;
+window.fceReload=function(){if(document.body.dataset.screen!=='fc-editor'||!E.key)return;load(E.key);if(!E.rows.length)E.rows.push(blank());render();};
 function setSaved(txt,cls){
   const el=$('fce-saved');if(!el)return;
   if(txt!==undefined){el.textContent=txt;el.className='fce-saved'+(cls?' '+cls:'');return;}
@@ -121,6 +154,7 @@ window.fceOpen=function(key,focusId,o){
   if(!E.rows.length||o.add)E.rows.push(blank());
   showScreen('fc-editor');
   render();
+  remember();pill();
   afterOpen(focusId,o);
 };
 window.fceNew=function(o){
@@ -148,20 +182,20 @@ function afterOpen(focusId,o){
   },60);
 }
 window.fceClose=function(){
-  commit();
+  commit();forget();
   const key=E.key;
   if(E.back==='folder'&&key){showScreen('all-flashcards');if(typeof afcOpenView==='function')afcOpenView(key);}
   else{try{if(typeof _afcView!=='undefined')_afcView='hub';}catch(e){}showScreen('all-flashcards');}
 };
 window.fceStudy=function(){
-  commit();
+  commit();forget();
   const key=E.key;if(!key){showNotif('Ajoute au moins une carte','err');return;}
   if(typeof fcxStartKey==='function')fcxStartKey(key);
 };
 
 /* ───────── Rendu ───────── */
 function cardHTML(r,i){
-  const img=(s,src)=>src?`<div class="fce-img has" data-s="${s}" title="Changer l’image"><img src="${src}" alt=""><button class="fce-img-x" data-act="rmimg" data-s="${s}" tabindex="-1" title="Retirer l’image"><span class="ms">close</span></button></div>`
+  const img=(s,src)=>src?`<div class="fce-img has" data-s="${s}" title="Voir l’image en grand"><img src="${src}" alt=""><button class="fce-img-x" data-act="rmimg" data-s="${s}" tabindex="-1" title="Retirer l’image"><span class="ms">close</span></button></div>`
     :`<button class="fce-img" data-s="${s}" tabindex="-1" title="Ajouter une image (ou colle-la avec Ctrl+V)"><span class="ms">add_photo_alternate</span><span>Image</span></button>`;
   const ed=(f,html,txt,ph)=>`<div class="fce-ed" contenteditable="true" spellcheck="true" data-f="${f}" data-ph="${ph}" role="textbox" aria-multiline="true" aria-label="${ph}">${html?fcxSafeHtml(html):esc(txt).replace(/\n/g,'<br>')}</div>`;
   return `<div class="fce-card" data-k="${r.k}">
@@ -264,6 +298,7 @@ function bind(){
     if(act==='swap'){[r.term,r.def]=[r.def,r.term];[r.termHtml,r.defHtml]=[r.defHtml,r.termHtml];[r.imageQ,r.imageA]=[r.imageA,r.imageQ];rerenderRow(r);schedule();return;}
     if(act==='ai'){aiRow(r,b);return;}
     if(act==='rmimg'){e.stopPropagation();r[b.dataset.s==='q'?'imageQ':'imageA']=null;rerenderRow(r);schedule();return;}
+    if(b.classList.contains('has')){zoomImg(r,b.dataset.s);return;}
     if(b.classList.contains('fce-img')){imgTarget={r,s:b.dataset.s};$('fce-file').click();}
   });
   $('fce-file').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f&&imgTarget)await setImg(imgTarget.r,imgTarget.s,f);});
@@ -301,26 +336,50 @@ function bind(){
     else document.execCommand(c,false,null);
     fmtFor.dispatchEvent(new Event('input',{bubbles:true}));
   });
-  window.addEventListener('scroll',()=>{if(fmtFor)placeFmt();},{passive:true});
   initDrag(list);
   bindAI();
 }
-function showFmt(ed){fmtFor=ed;placeFmt();$('fce-fmt').classList.add('on');}
-function hideFmt(){const f=$('fce-fmt');if(f)f.classList.remove('on');fmtFor=null;}
-function placeFmt(){
-  const f=$('fce-fmt');if(!f||!fmtFor)return;
-  const r=fmtFor.getBoundingClientRect(),w=f.offsetWidth||300;
-  f.style.left=Math.max(8,Math.min(window.innerWidth-w-8,r.left))+'px';
-  f.style.top=Math.max(8,r.top-46)+'px';
+/* v70 : la barre de mise en forme se range dans le haut de la carte où l'on écrit (avant : flottante, elle passait sur le texte). */
+function showFmt(ed){
+  const f=$('fce-fmt'),card=ed.closest('.fce-card'),top=card&&card.querySelector('.fce-card-top');if(!f||!top)return;
+  fmtFor=ed;
+  const sp=top.querySelector('.fce-flex');
+  if(f.parentNode!==top)top.insertBefore(f,sp||null);
+  f.classList.add('on','docked');
+}
+function hideFmt(){
+  const f=$('fce-fmt');fmtFor=null;if(!f)return;
+  f.classList.remove('on','docked');
+  const root=$('fce-root');if(root&&f.parentNode!==root)root.appendChild(f);
+}
+function placeFmt(){}
+/* Photo d'une carte en grand ; « Changer » et « Retirer » sont dans cette vue. */
+function zoomImg(r,side){
+  const src=r[side==='q'?'imageQ':'imageA'];if(!src)return;
+  const bg=document.createElement('div');bg.className='fce-zoom';
+  bg.innerHTML=`<div class="fce-zoom-pic"><img src="${src}" alt=""></div><div class="fce-zoom-bar"><button data-z="change"><span class="ms">add_photo_alternate</span>Changer l’image</button><button data-z="rm"><span class="ms">delete</span>Retirer</button><button data-z="close"><span class="ms">close</span>Fermer</button></div>`;
+  const key=e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}};
+  const close=()=>{bg.remove();document.removeEventListener('keydown',key,true);};
+  bg.addEventListener('click',e=>{
+    const b=e.target.closest('[data-z]');
+    if(!b){if(e.target.tagName==='IMG')bg.classList.toggle('big');else close();return;}
+    close();
+    if(b.dataset.z==='change'){imgTarget={r,s:side};$('fce-file').click();}
+    else if(b.dataset.z==='rm'){r[side==='q'?'imageQ':'imageA']=null;rerenderRow(r);schedule();}
+  });
+  document.addEventListener('keydown',key,true);
+  document.body.appendChild(bg);
 }
 function rerenderRow(r){
   const c=document.querySelector(`.fce-card[data-k="${r.k}"]`);if(!c)return;
+  if(c.contains($('fce-fmt')))hideFmt();
   const i=E.rows.indexOf(r),tmp=document.createElement('div');tmp.innerHTML=cardHTML(r,i);
   c.replaceWith(tmp.firstElementChild);count();
 }
 function delRow(r){
   const c=document.querySelector(`.fce-card[data-k="${r.k}"]`);
   const go=()=>{
+    if(c&&c.contains($('fce-fmt')))hideFmt();
     const i=E.rows.indexOf(r);if(i<0)return;
     E.rows.splice(i,1);if(r.id)E.deleted.add(r.id);
     if(c)c.remove();
@@ -729,7 +788,7 @@ function decorate(){
   const anc=f&&window.fcxAncestors?fcxAncestors(key):[];
   const subHTML=f&&window.fcxSubfoldersHTML?fcxSubfoldersHTML(key):'';
   const allIds=f?(function(){const all=folders(),out=[key];for(let i=0;i<out.length;i++)all.forEach(x=>{if(x.parentId===out[i]&&!out.includes(x.id))out.push(x.id);});return new Set(out);})():null;
-  const nAll=allIds?(G('concepts',[])||[]).filter(c=>allIds.has(c.folderId)&&c.definition&&String(c.definition).trim()).length:items.length;
+  const nAll=allIds?(G('concepts',[])||[]).filter(c=>allIds.has(c.folderId)&&kcIsCard(c)).length:items.length;
   hdr.innerHTML=`<div class="fcv-crumbs"><button class="kf-crumb" data-fdrop="root" onclick="afcGoBack()"><span class="ms">arrow_back</span>Flashcards</button>${anc.map(a=>`<span class="ms fcv-sep">chevron_right</span><button class="kf-crumb" data-fdrop="${a.id}" onclick="afcOpenView('${a.id}')">${esc(a.name)}</button>`).join('')}</div>
     <div class="fcv-head">
       <span class="kf-ic" style="--c:${(f&&f.color)||'var(--kc-primary)'}"><span class="ms">${isCourse?'menu_book':key==='__none__'?'inbox':'folder'}</span></span>
@@ -768,6 +827,13 @@ if(typeof prevRender==='function'){
 }
 // quitter l'éditeur par un autre chemin (menu…) : on enregistre
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&E.saveT)commit();});
+window.addEventListener('pagehide',()=>{if(E.saveT)commit();});
+(function(){
+  let last='';
+  const tick=()=>{const sc=document.body.dataset.screen||'';if(sc===last)return;if(last==='fc-editor'&&E.saveT)commit();last=sc;pill();};
+  const start=()=>{try{new MutationObserver(tick).observe(document.body,{attributes:true,attributeFilter:['data-screen']});}catch(e){}setTimeout(tick,400);};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+})();
 window.addEventListener('beforeunload',()=>{if(E.saveT)commit();});
 const origShow=window.showScreen;
 if(typeof origShow==='function'){

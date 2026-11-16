@@ -907,10 +907,10 @@ function _dgKeydown(e) {
 }
 
 /* ─── Diagram rename ────────────────────────────────────────────────────── */
-function dgRenamePrompt() {
+async function dgRenamePrompt() {
   const d = diagrams.find(x => x.id === _dgId);
   if (!d) return;
-  const name = prompt('Renommer le diagramme :', d.name);
+  const name = await kcPrompt('Renommer le diagramme', d.name);
   if (name && name.trim()) {
     d.name = name.trim();
     _dgSaveAll();

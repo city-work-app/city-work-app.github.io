@@ -313,10 +313,10 @@ function audioSaveFolder() {
   showNotif(_audioEditFolderId ? 'Dossier modifié' : 'Dossier créé', 'ok');
 }
 
-function audioDeleteFolder() {
+async function audioDeleteFolder() {
   if (!_audioEditFolderId) return;
   const f = audioFolders.find(x => x.id === _audioEditFolderId);
-  if (!confirm(`Supprimer le dossier "${f?.name}" ? Les enregistrements seront déplacés dans "Sans dossier".`)) return;
+  if (!(await kcConfirm(`Supprimer le dossier "${f?.name}" ? Les enregistrements seront déplacés dans "Sans dossier".`))) return;
   audioFolders = audioFolders.filter(x => x.id !== _audioEditFolderId);
   audioRecordings.forEach(r => { if (r.folderId === _audioEditFolderId) r.folderId = null; });
   _saveAudioData();
@@ -378,7 +378,7 @@ function audioApplyMove(folderId) {
 async function audioDelete(id) {
   const r = audioRecordings.find(x => x.id === id);
   if (!r) return;
-  if (!confirm(`Supprimer "${r.name || 'cet enregistrement'}" ?`)) return;
+  if (!(await kcConfirm(`Supprimer "${r.name || 'cet enregistrement'}" ?`))) return;
   // Stop player if playing
   if (_audioPlayers[id]) { _audioPlayers[id].pause(); delete _audioPlayers[id]; }
   await _deleteAudioBlob(id);

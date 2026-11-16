@@ -23,7 +23,7 @@ const MONUMENTS=[
   {lvl:8,name:'Centre de rééducation',icon:'self_improvement'},
   {lvl:12,name:'Piscine olympique',icon:'pool'},
   {lvl:16,name:'Stade',icon:'stadium'},
-  {lvl:20,name:'Tour Kiné+',icon:'apartment'},
+  {lvl:20,name:'Tour City Work',icon:'apartment'},
   {lvl:25,name:'CHU',icon:'emergency'},
   {lvl:30,name:'Observatoire',icon:'travel_explore'},
   {lvl:35,name:'Arc du Diplôme',icon:'castle'}
@@ -44,19 +44,9 @@ function fmtMin(s){
 function bars(id,pct,color){const el=$(id);if(!el)return;el.style.setProperty('--v',Math.max(0,Math.min(100,pct))+'%');if(color)el.style.setProperty('--bar-c',color);}
 
 /* Série = jours de révision d'affilée (aujourd'hui compte s'il y a eu des questions, sinon on part d'hier) */
-function streaks(){
-  const c=counts(),today=new Date();
-  let cur=0,d=new Date(today);
-  if(!(c[dkey(d)]>0))d.setDate(d.getDate()-1);
-  while(c[dkey(d)]>0){cur++;d.setDate(d.getDate()-1);}
-  const keys=Object.keys(c).filter(k=>c[k]>0).sort();
-  let best=0,run=0,prev=null;
-  keys.forEach(k=>{
-    const t=new Date(k+'T12:00:00Z');
-    run=(prev&&Math.round((t-prev)/864e5)===1)?run+1:1;
-    best=Math.max(best,run);prev=t;
-  });
-  return {cur,best:Math.max(best,cur)};
+function streaks(){ /* v70 : un seul calcul pour tout le site → kcStreakSync() dans data.js */
+  try{if(typeof kcStreakSync==='function')return kcStreakSync();}catch(e){}
+  return {cur:0,best:0};
 }
 window.khStreaks=streaks;/* utilisé par l'info « Série » de la barre du haut (kc-layout.js) */
 

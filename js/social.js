@@ -252,7 +252,7 @@ function _socialRenderAuth(msg,isErr){
     <div class="soc-auth-head">
       <div class="soc-auth-av">${gamAvatarSVG(gam.char,64)}</div>
       <div><div class="mdttl">${_authMode==='newpass'?'Nouveau mot de passe':_authMode==='reset'?'Mot de passe oublié':'Rejoins ta promo'}</div>
-      <div class="mddesc" style="margin:0">${invite?`<b>@${_socEsc(invite)}</b> t’invite à devenir ami·e sur Kiné+ !`:'Ajoute tes amis, compare vos révisions et partagez vos cours.'}</div></div>
+      <div class="mddesc" style="margin:0">${invite?`<b>@${_socEsc(invite)}</b> t’invite à devenir ami·e sur City Work !`:'Ajoute tes amis, compare vos révisions et partagez vos cours.'}</div></div>
     </div>
     ${_authMode==='signup'||_authMode==='login'?`<div class="soc-tabs"><button class="${_authMode==='login'?'on':''}" onclick="_authMode='login';_socialRenderAuth()">Se connecter</button><button class="${_authMode==='signup'?'on':''}" onclick="_authMode='signup';_socialRenderAuth()">Créer un compte</button></div>`:''}
     ${note}${form}`;
@@ -585,8 +585,8 @@ async function socialRemove(id){
 function socialCopyInvite(){
   const link=socialInviteLink();
   const done=()=>showNotif('Lien copié ! Colle-le dans le groupe de ta promo.','ok');
-  if(navigator.share&&/Mobi|Android|iPhone/i.test(navigator.userAgent)){navigator.share({title:'Kiné+',text:'Ajoute-moi sur Kiné+ !',url:link}).catch(()=>{});return;}
-  if(navigator.clipboard)navigator.clipboard.writeText(link).then(done,()=>prompt('Copie ce lien :',link));else prompt('Copie ce lien :',link);
+  if(navigator.share&&/Mobi|Android|iPhone/i.test(navigator.userAgent)){navigator.share({title:'City Work',text:'Ajoute-moi sur City Work !',url:link}).catch(()=>{});return;}
+  if(navigator.clipboard)navigator.clipboard.writeText(link).then(done,()=>kcPrompt('Copie ce lien',link));else kcPrompt('Copie ce lien',link);
 }
 
 // ── Modal : ajouter des amis ──
@@ -672,7 +672,7 @@ async function socialOpenFriend(id){
           <div class="sc-actions"><button class="btn btn-sm btn-p" onclick="socialOpenCourse('${c.id}')">Voir</button></div></div>`).join('')
         :'<p class="soc-empty">Aucun cours partagé.</p>'}</div>
       <div class="fr" style="margin-top:16px;justify-content:space-between">
-        ${p.is_friend?`<button class="soc-link danger" onclick="if(confirm('Retirer ${_socEsc(_socName(p).replace(/'/g,'’'))} de tes amis ?'))socialRemove('${p.id}')">Retirer de mes amis</button>`:'<span></span>'}
+        ${p.is_friend?`<button class="soc-link danger" onclick="kcConfirm('Retirer ${_socEsc(_socName(p).replace(/'/g,'’'))} de tes amis ?',{ok:'Retirer',danger:true}).then(ok=>{if(ok)socialRemove('${p.id}')})">Retirer de mes amis</button>`:'<span></span>'}
         <button class="btn btn-g" onclick="closeModal('modal-soc-friend')">Fermer</button>
       </div>`;
     body.dataset.house=JSON.stringify({name:_socName(p),level:p.level,char:p.avatar,items:p.house||[]});
@@ -864,7 +864,7 @@ async function socialSetVisibility(id,v){
   try{await _rpc('set_course_visibility',{p_id:id,p_visibility:v});showNotif('Visibilité : '+SOCIAL_VIS[v].name,'ok');}catch(e){showNotif(e.message,'err');}
 }
 async function socialUnshare(id){
-  if(!confirm('Ne plus partager ce cours ? Tes amis qui l’ont déjà importé le gardent.'))return;
+  if(!(await kcConfirm('Ne plus partager ce cours ? Tes amis qui l’ont déjà importé le gardent.')))return;
   try{await _rpc('delete_shared_course',{p_id:id});_soc.mine=(_soc.mine||[]).filter(c=>c.id!==id);_socialRenderCourses();}catch(e){showNotif(e.message,'err');}
 }
 async function socialDeleteInbox(id){

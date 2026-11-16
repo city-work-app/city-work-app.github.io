@@ -706,7 +706,7 @@ function generateShareLink() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/vnd.github+json' },
     body: JSON.stringify({
-      description: 'Kiné+ QCM share',
+      description: 'City Work QCM share',
       public: false,
       files: { 'kineplus-share.json': { content: JSON.stringify(payload) } }
     })

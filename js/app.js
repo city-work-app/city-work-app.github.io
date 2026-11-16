@@ -111,8 +111,8 @@ document.addEventListener('click', function _delegationHub(e) {
       break;
     case 'openAnatomy':
       if (typeof window.showAnatomyModel === 'function') {
-        const muscle = prompt('Nom du muscle (ex: biceps brachii) :') || 'biceps brachii';
-        window.showAnatomyModel(muscle);
+        kcPrompt('Nom du muscle (ex : biceps brachii)','biceps brachii').then(m=>{ if(m!==null) window.showAnatomyModel(m.trim() || 'biceps brachii'); });
+
       }
       break;
     case 'openNotionConnect':
@@ -959,7 +959,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     const data = await res.json();
     Object.entries(data).forEach(([k, v]) => { if (v) localStorage.setItem(k, v); });
     console.log('✅ Données migrées depuis seed.json — rechargement…');
-    location.reload();
+    if(window.KStore)KStore.reload();else location.reload();
   } catch (e) { /* pas de seed, ignoré */ }
 })();
 

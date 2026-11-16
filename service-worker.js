@@ -1,9 +1,10 @@
-const CACHE_NAME = 'kineplus-v75';
+const CACHE_NAME = 'kineplus-v76';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/styles7.css',
   '/premium.css',
+  '/js/kstore.js',
   '/js/data.js',
   '/js/content.js',
   '/js/quiz.js',

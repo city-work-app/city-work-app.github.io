@@ -438,8 +438,8 @@ function imgOpenDetail(id) {
   openModal('modal-img-detail');
 }
 
-function imgDeleteItem(id) {
-  if (!confirm('Supprimer cette image définitivement ?')) return;
+async function imgDeleteItem(id) {
+  if (!(await kcConfirm('Supprimer cette image définitivement ?'))) return;
   imgItems = imgItems.filter(i => i.id !== id);
   delete imgProgress[id];
   _imgSave();
@@ -715,12 +715,12 @@ async function imgExport() {
   }, null, 2));
 
   zip.file('README.txt', [
-    'Kiné+ — Pack Imagerie',
+    'City Work — Pack Imagerie',
     '=======================',
     `Exporté le : ${new Date().toLocaleDateString('fr-FR')}`,
     `${imgItems.length} images dans ${imgCourses.length} cours`,
     '',
-    'Pour importer dans Kiné+ :',
+    'Pour importer dans City Work :',
     '1. Ouvrir l\'onglet Imagerie → Ajouter',
     '2. Cliquer "Importer pack"',
     '3. Sélectionner ce fichier ZIP',

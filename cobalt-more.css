@@ -559,9 +559,9 @@ body.cobalt #screen-modes-hub .bc-content{position:static!important}
   body.kh-editing #kh-grid .kh-blk.kh-card{--kh-epad:36px}
 }
 body.kh-resizing{user-select:none;-webkit-user-select:none}
-body.kh-rz-e *{cursor:ew-resize!important}
-body.kh-rz-s *{cursor:ns-resize!important}
-body.kh-rz-se *{cursor:nwse-resize!important}
+body.kh-rzdir-e *{cursor:ew-resize!important}
+body.kh-rzdir-s *{cursor:ns-resize!important}
+body.kh-rzdir-se *{cursor:nwse-resize!important}
 body.kh-editing #kh-grid .kh-blk.kh-rzing{outline-style:solid;outline-color:var(--kc-primary);animation:none}
 #kh-grid.kh-cols{position:relative}
 #kh-grid.kh-cols::before{content:'';position:absolute;inset:0;pointer-events:none;border-radius:10px;background:repeating-linear-gradient(90deg,color-mix(in srgb,var(--kc-primary) 10%,transparent) 0 var(--kh-colw),transparent var(--kh-colw) calc(var(--kh-colw) + var(--kh-colg)))}
@@ -654,3 +654,116 @@ body.fcx-selmode .fcx-fold:not([data-fkey]){opacity:.45;pointer-events:none}
 .fcx-delopt small{display:block;color:var(--kc-ink-2);font-size:12px;margin-top:2px}
 .fcx-deltxt{margin:0;font-size:14px;color:var(--kc-ink)}
 .kc-dlg .btn.fcx-danger{background:var(--kc-danger);border-color:var(--kc-danger);color:var(--kc-on-danger,#fff)}
+
+/* =====================================================================
+   §10 — v70 (16 nov. 2026) : finitions
+   a) lumière de la souris plus petite   b) Spotify se décale avec la barre du haut   c) redimensionnement fluide
+   d) éditeur de flashcards (barre de mise en forme rangée, photo en grand, pastille « Continuer »)
+   e) en-têtes de page identiques   f) cloche de notifications, « Annuler », menu ⋯ du téléphone, fenêtres
+   ===================================================================== */
+/* a) */
+#kc-light{width:440px;height:440px;margin:-220px 0 0 -220px}
+
+/* b) Spotify : plus « collé au milieu de l'écran », il prend la place libre entre le logo et les boutons de droite */
+body.cobalt header.topbar>.sp-topbar{position:relative;left:auto;transform:none;flex:1 1 0;min-width:0;justify-content:center;margin:0 12px}
+body.cobalt header.topbar>.sp-topbar>*{min-width:0;max-width:100%}
+body.cobalt header.topbar>.sp-topbar .sp-topbar-connect{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+body.cobalt header.topbar>.logo,body.cobalt header.topbar>.fr{flex:none}
+body.cobalt #kh-theme-btn{display:none!important}
+
+/* c) */
+body.kh-editing #kh-grid .kh-blk.kh-rzing{z-index:6;box-shadow:0 22px 60px -22px rgba(0,0,0,.55);will-change:width,min-height}
+body.kh-resizing #kh-grid .kh-blk{transition:none!important}
+body.kh-resizing #kh-grid .kh-blk:not(.kh-rzing){opacity:.72}
+
+/* d) éditeur de flashcards */
+.fce-card-top{flex-wrap:wrap;row-gap:6px;margin-bottom:12px;min-height:36px}
+.fce-card-top .fce-fmt.docked{position:static;opacity:1;transform:none;pointer-events:auto;box-shadow:none;margin-left:10px;padding:2px;gap:1px;border-radius:10px;border-color:transparent;background:var(--surf-low);animation:kcFmtIn .18s ease}
+.fce-card-top .fce-fmt.docked button{width:30px;height:30px;border-radius:7px}
+.fce-card-top .fce-fmt.docked .ms{font-size:18px}
+@keyframes kcFmtIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+body.cobalt .fce-ed,body.cobalt .fce-ed:focus,body.cobalt .fce-ed:focus-visible{outline:none!important;box-shadow:none!important;border-radius:0}
+body.cobalt .fce-ed{padding:8px 0 9px}
+.fce-img.has{cursor:zoom-in}
+.fce-zoom{position:fixed;inset:0;z-index:10050;background:rgba(8,8,10,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;gap:14px;padding:22px;animation:kcZoomIn .18s ease}
+@keyframes kcZoomIn{from{opacity:0}to{opacity:1}}
+.fce-zoom-pic{flex:1;min-height:0;width:100%;overflow:auto;display:flex}
+.fce-zoom-pic img{width:100%;height:100%;object-fit:contain;cursor:zoom-in;margin:auto}
+.fce-zoom.big .fce-zoom-pic img{width:190%;height:auto;max-width:none;object-fit:unset;cursor:zoom-out}
+.fce-zoom-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;flex:none}
+.fce-zoom-bar button{display:flex;align-items:center;gap:6px;height:38px;padding:0 15px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);color:#fff;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer}
+.fce-zoom-bar button:hover{background:rgba(255,255,255,.2)}
+.fce-zoom-bar .ms{font-size:18px}
+/* pastille « Continuer tes flashcards » (barre du haut, à gauche) */
+.kc-resume{flex:none;display:flex;align-items:center;margin-left:14px;margin-right:auto;border:1px solid color-mix(in srgb,var(--kc-primary) 45%,var(--kc-border));border-radius:999px;background:color-mix(in srgb,var(--kc-primary) 12%,var(--kc-surface));overflow:hidden;animation:kcFmtIn .3s ease}
+.kc-resume-go{display:flex;align-items:center;gap:8px;border:0;background:none;color:var(--kc-ink);font:inherit;padding:5px 4px 5px 12px;cursor:pointer;text-align:left}
+.kc-resume-go>.ms{font-size:20px;color:var(--kc-primary)}
+.kc-resume-t{display:flex;flex-direction:column;line-height:1.2}
+.kc-resume-t b{font-size:12.5px;font-weight:600}
+.kc-resume-t i{font-style:normal;font-size:11.5px;color:var(--kc-ink-2);max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kc-resume-x{width:28px;height:28px;margin-right:4px;padding:0;border:0;border-radius:50%;background:none;color:var(--kc-ink-2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.kc-resume-x:hover{background:color-mix(in srgb,var(--kc-ink) 12%,transparent);color:var(--kc-ink)}
+.kc-resume-x .ms{font-size:16px}
+@media (max-width:900px){.kc-resume{margin-left:8px}.kc-resume-t{display:none}.kc-resume-go{padding:6px 2px 6px 9px}}
+
+/* e) en-têtes de page : flèche ronde + sur-titre + titre, partout pareil */
+body.cobalt .kc-pagehead{display:flex;align-items:center;gap:14px;margin:0 0 18px}
+body.cobalt .kc-pagehead .hub-kicker{margin:0 0 2px}
+body.cobalt .kc-pagehead .hub-title{margin:0}
+.kc-hbtn{flex:none;width:40px;height:40px;border-radius:50%;border:1px solid var(--kc-border);background:var(--kc-surface);color:var(--kc-ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.kc-hbtn:hover{background:var(--kc-surface-2);color:var(--kc-ink)}
+.kc-hbtn .ms{font-size:20px}
+body.cobalt #screen-all-flashcards.fcx-hub>.topbar{display:none!important}
+body.cobalt #afc-wrap.fcx-hubmode .fcx-head{margin-top:-8px}
+.kc-store-line{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:12.5px;line-height:1.45;color:var(--kc-ink-2)}
+.kc-store-line:empty{display:none}
+.kc-store-line .ms{font-size:17px;flex:none;margin-top:1px;color:var(--kc-primary)}
+.kc-store-line b{color:var(--kc-ink);font-weight:600}
+
+/* f) notifications, annuler, menu ⋯ */
+#kh-bell{position:relative}
+.kc-bell-n{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:var(--kc-primary);color:#fff;font-family:var(--kc-font);font-size:11px;font-weight:600;font-style:normal;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--kc-bg)}
+.kc-notif{position:fixed;z-index:10060;width:min(370px,calc(100vw - 20px));border:1px solid var(--kc-border);border-radius:16px;background:var(--kc-surface);color:var(--kc-ink);box-shadow:0 24px 60px -18px rgba(0,0,0,.5);overflow:hidden;animation:kcFmtIn .16s ease;font-family:var(--kc-font)}
+.kc-notif-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 6px}
+.kc-notif-h b{font-size:15px;font-weight:600}
+.kc-notif-ag{display:flex;align-items:center;gap:4px;border:0;background:none;color:var(--kc-primary);font:inherit;font-size:13px;font-weight:500;cursor:pointer;padding:4px}
+.kc-notif-ag .ms{font-size:16px}
+.kc-notif-l{max-height:min(62vh,460px);overflow:auto;padding:4px 8px 10px}
+.kc-notif-i{display:flex;align-items:center;gap:12px;width:100%;padding:10px 8px 10px 12px;border:0;border-radius:12px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;position:relative}
+.kc-notif-i:hover{background:var(--kc-surface-2)}
+.kc-notif-i.new::before{content:'';position:absolute;left:2px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--kc-primary)}
+.kc-notif-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.kc-notif-b b{font-size:13.5px;font-weight:600;line-height:1.3}
+.kc-notif-b small{font-size:12.5px;color:var(--kc-ink-2);line-height:1.35}
+.kc-notif-a{font-size:18px;color:var(--kc-ink-2)}
+.kc-notif .kh-sq{--c:var(--kc-primary);background:color-mix(in srgb,var(--c) 15%,var(--kc-surface));color:var(--c)}
+.kc-notif .t-amber{--c:var(--kc-amber,#E8930C)}.kc-notif .t-rose{--c:var(--kc-rose,#E5484D)}.kc-notif .t-green{--c:var(--kc-green,#12A35E)}
+.kc-notif .t-violet{--c:var(--kc-violet,#8B5CF6)}.kc-notif .t-orange{--c:var(--kc-orange,#EA580C)}
+.kc-notif-e{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 18px 22px;text-align:center}
+.kc-notif-e .ms{font-size:30px;color:var(--kc-ink-2)}
+.kc-notif-e b{font-size:14px;font-weight:600}
+.kc-notif-e small{font-size:12.5px;color:var(--kc-ink-2);line-height:1.4}
+.kc-morepop{width:min(280px,calc(100vw - 20px))}
+.kc-morepop .kc-notif-l{padding-top:8px}
+.topbar .fr .kc-tb-more{display:none}
+@media (max-width:640px){body.cobalt .topbar .fr:has(.kc-tb-w:not(.kc-tb-off),.kc-tb-x:not(.kc-tb-off)) .kc-tb-more{display:inline-flex}}
+.kc-undo{position:fixed;left:0;right:0;bottom:28px;margin:auto;width:max-content;max-width:calc(100vw - 24px);box-sizing:border-box;z-index:10080;display:flex;align-items:center;gap:10px;padding:10px 8px 12px 16px;border-radius:14px;background:var(--kc-ink,#111);color:var(--kc-bg,#fff);box-shadow:0 14px 40px -10px rgba(0,0,0,.55);font-family:var(--kc-font);font-size:14px;transform:translateY(24px);opacity:0;pointer-events:none;transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .2s;overflow:hidden}
+.kc-undo.on{transform:none;opacity:1;pointer-events:auto}
+.kc-undo>.ms{font-size:19px;opacity:.7}
+.kc-undo-t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kc-undo-b{flex:none;display:flex;align-items:center;gap:5px;height:34px;padding:0 13px;border:0;border-radius:9px;background:var(--kc-primary);color:#fff;font:inherit;font-weight:600;font-size:13.5px;cursor:pointer}
+.kc-undo-b .ms{font-size:17px}
+.kc-undo-x{flex:none;width:30px;height:30px;padding:0;border:0;border-radius:50%;background:none;color:inherit;opacity:.6;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.kc-undo-x:hover{opacity:1}
+.kc-undo-x .ms{font-size:17px}
+.kc-undo-bar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--kc-primary);transform-origin:left;transform:scaleX(0)}
+.kc-undo.on .kc-undo-bar{animation:kcUndoBar 9s linear forwards}
+@keyframes kcUndoBar{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media (max-width:640px){.kc-undo{bottom:86px}}
+.kc-dlg-bg.kc-dlg-small .kc-dlg{width:min(420px,100%)}
+.kc-dlg-msg{margin:0;font-size:14px;line-height:1.5;color:var(--kc-ink-2)}
+.kc-dlg-bg.kc-dlg-small .kc-dlg-b:empty{display:none}
+.kc-dlg .kc-dlg-in{width:100%;box-sizing:border-box}
+.kc-dlg .btn.kc-btn-danger{background:var(--kc-danger);border-color:var(--kc-danger);color:var(--kc-on-danger,#fff)}
+/* l'en-tête des Flashcards remplace l'ancienne barre d'icônes : on garde la place sous la barre du haut */
+body.cobalt #screen-all-flashcards.fcx-hub #afc-wrap{padding-top:88px!important}

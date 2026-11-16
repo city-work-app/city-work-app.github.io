@@ -974,9 +974,9 @@ window._annaleDelete=function(fid){
     saveAll();renderAnnalesHub();showNotif('Dossier supprimé','ok');
   });
 };
-window._annaleRename=function(fid){
+window._annaleRename=async function(fid){
   const f=folders.find(x=>x.id===fid);if(!f)return;
-  const name=prompt('Nouveau nom :',f.name);
+  const name=await kcPrompt('Nouveau nom',f.name);
   if(name&&name.trim()){f.name=name.trim();saveAll();renderAnnalesHub();showNotif('Renommé','ok');}
 };
 function goBackFromCourse(){
@@ -2713,9 +2713,9 @@ function saveConceptFolder(){
   showNotif(_curFolderId?'Dossier modifié !':'Dossier créé !','ok');
 }
 
-function deleteConceptFolder(){
+async function deleteConceptFolder(){
   if(!_curFolderId)return;
-  if(!confirm('Supprimer ce dossier ? Les concepts seront déplacés dans "Sans dossier".'))return;
+  if(!(await kcConfirm('Supprimer ce dossier ? Les concepts seront déplacés dans "Sans dossier".')))return;
   concepts.forEach(c=>{if(c.folderId===_curFolderId)c.folderId=null;});
   conceptFolders=conceptFolders.filter(x=>x.id!==_curFolderId);
   saveAll();closeModal('modal-concept-folder');renderConcepts();
@@ -4167,7 +4167,7 @@ function renderAFCSearch(){
   const list=document.getElementById('afc-list');
   if(!list) return;
   if(!q){ renderAFCList(); return; }
-  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>c.definition&&c.definition.trim()).map(c=>({...c,type:'concept'}));
+  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>kcIsCard(c)).map(c=>({...c,type:'concept'}));
   const allFC=flashcards.map(fc=>({...fc,type:'flashcard',masteryLevel:0}));
   const pool=[...allC,...allFC];
   const matches=pool.filter(x=>(x.term||'').toLowerCase().includes(q)||(x.definition||'').toLowerCase().includes(q));
@@ -4180,7 +4180,7 @@ function renderAFCSearch(){
 
 // ── Data helpers ──────────────────────────────
 function _afcPoolForView(view){
-  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>c.definition&&c.definition.trim());
+  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>kcIsCard(c));
   let pool=[];
   if(view==='hub'||view==='__courses__'){
     pool=flashcards.map(fc=>({...fc,type:'flashcard',masteryLevel:0}));
@@ -4245,9 +4245,9 @@ function afcSelectAll(){
   _updateAFCSelBar();
 }
 
-function afcDeleteSelected(){
+async function afcDeleteSelected(){
   if(!_afcSelected.size){showNotif('Rien de sélectionné','');return;}
-  if(!confirm(`Supprimer ${_afcSelected.size} carte${_afcSelected.size>1?'s':''}?`)) return;
+  if(!(await kcConfirm(`Supprimer ${_afcSelected.size} carte${_afcSelected.size>1?'s':''} ?`))) return;
   _afcSelected.forEach(id=>{
     const ci=concepts.findIndex(c=>c.id===id);
     if(ci>-1) concepts.splice(ci,1);
@@ -4292,7 +4292,7 @@ function renderAFCList(){
   if(!list) return;
   if(_afcSearchOpen){ return; } // search handles its own render
 
-  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>c.definition&&c.definition.trim());
+  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>kcIsCard(c));
   const cFolders=typeof conceptFolders!=='undefined'?conceptFolders:[];
 
   // ── HUB VIEW ─────────────────────────────────
@@ -4491,7 +4491,7 @@ function _renderAFCCard(x){
 
 // ── Sessions ──────────────────────────────────
 function startAllFlashcardsHub(){
-  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>c.definition&&c.definition.trim()).map(c=>({...c,type:'concept'}));
+  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>kcIsCard(c)).map(c=>({...c,type:'concept'}));
   const pool=[...allC,...flashcards.map(fc=>({...fc,type:'flashcard',masteryLevel:0}))];
   if(pool.length<2){showNotif('Minimum 2 cartes pour jouer.','err');return;}
   startFCSession(pool,'all-flashcards');
@@ -4503,7 +4503,7 @@ function startDueFlashcards(){
 }
 
 function startAFCView(){
-  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>c.definition&&c.definition.trim());
+  const allC=(typeof concepts!=='undefined'?concepts:[]).filter(c=>kcIsCard(c));
   const cFolders=typeof conceptFolders!=='undefined'?conceptFolders:[];
   let pool=[];
   if(_afcView.startsWith('__course_')){
@@ -4519,7 +4519,7 @@ function startAFCView(){
 function startAFCDue(){
   const now=new Date();
   const pool=(typeof concepts!=='undefined'?concepts:[])
-    .filter(c=>c.definition&&c.definition.trim()&&(!c.nextReview||new Date(c.nextReview)<=now))
+    .filter(c=>kcIsCard(c)&&(!c.nextReview||new Date(c.nextReview)<=now))
     .map(c=>({...c,type:'concept'}));
   if(pool.length<2){showNotif('Moins de 2 cartes à revoir pour l\'instant','ok');return;}
   showNotif(`${pool.length} carte${pool.length>1?'s':''} à revoir`,'');
@@ -4535,8 +4535,8 @@ function startAFCForCourse(courseId){
 function startAFCConceptFolder(folderId){
   const allC=typeof concepts!=='undefined'?concepts:[];
   const pool=(folderId==='__none__'
-    ? allC.filter(c=>!c.folderId&&c.definition&&c.definition.trim())
-    : allC.filter(c=>c.folderId===folderId&&c.definition&&c.definition.trim())
+    ? allC.filter(c=>!c.folderId&&kcIsCard(c))
+    : allC.filter(c=>c.folderId===folderId&&kcIsCard(c))
   ).map(c=>({...c,type:'concept'}));
   if(pool.length<2){showNotif('Minimum 2 concepts pour démarrer.','err');return;}
   startFCSession(pool,'all-flashcards');
