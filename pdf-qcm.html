@@ -1,0 +1,1020 @@
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  PDF → QCM ÉCOGRAPHIE  —  Kiné+                             ║
+  ║  Blocs à insérer dans index.html                            ║
+  ║                                                              ║
+  ║  BLOCK 1 : <style>   → dans <head>                          ║
+  ║  BLOCK 2 : <div>     → dans <body>, là où vous le souhaitez ║
+  ║  BLOCK 3 : <script>  → avant </body>                        ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     BLOCK 1 — STYLES
+     Coller dans <head> (après styles7.css et premium.css)
+     ══════════════════════════════════════════════════════════════ -->
+<style>
+/* ── PDF QCM — conteneur principal ─────────────────────────── */
+#pdfqcm-wrap {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: inherit;
+  padding-bottom: 96px; /* espace bottom-nav */
+}
+
+/* ── Carte générique ─────────────────────────────────────────── */
+.pq-card {
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  padding: 18px 20px;
+  border: 1px solid var(--outline-v);
+  box-shadow: var(--sh);
+}
+
+.pq-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--on-sv);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin: 0 0 12px;
+}
+
+/* ── Clé API ─────────────────────────────────────────────────── */
+.pq-key-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.pq-input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1.5px solid var(--outline-v);
+  border-radius: var(--r-lg);
+  font-size: 14px;
+  background: var(--surf-low);
+  color: var(--on-surface);
+  outline: none;
+  transition: border-color .15s;
+  font-family: monospace;
+}
+.pq-input::placeholder { color: var(--on-sv); opacity: .6; font-family: inherit; }
+.pq-input:focus { border-color: var(--primary); }
+
+.pq-key-ok {
+  font-size: 12px;
+  color: #10b981;
+  margin: 6px 0 0;
+  display: none;
+}
+.pq-key-ok.show { display: block; }
+
+/* ── Zone de dépôt PDF ───────────────────────────────────────── */
+.pq-drop {
+  border: 2px dashed var(--outline-v);
+  border-radius: var(--r-lg);
+  padding: 28px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--surf-low);
+  user-select: none;
+}
+.pq-drop:hover,
+.pq-drop.over {
+  border-color: var(--primary);
+  background: var(--surf-mid);
+}
+.pq-drop svg { display: block; margin: 0 auto 10px; opacity: .45; }
+.pq-drop p  { margin: 0 0 3px; font-size: 14px; color: var(--on-surface); font-weight: 500; }
+.pq-drop small { color: var(--on-sv); font-size: 12px; }
+#pdfqcm-file-input { display: none; }
+
+/* ── Barre de progression ─────────────────────────────────────── */
+.pq-progress { display: none; }
+.pq-progress.show { display: block; }
+
+.pq-prog-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--on-sv);
+  margin-bottom: 8px;
+}
+.pq-track {
+  height: 6px;
+  background: var(--surf-mid);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+.pq-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: var(--r-full);
+  width: 0%;
+  transition: width .35s var(--ease);
+}
+
+/* ── Galerie ─────────────────────────────────────────────────── */
+.pq-gallery { display: none; }
+.pq-gallery.show { display: block; }
+
+.pq-gal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.pq-gal-count {
+  font-size: 12px;
+  color: var(--on-sv);
+  background: var(--surf-mid);
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+}
+.pq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+/* ── Thumbnail ───────────────────────────────────────────────── */
+.pq-thumb {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 4 / 3;
+  border: 2px solid transparent;
+  transition: border-color .15s, transform .15s var(--spring);
+  background: #000;
+}
+.pq-thumb:hover {
+  border-color: var(--primary);
+  transform: scale(1.03);
+}
+.pq-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pq-thumb-page {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.65));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 7px 5px;
+}
+.pq-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: rgba(0,77,117,.82);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity .15s;
+  text-align: center;
+  padding: 8px;
+}
+body.dark .pq-thumb-overlay { background: rgba(225,29,72,.82); }
+.pq-thumb:hover .pq-thumb-overlay { opacity: 1; }
+
+/* ── État vide galerie ───────────────────────────────────────── */
+.pq-empty {
+  text-align: center;
+  padding: 28px 16px;
+  color: var(--on-sv);
+  font-size: 13px;
+  line-height: 1.6;
+  display: none;
+}
+.pq-empty.show { display: block; }
+.pq-empty-icon { font-size: 32px; margin-bottom: 8px; }
+
+/* ── Loading Claude ──────────────────────────────────────────── */
+.pq-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px;
+}
+.pq-loading.show { display: flex; }
+.pq-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid var(--outline-v);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: pq-spin .7s linear infinite;
+}
+@keyframes pq-spin { to { transform: rotate(360deg); } }
+.pq-loading-txt { font-size: 13px; color: var(--on-sv); margin: 0; }
+
+/* ── Interface QCM ───────────────────────────────────────────── */
+.pq-qcm { display: none; }
+.pq-qcm.show { display: block; }
+
+.pq-echo-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--r-lg);
+  background: #000;
+  display: block;
+  margin-bottom: 18px;
+}
+
+.pq-question {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--on-surface);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* ── Options ─────────────────────────────────────────────────── */
+.pq-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pq-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 15px;
+  border: 1.5px solid var(--outline-v);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--on-surface);
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+  line-height: 1.45;
+}
+.pq-option:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--surf-low);
+}
+.pq-option:disabled { cursor: default; }
+
+.pq-opt-key {
+  flex-shrink: 0;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--primary);
+  width: 18px;
+  padding-top: 1px;
+}
+
+/* Feedback couleur réponse */
+.pq-option.correct {
+  border-color: #10b981;
+  background: #ecfdf5;
+  color: #065f46;
+}
+.pq-option.correct .pq-opt-key { color: #10b981; }
+
+.pq-option.wrong {
+  border-color: var(--error);
+  background: var(--error-c);
+  color: var(--error);
+}
+.pq-option.wrong .pq-opt-key { color: var(--error); }
+
+body.dark .pq-option.correct {
+  background: #064e3b;
+  color: #a7f3d0;
+  border-color: #10b981;
+}
+body.dark .pq-option.wrong {
+  background: #3b0a0a;
+  color: #fca5a5;
+  border-color: var(--error);
+}
+
+/* ── Explication ─────────────────────────────────────────────── */
+.pq-expl {
+  display: none;
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin-bottom: 16px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+.pq-expl.show { display: block; }
+body.dark .pq-expl {
+  background: #1e3a5f;
+  border-color: #1d4ed8;
+  color: #93c5fd;
+}
+
+.pq-expl-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: 7px;
+  opacity: .8;
+}
+
+/* ── Footer QCM ──────────────────────────────────────────────── */
+.pq-qcm-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pq-score {
+  font-size: 13px;
+  color: var(--on-sv);
+  white-space: nowrap;
+}
+.pq-score strong { color: var(--on-surface); font-size: 14px; }
+
+.pq-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Boutons ─────────────────────────────────────────────────── */
+.pq-btn {
+  padding: 9px 18px;
+  border-radius: var(--r-lg);
+  border: none;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .12s, transform .1s var(--spring);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.pq-btn:active { transform: scale(.96); }
+
+.pq-btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.pq-btn-primary:hover { opacity: .88; }
+
+.pq-btn-ghost {
+  background: var(--surf-low);
+  color: var(--on-surface);
+  border: 1.5px solid var(--outline-v);
+}
+.pq-btn-ghost:hover { border-color: var(--primary); }
+
+/* ── Badges score résultat ───────────────────────────────────── */
+.pq-feedback-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--r-full);
+  margin-bottom: 12px;
+}
+.pq-feedback-badge.ok  { background: #dcfce7; color: #15803d; }
+.pq-feedback-badge.nok { background: var(--error-c); color: var(--error); }
+body.dark .pq-feedback-badge.ok  { background: #064e3b; color: #86efac; }
+body.dark .pq-feedback-badge.nok { background: #3b0a0a; color: #fca5a5; }
+</style>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     BLOCK 2 — HTML
+     Coller dans un écran existant (ex: screen-imaging) ou dans un
+     nouvel écran <div id="screen-pdfqcm" class="screen">
+     ══════════════════════════════════════════════════════════════ -->
+<div id="pdfqcm-wrap">
+
+  <!-- ① Clé API Anthropic -->
+  <div class="pq-card">
+    <p class="pq-label">Clé API Anthropic</p>
+    <div class="pq-key-row">
+      <input
+        type="password"
+        id="pdfqcm-apikey"
+        class="pq-input"
+        placeholder="sk-ant-api03-…"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button class="pq-btn pq-btn-ghost" onclick="PdfQcm.saveKey()">Sauvegarder</button>
+    </div>
+    <p class="pq-key-ok" id="pdfqcm-key-ok">✓ Clé sauvegardée en local</p>
+  </div>
+
+  <!-- ② Import PDF -->
+  <div class="pq-card">
+    <p class="pq-label">Importer un PDF d'échographie</p>
+    <div class="pq-drop" id="pdfqcm-drop">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <line x1="9" y1="15" x2="15" y2="15"/>
+      </svg>
+      <p>Glissez un PDF ou cliquez pour choisir</p>
+      <small>Les images d'écographie sont détectées automatiquement (niveaux de gris, fond sombre)</small>
+      <input type="file" id="pdfqcm-file-input" accept=".pdf">
+    </div>
+  </div>
+
+  <!-- ③ Barre de progression extraction -->
+  <div class="pq-card pq-progress" id="pdfqcm-progress">
+    <div class="pq-prog-meta">
+      <span id="pdfqcm-prog-label">Initialisation…</span>
+      <span id="pdfqcm-prog-pct">0 %</span>
+    </div>
+    <div class="pq-track">
+      <div class="pq-fill" id="pdfqcm-prog-bar"></div>
+    </div>
+  </div>
+
+  <!-- ④ Galerie images filtrées -->
+  <div class="pq-card pq-gallery" id="pdfqcm-gallery">
+    <div class="pq-gal-header">
+      <p class="pq-label" style="margin:0">Écographies détectées</p>
+      <span class="pq-gal-count" id="pdfqcm-gal-count">0</span>
+    </div>
+
+    <!-- État vide -->
+    <div class="pq-empty" id="pdfqcm-empty">
+      <div class="pq-empty-icon">🔍</div>
+      Aucune image d'écographie détectée.<br>
+      Le PDF contient peut-être des images très claires ou colorées.<br>
+      <small>Vous pouvez ajuster le seuil de détection dans le code (GRAYSCALE_RATIO / DARK_RATIO).</small>
+    </div>
+
+    <!-- Grille thumbnails -->
+    <div class="pq-grid" id="pdfqcm-grid"></div>
+  </div>
+
+  <!-- ⑤ Loading Claude API -->
+  <div class="pq-card pq-loading" id="pdfqcm-loading">
+    <div class="pq-spinner"></div>
+    <p class="pq-loading-txt">Analyse de l'écographie par Claude…</p>
+  </div>
+
+  <!-- ⑥ Interface QCM -->
+  <div class="pq-card pq-qcm" id="pdfqcm-qcm">
+    <!-- Image de l'écographie -->
+    <img id="pdfqcm-qcm-img" class="pq-echo-img" src="" alt="Image d'écographie">
+
+    <!-- Badge feedback (affiché après réponse) -->
+    <div id="pdfqcm-badge" style="display:none"></div>
+
+    <!-- Question -->
+    <p class="pq-question" id="pdfqcm-question">—</p>
+
+    <!-- Options de réponse -->
+    <div class="pq-options" id="pdfqcm-options"></div>
+
+    <!-- Explication -->
+    <div class="pq-expl" id="pdfqcm-expl">
+      <div class="pq-expl-title">Explication</div>
+      <div id="pdfqcm-expl-txt"></div>
+    </div>
+
+    <!-- Footer score + navigation -->
+    <div class="pq-qcm-footer">
+      <div class="pq-score">
+        Score&nbsp;: <strong id="pdfqcm-score">0 / 0</strong>
+      </div>
+      <div class="pq-btn-row">
+        <button
+          class="pq-btn pq-btn-ghost"
+          id="pdfqcm-btn-gallery"
+          onclick="PdfQcm.backToGallery()"
+          style="display:none"
+        >← Galerie</button>
+        <button
+          class="pq-btn pq-btn-primary"
+          id="pdfqcm-btn-next"
+          onclick="PdfQcm.nextRandom()"
+          style="display:none"
+        >Autre image →</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- #pdfqcm-wrap -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     BLOCK 3 — SCRIPTS
+     Coller avant </body> (après vos autres scripts)
+     ══════════════════════════════════════════════════════════════ -->
+
+<!-- PDF.js 3.11.174 via CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        integrity="sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn1IiklECzFSCd8GEBBQomCuMWbKSB6rSBGX4FWaATGxs3Lq49aHaA=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+
+<script>
+/* ============================================================
+   PdfQcm — Module PDF → QCM Écographie pour Kiné+
+   ── Dépendances : PDF.js 3.11.174 (CDN ci-dessus)
+   ── API          : Anthropic Claude (vision)
+   ── Persistance  : localStorage (clé API uniquement)
+   ============================================================ */
+
+const PdfQcm = (() => {
+  'use strict';
+
+  /* ── Configuration ─────────────────────────────────────── */
+
+  // Worker PDF.js (même version que le CDN ci-dessus)
+  const WORKER_URL =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  // Modèle Claude avec capacité vision
+  // Changez ici si vous avez accès à un autre modèle (ex: claude-opus-4-7)
+  const CLAUDE_MODEL = 'claude-sonnet-4-6';
+
+  // ── Seuils de détection écographie ──────────────────────
+  // Augmentez GRAYSCALE_RATIO pour être plus sélectif (ex: 0.75)
+  // Réduisez DARK_RATIO si vos échos sont plus claires (ex: 0.15)
+  const GRAYSCALE_RATIO = 0.65; // ≥ 65 % pixels quasi-neutres (R≈G≈B)
+  const DARK_RATIO      = 0.22; // ≥ 22 % pixels sombres (luminance < 80)
+  const VIVID_MAX       = 0.06; // < 6 % pixels saturés (exclut slides colorées)
+
+  // Échelle de rendu PDF (2 = haute résolution, 1.5 = plus rapide)
+  const RENDER_SCALE = 2;
+
+  // Taille max envoyée à Claude (px sur le côté long)
+  const API_MAX_PX = 1024;
+
+  /* ── État ────────────────────────────────────────────────── */
+  const S = {
+    apiKey : localStorage.getItem('pdfqcm_key') || '',
+    images : [],   // { dataUrl, pageNum }
+    score  : { ok: 0, total: 0 },
+  };
+
+  /* ── Helpers DOM ─────────────────────────────────────────── */
+  const $ = id => document.getElementById(id);
+
+  function show(id)  { $(id).classList.add('show'); }
+  function hide(id)  { $(id).classList.remove('show'); }
+
+  function setProgress(label, pct) {
+    $('pdfqcm-prog-label').textContent = label;
+    $('pdfqcm-prog-pct').textContent   = Math.round(pct) + ' %';
+    $('pdfqcm-prog-bar').style.width   = pct + '%';
+  }
+
+  /* ── Initialisation ──────────────────────────────────────── */
+  function init() {
+    // Configurer le worker PDF.js
+    if (typeof pdfjsLib === 'undefined') {
+      console.error('[PdfQcm] PDF.js non chargé — vérifiez la balise <script> du CDN.');
+      return;
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_URL;
+
+    // Pré-remplir la clé sauvegardée
+    if (S.apiKey) {
+      $('pdfqcm-apikey').value = S.apiKey;
+      $('pdfqcm-key-ok').classList.add('show');
+    }
+
+    // Clic sur la dropzone → ouvre le sélecteur
+    $('pdfqcm-drop').addEventListener('click', () => $('pdfqcm-file-input').click());
+
+    // Drag & drop
+    $('pdfqcm-drop').addEventListener('dragover', e => {
+      e.preventDefault();
+      $('pdfqcm-drop').classList.add('over');
+    });
+    $('pdfqcm-drop').addEventListener('dragleave', () => {
+      $('pdfqcm-drop').classList.remove('over');
+    });
+    $('pdfqcm-drop').addEventListener('drop', e => {
+      e.preventDefault();
+      $('pdfqcm-drop').classList.remove('over');
+      const f = e.dataTransfer.files[0];
+      if (f?.type === 'application/pdf') _handleFile(f);
+      else alert('Veuillez déposer un fichier PDF.');
+    });
+
+    // Sélection via input file
+    $('pdfqcm-file-input').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (f) _handleFile(f);
+      // Reset input pour permettre re-sélection du même fichier
+      e.target.value = '';
+    });
+  }
+
+  /* ── Sauvegarde clé API ──────────────────────────────────── */
+  function saveKey() {
+    const k = $('pdfqcm-apikey').value.trim();
+    if (!k) { alert('Clé vide — rien à sauvegarder.'); return; }
+    S.apiKey = k;
+    localStorage.setItem('pdfqcm_key', k);
+    $('pdfqcm-key-ok').classList.add('show');
+  }
+
+  /* ── Traitement du fichier PDF ───────────────────────────── */
+  async function _handleFile(file) {
+    // Réinitialiser l'état
+    S.images = [];
+    S.score  = { ok: 0, total: 0 };
+    hide('pdfqcm-gallery');
+    hide('pdfqcm-qcm');
+    hide('pdfqcm-loading');
+    $('pdfqcm-grid').innerHTML = '';
+    $('pdfqcm-empty').classList.remove('show');
+
+    show('pdfqcm-progress');
+    setProgress('Lecture du PDF…', 0);
+
+    try {
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      const n   = pdf.numPages;
+
+      for (let p = 1; p <= n; p++) {
+        const page   = await pdf.getPage(p);
+        const canvas = await _renderPage(page, RENDER_SCALE);
+
+        if (_isUltrasound(canvas)) {
+          S.images.push({
+            dataUrl : canvas.toDataURL('image/jpeg', 0.88),
+            pageNum : p,
+          });
+        }
+
+        setProgress(
+          `Page ${p} / ${n} — ${S.images.length} écographie(s) détectée(s)`,
+          (p / n) * 100
+        );
+      }
+
+      hide('pdfqcm-progress');
+      _renderGallery();
+
+    } catch (err) {
+      hide('pdfqcm-progress');
+      console.error('[PdfQcm] Erreur extraction PDF :', err);
+      alert('Impossible de lire le PDF.\n' + err.message);
+    }
+  }
+
+  /* ── Rendu d'une page PDF sur un canvas offscreen ────────── */
+  async function _renderPage(page, scale) {
+    const vp     = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    return canvas;
+  }
+
+  /* ── Détection écographie par analyse pixel ──────────────── */
+  /*
+   * Critères (configurables via GRAYSCALE_RATIO / DARK_RATIO / VIVID_MAX) :
+   *  1. Majorité des pixels en niveaux de gris (canaux R≈G≈B, diff < 25)
+   *  2. Une part significative de pixels sombres (fond noir typique)
+   *  3. Pas de couleurs saturées (exclut slides de cours colorées)
+   *
+   * On analyse une zone centrale (marges ignorées) pour éviter
+   * que les en-têtes/pieds blancs biaisent le résultat.
+   */
+  function _isUltrasound(canvas) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    // Zone d'analyse : 15 % de marge sur chaque côté
+    const m  = 0.15;
+    const x0 = Math.floor(W * m),      y0 = Math.floor(H * m);
+    const x1 = Math.floor(W * (1-m)),  y1 = Math.floor(H * (1-m));
+    const zW = x1 - x0, zH = y1 - y0;
+    if (zW <= 0 || zH <= 0) return false;
+
+    const data = ctx.getImageData(x0, y0, zW, zH).data;
+
+    let gray = 0, dark = 0, vivid = 0, n = 0;
+    // Pas d'échantillonnage 1 pixel sur 8 (step = 4×8 = 32 octets)
+    const STEP = 32;
+
+    for (let i = 0; i < data.length; i += STEP) {
+      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      if (a < 100) continue; // ignorer les zones transparentes
+
+      const maxDiff = Math.max(
+        Math.abs(r - g), Math.abs(r - b), Math.abs(g - b)
+      );
+      const lum = (r + g + b) / 3;
+      const sat = maxDiff / (Math.max(r, g, b) + 1); // saturation approx
+
+      if (maxDiff < 25)                        gray++;  // quasi-neutre
+      if (lum < 80)                            dark++;  // sombre
+      if (sat > 0.38 && Math.max(r,g,b) > 90) vivid++; // couleur vive
+
+      n++;
+    }
+
+    if (n === 0) return false;
+
+    const gR = gray  / n;
+    const dR = dark  / n;
+    const vR = vivid / n;
+
+    return gR >= GRAYSCALE_RATIO && dR >= DARK_RATIO && vR <= VIVID_MAX;
+  }
+
+  /* ── Affichage de la galerie ─────────────────────────────── */
+  function _renderGallery() {
+    show('pdfqcm-gallery');
+    $('pdfqcm-gal-count').textContent = S.images.length + ' image(s)';
+
+    if (S.images.length === 0) {
+      $('pdfqcm-empty').classList.add('show');
+      return;
+    }
+
+    const grid = $('pdfqcm-grid');
+    grid.innerHTML = '';
+
+    S.images.forEach((img, idx) => {
+      const div = document.createElement('div');
+      div.className = 'pq-thumb';
+      div.innerHTML = `
+        <img src="${img.dataUrl}" alt="Écho page ${img.pageNum}" loading="lazy">
+        <div class="pq-thumb-page">Page ${img.pageNum}</div>
+        <div class="pq-thumb-overlay">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v8M8 12h8"/>
+          </svg>
+          Générer QCM
+        </div>
+      `;
+      div.addEventListener('click', () => _generate(idx));
+      grid.appendChild(div);
+    });
+  }
+
+  /* ── Redimensionnement de l'image avant envoi API ────────── */
+  function _resizeForAPI(dataUrl, maxPx) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const { naturalWidth: w, naturalHeight: h } = img;
+        const ratio  = Math.min(maxPx / w, maxPx / h, 1);
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(w * ratio);
+        canvas.height = Math.round(h * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  /* ── Appel API Claude ────────────────────────────────────── */
+  async function _generate(idx) {
+    const key = S.apiKey || $('pdfqcm-apikey').value.trim();
+    if (!key) {
+      alert('Veuillez saisir votre clé API Anthropic avant de générer un QCM.');
+      $('pdfqcm-apikey').focus();
+      return;
+    }
+
+    hide('pdfqcm-qcm');
+    show('pdfqcm-loading');
+
+    // Faire défiler vers l'indicateur de chargement
+    $('pdfqcm-loading').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    try {
+      const img = S.images[idx];
+
+      // Réduire la résolution si nécessaire (économise tokens + temps)
+      const resized   = await _resizeForAPI(img.dataUrl, API_MAX_PX);
+      const b64       = resized.split(',')[1];
+      const mediaType = resized.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+
+      const SYSTEM = `Tu es un expert en écographie musculosquelettique et en physiothérapie.
+À partir de cette image d'écographie, génère un QCM avec :
+- 1 question clinique précise sur ce que montre l'image
+- 4 options de réponse (A, B, C, D)
+- La bonne réponse
+- Une explication détaillée
+Réponds UNIQUEMENT en JSON valide : {"question":"...","options":{"A":"...","B":"...","C":"...","D":"..."},"reponse":"A","explication":"..."}
+Le PDF de référence contient des slides de cours sur l'écographie avec des images de tendons, muscles, cartilages et vaisseaux.`;
+
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method  : 'POST',
+        headers : {
+          'Content-Type'                          : 'application/json',
+          'x-api-key'                             : key,
+          'anthropic-version'                     : '2023-06-01',
+          // Nécessaire pour les appels directs depuis un navigateur
+          'anthropic-dangerous-direct-browser-access' : 'true',
+        },
+        body: JSON.stringify({
+          model      : CLAUDE_MODEL,
+          max_tokens : 1024,
+          system     : SYSTEM,
+          messages   : [{
+            role    : 'user',
+            content : [
+              {
+                type   : 'image',
+                source : { type: 'base64', media_type: mediaType, data: b64 },
+              },
+              {
+                type : 'text',
+                text : "Analyse cette image d'écographie et génère le QCM demandé en JSON.",
+              },
+            ],
+          }],
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        const msg = err.error?.message || `HTTP ${resp.status}`;
+        throw new Error(msg);
+      }
+
+      const result = await resp.json();
+      const raw    = result.content?.[0]?.text || '';
+
+      // Parser le JSON (robuste aux blocs ```json ... ```)
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('Claude n\'a pas retourné de JSON valide.\n\nRéponse brute :\n' + raw.slice(0, 200));
+
+      const qcm = JSON.parse(match[0]);
+      _validateQCM(qcm); // lève une erreur si structure invalide
+
+      S.score.total++;
+      hide('pdfqcm-loading');
+      _displayQCM(qcm, img.dataUrl);
+
+    } catch (err) {
+      hide('pdfqcm-loading');
+      console.error('[PdfQcm] Erreur Claude :', err);
+
+      let msg = 'Erreur lors de la génération du QCM :\n\n' + err.message;
+      if (err.message.includes('401')) msg += '\n\n→ Clé API invalide ou expirée.';
+      if (err.message.includes('400')) msg += '\n\n→ Requête rejetée (image trop grande ?).';
+      if (err.message.includes('529') || err.message.includes('overloaded'))
+        msg += '\n\n→ Claude est surchargé, réessayez dans quelques secondes.';
+      alert(msg);
+    }
+  }
+
+  /* ── Validation de la structure JSON retournée ───────────── */
+  function _validateQCM(q) {
+    if (!q.question)
+      throw new Error('Champ "question" absent dans la réponse JSON.');
+    if (!q.options?.A || !q.options?.B || !q.options?.C || !q.options?.D)
+      throw new Error('Options A/B/C/D absentes ou incomplètes.');
+    if (!['A','B','C','D'].includes(q.reponse))
+      throw new Error(`Réponse correcte invalide : "${q.reponse}" (attendu A/B/C/D).`);
+    if (!q.explication)
+      throw new Error('Champ "explication" absent dans la réponse JSON.');
+  }
+
+  /* ── Affichage de l'interface QCM ────────────────────────── */
+  function _displayQCM(qcm, imageDataUrl) {
+    // Image
+    $('pdfqcm-qcm-img').src = imageDataUrl;
+
+    // Reset feedback
+    $('pdfqcm-badge').style.display = 'none';
+    $('pdfqcm-expl').classList.remove('show');
+    $('pdfqcm-btn-gallery').style.display = 'none';
+    $('pdfqcm-btn-next').style.display    = 'none';
+
+    // Question
+    $('pdfqcm-question').textContent = qcm.question;
+
+    // Options
+    const container = $('pdfqcm-options');
+    container.innerHTML = '';
+    ['A','B','C','D'].forEach(key => {
+      const btn = document.createElement('button');
+      btn.className = 'pq-option';
+      btn.innerHTML = `<span class="pq-opt-key">${key}</span>${_escape(qcm.options[key])}`;
+      btn.addEventListener('click', () => _answer(btn, key, qcm, container));
+      container.appendChild(btn);
+    });
+
+    // Score
+    _updateScore();
+
+    // Afficher + scroll
+    show('pdfqcm-qcm');
+    $('pdfqcm-qcm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* ── Gestion d'une réponse ───────────────────────────────── */
+  function _answer(btn, selected, qcm, container) {
+    // Désactiver toutes les options
+    container.querySelectorAll('.pq-option').forEach(b => {
+      b.disabled = true;
+    });
+
+    const correct = selected === qcm.reponse;
+    if (correct) S.score.ok++;
+    _updateScore();
+
+    // Colorier la sélection
+    btn.classList.add(correct ? 'correct' : 'wrong');
+
+    // Toujours révéler la bonne réponse
+    if (!correct) {
+      container.querySelectorAll('.pq-option').forEach(b => {
+        if (b.querySelector('.pq-opt-key')?.textContent === qcm.reponse)
+          b.classList.add('correct');
+      });
+    }
+
+    // Badge feedback
+    const badge = $('pdfqcm-badge');
+    badge.className = 'pq-feedback-badge ' + (correct ? 'ok' : 'nok');
+    badge.textContent = correct ? '✓ Bonne réponse !' : '✗ Incorrect';
+    badge.style.display = 'inline-flex';
+
+    // Explication
+    $('pdfqcm-expl-txt').textContent = qcm.explication;
+    $('pdfqcm-expl').classList.add('show');
+
+    // Boutons navigation
+    $('pdfqcm-btn-gallery').style.display = 'inline-flex';
+    $('pdfqcm-btn-next').style.display    = 'inline-flex';
+  }
+
+  /* ── Mise à jour du score ─────────────────────────────────── */
+  function _updateScore() {
+    $('pdfqcm-score').textContent = `${S.score.ok} / ${S.score.total}`;
+  }
+
+  /* ── Navigation ──────────────────────────────────────────── */
+  function backToGallery() {
+    hide('pdfqcm-qcm');
+    $('pdfqcm-gallery').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function nextRandom() {
+    if (S.images.length === 0) return;
+    const idx = Math.floor(Math.random() * S.images.length);
+    show('pdfqcm-loading');
+    hide('pdfqcm-qcm');
+    $('pdfqcm-loading').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Légère pause pour que le scroll se termine avant le rendu
+    setTimeout(() => _generate(idx), 120);
+  }
+
+  /* ── Utilitaire : échapper le HTML ───────────────────────── */
+  function _escape(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Démarrage ────────────────────────────────────────────── */
+  // Init après chargement du DOM (compatible insertion dynamique)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // API publique exposée
+  return { saveKey, backToGallery, nextRandom };
+
+})();
+</script>

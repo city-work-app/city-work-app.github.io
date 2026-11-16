@@ -1,0 +1,695 @@
+{
+  "theme": "Radiología aplicada al deporte",
+  "matiere": "Pruebas Complementarias en Fisioterapia",
+  "source": "Tema 10 (II) - CEU Universidad Cardenal Herrera",
+  "images": [
+
+    {
+      "id": "img_001",
+      "page": 6,
+      "fichier": "img_001.jpg",
+      "modalite": "Radiografía",
+      "region": "Tobillo",
+      "pathologie": "Esguince de tobillo con posible fractura asociada",
+      "description": "Radiografía de tobillo AP (imagen izquierda) con flecha amarilla señalando zona maleolar. Imágenes comparativas A y B mostrando amplitud articular con y sin estrés.",
+      "signes_cles": [
+        "Valoración tejido óseo post-esguince",
+        "Posible fractura maleolar",
+        "Prueba dinámica de estrés articular"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Esguince de tobillo grave, aplicación de Reglas de Ottawa",
+      "propositions": [
+        "Esguince de tobillo con sospecha de fractura maleolar",
+        "Fractura por estrés del astrágalo",
+        "Osteocondritis disecante del tobillo",
+        "Artritis séptica de tobillo"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La radiografía de tobillo se solicita según las Reglas de Ottawa cuando hay dolor maleolar + dolor a la palpación de los 6 cm distales del maléolo o incapacidad de carga. La flecha señala la zona maleolar a valorar."
+    },
+
+    {
+      "id": "img_002",
+      "page": 7,
+      "fichier": "img_002.jpg",
+      "modalite": "RM",
+      "region": "Tobillo",
+      "pathologie": "Rotura del Ligamento Peroneoastragalino Anterior (LPAA)",
+      "description": "RM de tobillo en corte axial (imagen izquierda, círculo rojo señalando el LPAA) y dos cortes axiales comparativos con flechas señalando discontinuidad del ligamento.",
+      "signes_cles": [
+        "Discontinuidad del ligamento peroneoastragalino anterior",
+        "Líquido extrarticular",
+        "Círculo rojo en zona lateral del tobillo"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Esguince grave de tobillo con sospecha de rotura completa del LPAA",
+      "propositions": [
+        "Rotura del ligamento peroneoastragalino anterior (LPAA)",
+        "Rotura del ligamento peroneocalcáneo",
+        "Rotura del ligamento deltoideo",
+        "Tendinopatía del peroneo largo"
+      ],
+      "bonne_reponse": 0,
+      "explication": "El LPAA es el ligamento más frecuentemente lesionado en el esguince lateral de tobillo. En RM se visualiza como discontinuidad de las fibras ligamentosas con líquido extrarticular en la zona señalada por el círculo rojo."
+    },
+
+    {
+      "id": "img_003",
+      "page": 8,
+      "fichier": "img_003.jpg",
+      "modalite": "RM",
+      "region": "Tobillo / Retropié",
+      "pathologie": "Edema óseo de médula ósea (Bone Marrow Edema) en tobillo",
+      "description": "RM de pie y tobillo: imagen izquierda (corte sagital + axial) mostrando señal hiperintensa en T2 en huesos del retropié. Imagen derecha con flecha señalando zona de edema óseo en astrágalo o calcáneo.",
+      "signes_cles": [
+        "Señal hiperintensa en T2",
+        "Señal hipointensa en T1",
+        "Acumulación de líquido intersticial intraóseo",
+        "Localización en retropié"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Dolor de tobillo/pie, diagnóstico diferencial de edema óseo en deportista",
+      "propositions": [
+        "Edema de médula ósea (Bone Marrow Edema) del retropié",
+        "Fractura por estrés del calcáneo",
+        "Osteonecrosis del astrágalo",
+        "Quiste óseo subcondral"
+      ],
+      "bonne_reponse": 0,
+      "explication": "El edema de médula ósea se define como acumulación anormal de líquido intersticial intraóseo visible en RM. Aparece hiperintenso en T2 e hipointenso en T1. Importante correlacionar con clínica antes de tomar decisiones terapéuticas."
+    },
+
+    {
+      "id": "img_004",
+      "page": 9,
+      "fichier": "img_004.jpg",
+      "modalite": "Ecografía",
+      "region": "Tobillo lateral",
+      "pathologie": "Esguince de tobillo - Valoración ecográfica del LPAA",
+      "description": "Ecografía longitudinal del LPAA: imagen izquierda con patrón fibrilar normal (peroné y astrágalo etiquetados, flechas verdes señalando el ligamento). Imágenes derechas mostrando pérdida del patrón fibrilar y zona hipoecoica.",
+      "signes_cles": [
+        "Peroné y astrágalo visibles como referencias óseas",
+        "Pérdida del patrón fibrilar del ligamento",
+        "Zona hipo/anecoica en el ligamento",
+        "Posible Doppler positivo en rotura reciente"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Esguince lateral de tobillo, valoración dinámica del LPAA",
+      "propositions": [
+        "Rotura parcial del LPAA con pérdida del patrón fibrilar",
+        "Tendinopatía del peroneo corto",
+        "Síndrome del seno del tarso",
+        "Ligamento peroneoastragalino anterior normal"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En ecografía, el esguince de tobillo muestra pérdida del patrón fibrilar del LPAA, con zonas hipo o anecoicas según el grado de rotura. La prueba dinámica permite valorar la tensión del ligamento. Las flechas verdes señalan el ligamento entre peroné (Peroné) y astrágalo (Astrágalo)."
+    },
+
+    {
+      "id": "img_005",
+      "page": 10,
+      "fichier": "img_005.jpg",
+      "modalite": "Ecografía",
+      "region": "Tobillo anterior / Tendón tibial anterior",
+      "pathologie": "Valoración ecográfica del tendón tibial anterior y región del tobillo",
+      "description": "Imagen superior: ecografía longitudinal mostrando el tendón tibial anterior sobre tibia y tálu. Imágenes inferiores: cortes transversales comparativos del tobillo.",
+      "signes_cles": [
+        "Tendón tibial anterior identificado",
+        "Tibia y Talus como referencias óseas",
+        "Patrón fibrilar del tendón"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Valoración ecográfica del compartimento anterior del tobillo",
+      "propositions": [
+        "Ecografía normal del tendón tibial anterior",
+        "Tendinopatía del tibial anterior",
+        "Rotura del retináculo extensor",
+        "Tenosinovitis del tibial anterior"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La ecografía del tendón tibial anterior muestra su patrón fibrilar normal entre la tibia y el talus. La pérdida de este patrón indica patología tendinosa."
+    },
+
+    {
+      "id": "img_006",
+      "page": 12,
+      "fichier": "img_006.jpg",
+      "modalite": "RM",
+      "region": "Rodilla",
+      "pathologie": "Esguince del Ligamento Colateral de Rodilla",
+      "description": "Tres imágenes RM de rodilla: coronal T1 con flechas rojas señalando el ligamento colateral, coronal T2 mostrando aumento de señal en el ligamento lesionado, y corte axial mostrando edema periligamentoso.",
+      "signes_cles": [
+        "Aumento de señal en T2 en el ligamento colateral",
+        "Edema de partes blandas periligamentoso",
+        "Posible discontinuidad de fibras",
+        "Flechas rojas señalando zona de lesión"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Traumatismo en varo o valgo de rodilla, sospecha de esguince del LCI o LCE",
+      "propositions": [
+        "Esguince del ligamento colateral interno con edema en T2",
+        "Rotura del ligamento cruzado anterior",
+        "Lesión meniscal interna",
+        "Contusión ósea del cóndilo femoral"
+      ],
+      "bonne_reponse": 0,
+      "explication": "El esguince del ligamento colateral se valora en RM con aumento de señal en T2 alrededor del ligamento. En lesiones crónicas, las fibras aparecen engrosadas, especialmente en la zona proximal."
+    },
+
+    {
+      "id": "img_007",
+      "page": 13,
+      "fichier": "img_007.jpg",
+      "modalite": "Ecografía",
+      "region": "Rodilla",
+      "pathologie": "Esguince del Ligamento Colateral de Rodilla - Valoración ecográfica",
+      "description": "Tres imágenes ecográficas del ligamento colateral de rodilla: imagen izquierda mostrando patrón normal, imágenes derechas (superior e inferior) mostrando alteración del patrón fibrilar y posible derrame.",
+      "signes_cles": [
+        "Pérdida de ecogenicidad del ligamento",
+        "Pérdida del patrón fibrilar",
+        "Posible defecto anecoico focal en rotura completa",
+        "Comparativa normal vs patológico"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Traumatismo lateral de rodilla, valoración ecográfica del ligamento colateral",
+      "propositions": [
+        "Rotura parcial del ligamento colateral interno con pérdida del patrón fibrilar",
+        "Bursitis anserina",
+        "Síndrome de la banda iliotibial",
+        "Quiste de Baker"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En ecografía, el esguince del ligamento colateral muestra pérdida de ecogenicidad y del patrón fibrilar. La rotura completa presenta un defecto anecoico focal y alteración de la cortical hiperecoica."
+    },
+
+    {
+      "id": "img_008",
+      "page": 17,
+      "fichier": "img_008.jpg",
+      "modalite": "RM",
+      "region": "Rodilla y Tibia",
+      "pathologie": "Fractura por Estrés",
+      "description": "Izquierda: RM de rodilla coronal T1 y T2-FAT SAT mostrando trazo lineal hipointenso subcortical en platillo tibial interno con edema reaccional. Derecha: imágenes axiales (a,b) y sagitales (c,d) T1 mostrando fractura de estrés de trazo horizontal con intensa reacción perióstica (flechas huecas).",
+      "signes_cles": [
+        "Trazo lineal hipointenso subcortical en T1",
+        "Edema medular hiperintenso en T2",
+        "Reacción perióstica intensa",
+        "Flechas huecas señalando el trazo de fractura"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Deportista con dolor progresivo localizado, sospecha de fractura por estrés",
+      "propositions": [
+        "Fractura por estrés con edema medular y reacción perióstica en RM",
+        "Contusión ósea sin fractura",
+        "Osteosarcoma perióstico",
+        "Síndrome de estrés tibial medial (periostitis)"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La fractura por estrés aguda en RM muestra edema medular hipointenso en T1 e hiperintenso en T2, con edema de partes blandas circundantes. En fases subagudas/crónicas, el trazo de fractura se ve en todas las secuencias con reacción perióstica."
+    },
+
+    {
+      "id": "img_009",
+      "page": 18,
+      "fichier": "img_009.jpg",
+      "modalite": "Ecografía",
+      "region": "Pie / 2º Metatarsiano",
+      "pathologie": "Fractura por Estrés del 2º Metatarsiano",
+      "description": "Imagen izquierda: ecografía longitudinal con etiqueta 'Stress Fracture' y flecha apuntando al trazo, con referencia '2nd Metatarsal'. Imagen derecha: ecografía con Doppler color mostrando reacción perióstica.",
+      "signes_cles": [
+        "Discontinuidad cortical hiperecoica",
+        "Trazo de fractura visible",
+        "Reacción perióstica",
+        "Localización en 2º metatarsiano"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Corredor con dolor en antepié de evolución progresiva",
+      "propositions": [
+        "Fractura por estrés del 2º metatarsiano",
+        "Neuroma de Morton",
+        "Fractura de Jones (5º metatarsiano)",
+        "Tendinopatía del extensor largo del 2º dedo"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La fractura por estrés del 2º metatarsiano es frecuente en corredores. En ecografía se visualiza discontinuidad de la cortical hiperecoica con reacción perióstica. El Doppler puede mostrar hipervascularización en fases activas."
+    },
+
+    {
+      "id": "img_010",
+      "page": 20,
+      "fichier": "img_010.jpg",
+      "modalite": "Radiografía",
+      "region": "Pie y Tibia",
+      "pathologie": "Fractura por Estrés en deportista de fondo",
+      "description": "Imagen izquierda: radiografía dorsoplantar del pie con flecha roja señalando trazo de fractura en 2º metatarsiano. Imagen derecha: radiografía de tibia con flecha naranja señalando zona de esclerosis lineal/reacción perióstica (caso de maratoniano).",
+      "signes_cles": [
+        "Esclerosis lineal visible en Rx",
+        "Reacción perióstica focal",
+        "Trazo de fractura en metatarsiano",
+        "Rx detecta solo 28% de las fracturas por estrés"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Maratoniano con dolor progresivo en pie/pierna durante entrenamiento",
+      "propositions": [
+        "Fractura por estrés del 2º metatarsiano y de tibia en maratoniano",
+        "Fractura traumática aguda del metatarsiano",
+        "Exostosis del 2º metatarsiano",
+        "Reacción perióstica tumoral"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La radiografía simple solo detecta el 28% de las fracturas por estrés. Muestra esclerosis lineal y reacción perióstica focal. La RM es más sensible en fases iniciales."
+    },
+
+    {
+      "id": "img_011",
+      "page": 21,
+      "fichier": "img_011.jpg",
+      "modalite": "Radiografía",
+      "region": "Tobillo",
+      "pathologie": "Fractura por Estrés de tobillo (valoración radiológica normal vs patológica)",
+      "description": "Dos radiografías de tobillo izquierdo (marcador L 6 3): proyección AP y proyección lateral, para valorar posible fractura por estrés en contexto deportivo.",
+      "signes_cles": [
+        "Proyección AP y lateral del tobillo",
+        "Valoración de peroné distal y maléolo",
+        "Búsqueda de esclerosis lineal o reacción perióstica"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Deportista con dolor en tobillo de evolución progresiva, descartar fractura por estrés",
+      "propositions": [
+        "Radiografía de tobillo para valorar fractura por estrés del peroné distal",
+        "Fractura aguda de tobillo por inversión",
+        "Osteocondritis disecante del astrágalo",
+        "Calcificación del ligamento peroneoastragalino"
+      ],
+      "bonne_reponse": 0,
+      "explication": "Ante sospecha de fractura por estrés, la Rx puede ser normal en fases iniciales. Se busca esclerosis lineal y reacción perióstica. Si la Rx es normal y hay alta sospecha clínica, se solicita RM."
+    },
+
+    {
+      "id": "img_012",
+      "page": 25,
+      "fichier": "img_012.jpg",
+      "modalite": "Esquema + RM",
+      "region": "Tibia",
+      "pathologie": "Síndrome de Estrés Tibial Medial (Periostitis) - Clasificación de Fredericson",
+      "description": "Imagen izquierda: corte transversal anatómico de la pierna mostrando compartimentos musculares y estructuras neurovasculares. Imagen derecha: Clasificación de Fredericson (Grados 0 a 4b) para el síndrome de estrés tibial medial por RM.",
+      "signes_cles": [
+        "Grado 0: Normal",
+        "Grado 1: Edema perióstico",
+        "Grado 2: Edema médula ósea visible en T2",
+        "Grado 3: Edema médula ósea visible en T2 y T1",
+        "Grado 4a: Múltiples cambios de señal intracortical",
+        "Grado 4b: Imagen lineal de señal intracortical (fractura)"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Corredor con dolor en cara medial de tibia, diagnóstico diferencial periostitis vs fractura por estrés",
+      "propositions": [
+        "Clasificación de Fredericson para el síndrome de estrés tibial medial por RM",
+        "Clasificación de Anderson para fracturas tibiales",
+        "Clasificación de Kellgren-Lawrence para osteoartritis",
+        "Clasificación de Torg para fracturas de Jones"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La clasificación de Fredericson gradúa el síndrome de estrés tibial medial por RM de 0 a 4b. El grado 4b (imagen lineal intracortical) indica fractura por estrés establecida. Importante correlacionar con clínica ya que hasta el 50% de corredores asintomáticos pueden presentar edema perióstico."
+    },
+
+    {
+      "id": "img_013",
+      "page": 26,
+      "fichier": "img_013.jpg",
+      "modalite": "RM",
+      "region": "Tibia",
+      "pathologie": "Síndrome de Estrés Tibial Medial (Periostitis) - Caso de corredor de maratón",
+      "description": "4 imágenes RM: a-c) cortes axiales T2 con supresión grasa mostrando edema endóstico y perióstico del margen medial y posterior de la tibia (flechas huecas), con edema en tejido celular subcutáneo (flechas sólidas). d) imagen coronal T2 con supresión grasa. Sin evidencia de fractura de estrés.",
+      "signes_cles": [
+        "Edema endóstico y perióstico en margen medial/posterior de tibia",
+        "Edema en tejido celular subcutáneo",
+        "Sin lesión muscular",
+        "Sin fractura de estrés",
+        "Flechas huecas: edema óseo / Flechas sólidas: edema subcutáneo"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Corredor de maratón con dolor de varias semanas en cara medial de tibia durante preparación para carrera",
+      "propositions": [
+        "Síndrome de estrés tibial medial (periostitis) sin fractura de estrés asociada",
+        "Fractura por estrés de tibia con trazo lineal",
+        "Miositis del soleo",
+        "Síndrome compartimental crónico"
+      ],
+      "bonne_reponse": 0,
+      "explication": "Este caso muestra edema endóstico y perióstico del margen medial y posterior de la tibia en T2, con edema subcutáneo asociado. La ausencia de trazo lineal intracortical descarta fractura por estrés (Fredericson Grado 2-3)."
+    },
+
+    {
+      "id": "img_014",
+      "page": 27,
+      "fichier": "img_014.jpg",
+      "modalite": "Ecografía",
+      "region": "Tibia (cara medial)",
+      "pathologie": "Síndrome de Estrés Tibial Medial - Valoración ecográfica con Doppler",
+      "description": "Imagen superior: ecografía longitudinal de la cara medial de la tibia con Doppler color (izquierda: hipervascularización perióstica activa) vs imagen sin Doppler (derecha: normal). Imágenes inferiores: dos cortes longitudinales mostrando alteración del periostio.",
+      "signes_cles": [
+        "Doppler positivo en periostio tibial (hipervascularización)",
+        "Alteración de la línea hiperecoica del periostio",
+        "Engrosamiento perióstico",
+        "Comparativa patológico vs normal"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Corredor con dolor en cara medial de tibia, valoración ecográfica",
+      "propositions": [
+        "Periostitis tibial activa con hipervascularización en Doppler",
+        "Fractura por estrés de tibia",
+        "Tendinopatía del tibial posterior",
+        "Síndrome del nervio safeno"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En ecografía, la periostitis tibial muestra engrosamiento e irregularidad de la línea hiperecoica del periostio, con Doppler positivo en fases activas por hipervascularización."
+    },
+
+    {
+      "id": "img_015",
+      "page": 28,
+      "fichier": "img_015.jpg",
+      "modalite": "RM",
+      "region": "Tobillo / Calcáneo",
+      "pathologie": "Edema óseo del calcáneo / Fractura por estrés del calcáneo",
+      "description": "RM sagital del tobillo con flecha rosa/morada señalando zona de señal alterada en el calcáneo, compatible con edema óseo o fractura por estrés.",
+      "signes_cles": [
+        "Señal hiperintensa en calcáneo en T2",
+        "Flecha señalando zona de edema óseo",
+        "Localización en calcáneo posterior"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Deportista con dolor en talón, sospecha de fractura por estrés del calcáneo",
+      "propositions": [
+        "Fractura por estrés del calcáneo con edema óseo en RM",
+        "Fascitis plantar",
+        "Tendinopatía insercional del Aquiles",
+        "Bursitis retrocalcánea"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La fractura por estrés del calcáneo es frecuente en corredores y militares. En RM aparece como edema medular hiperintenso en T2 en el calcáneo, con o sin trazo de fractura visible."
+    },
+
+    {
+      "id": "img_016",
+      "page": 32,
+      "fichier": "img_016.jpg",
+      "modalite": "RM",
+      "region": "Pubis / Pelvis",
+      "pathologie": "Pubalgia / Groin Pain - Edema óseo púbico",
+      "description": "Imagen izquierda: RM coronal con dos secuencias (A: T1, B: T2) mostrando flechas señalando edema óseo bilateral en ramas púbicas y sínfisis. Imagen derecha: RM coronal con zona hiperintensa en sínfisis del pubis.",
+      "signes_cles": [
+        "Focos hiperintensos en T2 en sínfisis del pubis",
+        "Edema óseo en ramas púbicas",
+        "Afectación bilateral en deportistas",
+        "Gold Standard para pubalgia"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Deportista de deportes multidireccionales con dolor en pubis e ingle",
+      "propositions": [
+        "Pubalgia con edema óseo en sínfisis del pubis en RM (T2 hiperintenso)",
+        "Hernia inguinal",
+        "Coxartrosis",
+        "Fractura por estrés de rama púbica"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La RM es el Gold Standard en la pubalgia, mostrando focos hiperintensos en T2 en sínfisis del pubis y ramas púbicas. También permite valorar el tendón del aductor largo y el recto abdominal."
+    },
+
+    {
+      "id": "img_017",
+      "page": 33,
+      "fichier": "img_017.jpg",
+      "modalite": "RM",
+      "region": "Cadera / Pubis",
+      "pathologie": "Lesión del aductor largo y edema óseo de rama púbica en futbolistas",
+      "description": "Imagen izquierda: RM coronal T2 con supresión grasa mostrando rotura/estiramiento parcial del vientre muscular del aductor largo derecho. Imagen derecha: RM coronal T2 con supresión grasa mostrando edema óseo acentuado en rama púbica izquierda.",
+      "signes_cles": [
+        "Señal hiperintensa T2 en vientre muscular del aductor largo",
+        "Edema óseo en rama púbica",
+        "Lesión en deportistas de fútbol",
+        "Corte coronal T2 con supresión grasa"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Futbolista con dolor inguinal, lesión del aductor largo o pubis",
+      "propositions": [
+        "Rotura parcial del aductor largo y edema óseo de rama púbica en futbolistas",
+        "Coxitis infecciosa",
+        "Fractura de cuello femoral",
+        "Bursitis del psoas"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En RM, la lesión del aductor largo en futbolistas muestra señal hiperintensa T2 en el vientre muscular o su tendón de inserción en el pubis. El edema óseo de rama púbica es hallazgo frecuente en la pubalgia."
+    },
+
+    {
+      "id": "img_018",
+      "page": 34,
+      "fichier": "img_018.jpg",
+      "modalite": "Ecografía",
+      "region": "Pubis / Aductor largo",
+      "pathologie": "Tendinopatía del aductor largo con engrosamiento hipoecoico y proliferación ósea",
+      "description": "Ecografía comparativa aductor derecho vs izquierdo: flecha larga señalando engrosamiento hipoecoico anormal del origen del tendón aductor derecho, flecha delgada señalando rotura de superficie profunda, flecha corta mostrando inserción normal del aductor izquierdo. Cabeza de flecha: proliferación ósea del pubis derecho.",
+      "signes_cles": [
+        "Engrosamiento hipoecoico del tendón aductor",
+        "Rotura de superficie profunda (grado bajo)",
+        "Proliferación ósea del pubis",
+        "Comparativa lado sano vs lesionado"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Groin Pain en deportista, valoración ecográfica del aductor largo",
+      "propositions": [
+        "Tendinopatía del aductor largo con rotura parcial y proliferación ósea púbica",
+        "Tendinosis del psoas-iliaco",
+        "Bursitis del aductor largo",
+        "Desgarro muscular del recto interno"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En ecografía, la tendinopatía del aductor largo muestra desestructuración, engrosamiento e hipoecogenicidad del tendón. En casos avanzados aparecen irregularidades de la cortical hiperecoica del pubis (proliferación ósea)."
+    },
+
+    {
+      "id": "img_019",
+      "page": 38,
+      "fichier": "img_019.jpg",
+      "modalite": "RM",
+      "region": "Pantorrilla bilateral",
+      "pathologie": "Caso Clínico I - Lesión muscular de gemelo en jugador de baloncesto",
+      "description": "RM axial bilateral de pantorrillas (RPH) mostrando diferencia de señal entre el gemelo derecho (lesionado, con zona hiperintensa) y el izquierdo (normal). Interfaz músculo-aponeurótica visible.",
+      "signes_cles": [
+        "Asimetría de señal entre ambas pantorrillas",
+        "Zona hiperintensa en gemelo (edema/hematoma)",
+        "Comparativa bilateral",
+        "Sin afectación de la rodilla"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Jugador de baloncesto con sensación de 'pedrada' en gemelo durante partido, sin hematoma visible",
+      "propositions": [
+        "Rotura muscular del gemelo medial (Tennis Leg) en RM axial bilateral",
+        "Rotura del tendón de Aquiles",
+        "Trombosis venosa profunda",
+        "Síndrome compartimental agudo"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La lesión del gemelo medial (Tennis Leg) es frecuente en deportes con aceleraciones bruscas. En RM muestra edema/hematoma entre el gemelo medial y el sóleo, con asimetría respecto al lado sano. La rodilla suele estar indemne."
+    },
+
+    {
+      "id": "img_020",
+      "page": 40,
+      "fichier": "img_020.jpg",
+      "modalite": "RM",
+      "region": "Cadera bilateral / Pelvis",
+      "pathologie": "Caso Clínico II - Fractura por estrés de cuello femoral en mujer deportista",
+      "description": "Imagen izquierda: RM coronal de caderas bilaterales mostrando asimetría de señal (zona hipointensa en cuello femoral derecho). Imagen derecha: RM sagital mostrando señal alterada en cuello femoral con marcador P.",
+      "signes_cles": [
+        "Asimetría de señal en cuellos femorales",
+        "Zona hipointensa en T1 en cuello femoral",
+        "Afectación de cadera derecha",
+        "Contexto de mujer joven muy activa"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Mujer joven activa (Crossfit + running) con dolor progresivo en cadera derecha que impide incluso la marcha",
+      "propositions": [
+        "Fractura por estrés del cuello femoral derecho",
+        "Coxartrosis incipiente",
+        "Necrosis avascular de la cabeza femoral",
+        "Síndrome de pinzamiento femoroacetabular"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La fractura por estrés del cuello femoral es una lesión grave en deportistas. En RM muestra señal hipointensa en T1 con edema medular. Requiere actuación urgente para evitar fractura completa desplazada."
+    },
+
+    {
+      "id": "img_021",
+      "page": 41,
+      "fichier": "img_021.jpg",
+      "modalite": "RM",
+      "region": "Cadera bilateral / Pelvis",
+      "pathologie": "Caso Clínico II - Fractura por estrés de cuello femoral (secuencias adicionales)",
+      "description": "Dos imágenes RM coronales con supresión grasa (STIR o T2-FAT SAT) mostrando señal hiperintensa en cuello femoral derecho compatible con edema medular extenso en fractura por estrés.",
+      "signes_cles": [
+        "Señal hiperintensa T2 con supresión grasa en cuello femoral",
+        "Edema medular extenso",
+        "Afectación unilateral derecha",
+        "Secuencias STIR para mejor visualización"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Mismo caso - Mujer joven activa con fractura por estrés de cuello femoral",
+      "propositions": [
+        "Edema medular extenso en cuello femoral derecho en T2-STIR compatible con fractura por estrés",
+        "Edema transitorio de cadera (THBM)",
+        "Metástasis ósea en cuello femoral",
+        "Enfermedad de Paget"
+      ],
+      "bonne_reponse": 0,
+      "explication": "Las secuencias T2 con supresión grasa (STIR) son muy sensibles para detectar edema medular. En la fractura por estrés del cuello femoral, el edema es extenso. Diagnóstico diferencial con edema transitorio de cadera y otras causas de edema medular."
+    },
+
+    {
+      "id": "img_022",
+      "page": 42,
+      "fichier": "img_022.jpg",
+      "modalite": "RM",
+      "region": "Pelvis / Sínfisis del pubis",
+      "pathologie": "Caso Clínico II - Edema de sínfisis del pubis asociado",
+      "description": "Dos imágenes RM axiales de pelvis: imagen izquierda T2 mostrando señal muy hiperintensa en sínfisis del pubis. Imagen derecha con secuencia diferente mostrando edema en sínfisis y estructuras adyacentes.",
+      "signes_cles": [
+        "Señal hiperintensa T2 en sínfisis del pubis",
+        "Edema en estructuras adyacentes",
+        "Corte axial de pelvis",
+        "Posible pubalgia asociada"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Mujer joven activa - hallazgos adicionales en pelvis",
+      "propositions": [
+        "Edema de sínfisis del pubis en RM axial T2",
+        "Quiste ovárico",
+        "Fractura de rama púbica",
+        "Hernia obturatriz"
+      ],
+      "bonne_reponse": 0,
+      "explication": "El edema de la sínfisis del pubis en RM T2 puede aparecer como hallazgo asociado en deportistas con sobrecarga, en el contexto de pubalgia o en combinación con otras lesiones por estrés."
+    },
+
+    {
+      "id": "img_023",
+      "page": 44,
+      "fichier": "img_023.jpg",
+      "modalite": "Ecografía",
+      "region": "Tendón de Aquiles",
+      "pathologie": "Caso Clínico III - Tendinopatía del Aquiles + Rotura muscular",
+      "description": "Tres imágenes ecográficas del tendón de Aquiles: imagen izquierda mostrando patrón fibrilar alterado (desestructuración del tendón), imagen central con medición, imagen derecha con Doppler color mostrando hipervascularización (rojo) en zona de tendinopatía activa.",
+      "signes_cles": [
+        "Desestructuración del patrón fibrilar del Aquiles",
+        "Engrosamiento del tendón",
+        "Doppler positivo (hipervascularización en rojo)",
+        "Tendinopatía activa"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Exfutbolista profesional con molestias crónicas en Aquiles izquierdo + sensación de pedrada en gemelo externo jugando al pádel",
+      "propositions": [
+        "Tendinopatía crónica del Aquiles con hipervascularización en Doppler",
+        "Rotura completa del tendón de Aquiles",
+        "Bursitis retrocalcánea aislada",
+        "Tendón de Aquiles normal"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La tendinopatía del Aquiles en ecografía muestra desestructuración del patrón fibrilar, engrosamiento y pérdida de ecogenicidad. El Doppler color positivo indica actividad/inflamación. El paciente también tiene rotura del tendón contralateral ya operada."
+    },
+
+    {
+      "id": "img_024",
+      "page": 45,
+      "fichier": "img_024.jpg",
+      "modalite": "Ecografía",
+      "region": "Tendón de Aquiles / Pantorrilla",
+      "pathologie": "Caso Clínico III - Rotura muscular del gemelo externo con Doppler",
+      "description": "Imagen izquierda: ecografía mostrando zona hipoecoica (hematoma/rotura) entre estructuras musculares de la pantorrilla. Imagen derecha: Doppler color con señal roja intensa en zona de rotura/hematoma organizado.",
+      "signes_cles": [
+        "Zona hipoecoica entre planos musculares",
+        "Doppler positivo intenso en zona de lesión",
+        "Hematoma en organización",
+        "Localización en gemelo externo"
+      ],
+      "difficulte": "avanzado",
+      "contexte_clinique": "Mismo paciente - sensación de 'pedrada' en cara externa del gemelo jugando al pádel",
+      "propositions": [
+        "Rotura muscular del gemelo externo con hematoma y Doppler positivo",
+        "Trombosis venosa profunda",
+        "Quiste de Baker roto",
+        "Absceso muscular"
+      ],
+      "bonne_reponse": 0,
+      "explication": "La rotura muscular en ecografía muestra zona hipoecoica entre los planos musculares (hematoma). El Doppler positivo intenso indica tejido de granulación en hematoma en organización. En este caso coexisten tendinopatía del Aquiles y rotura del gemelo externo."
+    },
+
+    {
+      "id": "img_025",
+      "page": 47,
+      "fichier": "img_025.jpg",
+      "modalite": "Ecografía",
+      "region": "Rodilla",
+      "pathologie": "Caso Clínico IV - Patología de rodilla en hombre jubilado (tendinopatía rotuliana + derrame)",
+      "description": "Cuatro imágenes ecográficas de rodilla: superior izquierda mostrando tendón rotuliano con zona hipoecoica y posible calcificación. Superior derecha mostrando tendón cuadricipital. Inferior izquierda mostrando derrame articular. Inferior derecha mostrando cartílago femoral con pérdida de grosor.",
+      "signes_cles": [
+        "Zona hipoecoica en tendón rotuliano",
+        "Posible calcificación tendinosa",
+        "Derrame articular (zona anecoica)",
+        "Pérdida de grosor del cartílago"
+      ],
+      "difficulte": "intermedio",
+      "contexte_clinique": "Hombre jubilado muy activo con dolor progresivo de rodilla incapacitante, fracaso del tratamiento conservador",
+      "propositions": [
+        "Tendinopatía rotuliana con derrame articular y pérdida de cartílago en ecografía",
+        "Rotura del tendón rotuliano",
+        "Quiste de Baker",
+        "Bursitis prerrotuliana aislada"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En este caso clínico se combinan hallazgos de tendinopatía rotuliana (zona hipoecoica en tendón), derrame articular y posible pérdida de cartílago compatible con gonartrosis en deportista veterano."
+    },
+
+    {
+      "id": "img_026",
+      "page": 49,
+      "fichier": "img_026.jpg",
+      "modalite": "Radiografía",
+      "region": "Dedos de la mano",
+      "pathologie": "Caso Clínico V - Fractura de falange + osteosíntesis en jugador de baloncesto",
+      "description": "Imagen izquierda: radiografía de dedos mostrando fractura en la articulación interfalángica proximal con flecha señalando el trazo. Imagen derecha: radiografía post-reducción con aguja de Kirschner (clavo) y flecha señalando la reducción de la fractura.",
+      "signes_cles": [
+        "Trazo de fractura en articulación interfalángica proximal",
+        "Subluxación de falange",
+        "Aguja de Kirschner post-osteosíntesis",
+        "Deformidad visible post-trauma"
+      ],
+      "difficulte": "principiante",
+      "contexte_clinique": "Jugador de baloncesto con dolor súbito en dedo + subluxación visible durante partido, reducción en campo y persistencia de deformidad al finalizar",
+      "propositions": [
+        "Fractura de falange proximal con subluxación interfalángica, tratada con aguja de Kirschner",
+        "Esguince grado III de dedo en martillo",
+        "Fractura de Bennett (pulgar)",
+        "Luxación pura sin fractura interfalángica"
+      ],
+      "bonne_reponse": 0,
+      "explication": "En las lesiones de dedos en deportistas, la radiografía es la primera prueba indicada para descartar fractura asociada a la luxación. La presencia de aguja de Kirschner en la imagen derecha indica que la fractura requirió osteosíntesis."
+    }
+
+  ],
+
+  "resumen_del_curso": {
+    "temas_cubiertos": [
+      "Esguinces (tobillo, rodilla) - Rx, RM, Ecografía",
+      "Fractura por Estrés - Rx, RM, Ecografía",
+      "Síndrome de Estrés Tibial Medial / Periostitis",
+      "Groin Pain / Pubalgia",
+      "Lesiones musculares (gemelo, aductor)",
+      "Casos clínicos integrados"
+    ],
+    "modalidades_representadas": ["Radiografía", "RM", "Ecografía", "Esquema anatómico"],
+    "regiones_anatomicas": ["Tobillo", "Pie", "Rodilla", "Tibia", "Pubis/Pelvis", "Cadera", "Pantorrilla", "Tendón de Aquiles", "Mano/Dedos"]
+  }
+}

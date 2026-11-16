@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Bridge migration</title></head>
+<body>
+<h2>Migration Kiné+</h2>
+<button onclick="startMigration()" style="font-size:18px;padding:12px 24px;cursor:pointer">Cliquer pour importer mes données</button>
+<p id="status"></p>
+<script>
+window.addEventListener('message',function(e){
+  try{
+    var data=JSON.parse(e.data);
+    var count=0;
+    Object.entries(data).forEach(function(entry){if(entry[1]){localStorage.setItem(entry[0],entry[1]);count++;}});
+    document.getElementById('status').innerHTML='✅ '+count+' clés importées ! <a href="http://localhost:8080/files/">Aller sur Kiné+</a>';
+  }catch(err){document.getElementById('status').textContent='Erreur: '+err.message;}
+});
+function startMigration(){
+  document.getElementById('status').textContent='Ouverture de la fenêtre file://...';
+  window.open('file:///Users/ayaat/Downloads/!Kine/files/migrate-sender.html','_blank','width=400,height=200');
+}
+</script>
+</body></html>

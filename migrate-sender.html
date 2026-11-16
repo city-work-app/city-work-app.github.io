@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Envoi données</title></head>
+<body>
+<p id="s">Envoi en cours...</p>
+<script>
+var keys=['kcu_f','kcu_sf','kcu_c','kcu_q','kcu_s','kcu_diff','kcu_goal','kcu_boycott'];
+var data={};
+keys.forEach(function(k){var v=localStorage.getItem(k);if(v)data[k]=v;});
+if(window.opener){
+  window.opener.postMessage(JSON.stringify(data),'*');
+  document.getElementById('s').textContent='✅ Données envoyées ! Tu peux fermer cette fenêtre.';
+} else {
+  document.getElementById('s').textContent='❌ Ouvre cette page via le bouton sur localhost.';
+}
+</script>
+</body></html>

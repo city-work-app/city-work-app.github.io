@@ -1,0 +1,269 @@
+/* =========================================================
+   gamification.css — XP, niveaux, personnage, maison 3D
+   ========================================================= */
+
+/* ── Barre d'XP ── */
+.gam-bar{height:8px;border-radius:99px;background:var(--surf-highest);overflow:hidden;margin:6px 0 4px}
+.gam-bar-sm{height:5px;margin:4px 0 3px}
+.gam-bar-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--gold),#f7d774);transition:width .8s var(--ease)}
+.gam-av-svg{display:block;overflow:visible}
+
+/* ── Puce niveau (topbar) ── */
+.gam-chip{display:inline-flex;align-items:center;gap:7px;height:40px;padding:3px 12px 3px 3px;border-radius:99px;border:1px solid var(--border-subtle);background:var(--surf-low);cursor:pointer;font-family:'Manrope',sans-serif;transition:transform var(--t-fast) var(--spring),border-color .2s}
+.gam-chip:hover{border-color:var(--gold);transform:translateY(-1px)}
+.gam-chip:focus-visible{outline:var(--focus-ring);outline-offset:var(--focus-offset)}
+.gam-chip-ring{--p:0;width:34px;height:34px;border-radius:50%;padding:2px;background:conic-gradient(var(--gold) calc(var(--p)*1%),var(--surf-highest) 0);flex-shrink:0}
+.gam-chip-av{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.gam-chip-av svg{width:26px;height:26px;margin-top:2px}
+.gam-chip-lvl{font-size:12px;font-weight:800;color:var(--gold);white-space:nowrap}
+.gam-chip-bump{animation:gamBump .7s var(--spring)}
+@keyframes gamBump{0%{transform:scale(1)}35%{transform:scale(1.25)}100%{transform:scale(1)}}
+/* Écrans moyens : le niveau passe en badge sous l'avatar pour laisser de la place au lecteur Spotify */
+@media (max-width:1279px){
+  .gam-chip{position:relative;padding:3px;border-color:transparent;background:transparent}
+  .gam-chip-lvl{position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);background:var(--gold);color:#2b1d00;border-radius:99px;padding:0 6px;font-size:9.5px;line-height:15px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+}
+/* Sur téléphone, la puce remplace l'icône profil (le menu y donne accès) */
+@media (max-width:600px){.topbar .ib[aria-label="Mon profil"]{display:none}}
+
+.gam-float{position:fixed;transform:translateX(-50%);z-index:300;pointer-events:none;font:800 13px 'Manrope',sans-serif;color:var(--gold);text-shadow:0 1px 6px rgba(0,0,0,.35);animation:gamFloat 1.3s var(--ease) forwards}
+.gam-float-dim{color:var(--on-sv)}
+@keyframes gamFloat{0%{opacity:0;transform:translate(-50%,6px) scale(.8)}20%{opacity:1;transform:translate(-50%,0) scale(1.1)}100%{opacity:0;transform:translate(-50%,26px) scale(1)}}
+
+.gam-toast{position:fixed;left:50%;top:78px;transform:translate(-50%,-20px);opacity:0;z-index:310;pointer-events:none;background:var(--on-surface);color:var(--bg);border-radius:99px;padding:10px 18px;font:700 13px 'Manrope',sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 10px 30px rgba(0,0,0,.25);transition:all .35s var(--spring-soft)}
+.gam-toast .ms{font-size:18px;color:var(--gold)}
+.gam-toast.show{opacity:1;transform:translate(-50%,0)}
+#gam-confetti{position:fixed;inset:0;z-index:400;pointer-events:none;display:none}
+
+/* ── Menu profil ── */
+.gam-menu{position:fixed;top:72px;right:16px;width:350px;max-width:calc(100vw - 24px);max-height:calc(100vh - 90px);overflow-y:auto;background:var(--surface);border:1px solid var(--border-subtle);border-radius:24px;box-shadow:var(--sh-lg),0 0 0 1px var(--border-subtle);padding:18px;z-index:120;display:none;font-family:'Inter',sans-serif}
+.gam-menu.open{display:block;animation:mSlide .22s var(--ease)}
+.gm-head{display:flex;gap:14px;align-items:center;margin-bottom:6px}
+.gm-av{position:relative;width:84px;height:84px;border-radius:50%;background:radial-gradient(circle at 50% 40%,var(--surf-mid),var(--surf-low));display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:3px solid var(--surf-high)}
+.gm-edit{position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--tertiary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.gm-edit .ms{font-size:15px}
+.gm-name{font:800 20px 'Manrope',sans-serif;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-user{font-size:12px;color:var(--on-sv);margin-top:-1px}
+.gm-level{font:700 15px 'Manrope',sans-serif;color:var(--gold);margin-top:2px}
+.gm-level b{font-size:22px}
+.gm-xp{font-size:12px;color:var(--on-sv)}
+.gm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.gm-stats>div{background:var(--surf-low);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.gm-stats b{font:800 18px 'Manrope',sans-serif;display:flex;align-items:center;gap:3px}
+.gm-stats span{font-size:11px;color:var(--on-sv)}
+.gm-next{display:flex;align-items:center;gap:12px;background:var(--gold-l);color:var(--on-surface);border-radius:16px;padding:10px 12px;font-size:13px;margin-bottom:8px}
+.gm-next-ic{width:38px;height:38px;border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--gold)}
+.gm-next-ic>span:not(.ms){width:22px;height:22px;border-radius:50%;display:block}
+.gm-links{display:flex;flex-direction:column}
+.gm-links button{all:unset;display:flex;align-items:center;gap:14px;padding:11px 8px;border-radius:12px;cursor:pointer;color:var(--on-surface)}
+.gm-links button:hover{background:var(--surf-low)}
+.gm-links button:focus-visible{outline:var(--focus-ring)}
+.gm-links .ms{color:var(--tertiary);font-size:22px}
+.gm-links b{display:block;font:700 14px 'Manrope',sans-serif}
+.gm-links small{display:block;font-size:12px;color:var(--on-sv);margin-top:1px}
+
+/* ── Sidebar desktop ── */
+.dl-xp{margin:-8px 4px 14px;font:700 11px 'Manrope',sans-serif;color:var(--on-sv);cursor:pointer}
+.dl-xp-row{display:flex;justify-content:space-between}
+.dl-xp-row span:first-child{color:var(--gold)}
+
+/* ── Carte accueil ── */
+.gam-home-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;background:var(--surface);border:1px solid var(--border-subtle);border-radius:20px;padding:14px 18px;margin:14px 0 22px;box-shadow:var(--sh)}
+.ghc-av{position:relative;width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 50% 40%,var(--surf-mid),var(--surf-low));display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.ghc-lvl{position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:var(--gold);color:#2b1d00;font:800 11px 'Manrope',sans-serif;border-radius:99px;padding:2px 9px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.ghc-kicker{font:700 10.5px 'Manrope',sans-serif;letter-spacing:1.4px;text-transform:uppercase;color:var(--gold)}
+.ghc-title{font:800 16px 'Manrope',sans-serif;margin-top:2px}
+.ghc-sub{font-size:12px;color:var(--on-sv);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.ghc-next{display:inline-flex;align-items:center;gap:3px}
+.ghc-next .ms{font-size:14px;color:var(--gold)}
+.ghc-actions{display:flex;flex-direction:column;gap:6px}
+.ghc-actions .btn{justify-content:center}
+@media (max-width:640px){
+  .gam-home-card{grid-template-columns:auto 1fr;gap:12px}
+  .ghc-actions{grid-column:1/-1;flex-direction:row}
+  .ghc-actions .btn{flex:1}
+}
+
+/* ── Carte XP sur l'écran de résultats ── */
+.gam-results{background:var(--surface);border:1px solid var(--border-subtle);border-radius:20px;padding:14px 16px;margin:0 0 16px;box-shadow:var(--sh);animation:mSlide .4s var(--ease)}
+.gam-results-head{display:flex;align-items:center;gap:12px}
+.gam-results-av{width:58px;height:58px;border-radius:50%;background:var(--surf-low);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gam-results-total{font:800 22px 'Manrope',sans-serif;color:var(--gold);letter-spacing:-.4px}
+.gam-results-sub{font-size:12px;color:var(--on-sv)}
+.gam-results-lines{display:flex;flex-direction:column;gap:4px;margin-top:10px;border-top:1px dashed var(--border-subtle);padding-top:10px}
+.gam-results-line{display:flex;justify-content:space-between;font-size:13px;color:var(--on-sv)}
+.gam-results-line b{color:var(--on-surface);font-family:'Manrope',sans-serif}
+
+/* ── Modal montée de niveau ── */
+#modal-gam-levelup .md{max-width:440px;overflow:hidden;position:relative}
+.gam-lu{text-align:center;position:relative;padding-top:6px}
+.gam-lu-rays{position:absolute;left:50%;top:70px;width:520px;height:520px;margin:-260px 0 0 -260px;background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--gold) 22%,transparent) 0 10deg,transparent 10deg 20deg);border-radius:50%;animation:gamSpin 18s linear infinite;mask-image:radial-gradient(circle,#000 20%,transparent 65%);-webkit-mask-image:radial-gradient(circle,#000 20%,transparent 65%);pointer-events:none}
+@keyframes gamSpin{to{transform:rotate(360deg)}}
+.gam-lu-av{position:relative;display:inline-block;animation:gamHop 1.2s var(--spring) infinite alternate}
+@keyframes gamHop{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+.gam-lu-kicker{position:relative;font:800 11px 'Manrope',sans-serif;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-top:8px}
+.gam-lu-level{position:relative;font:400 40px 'DM Serif Display',serif;letter-spacing:-.5px;margin:2px 0 12px}
+.gam-lu-list{position:relative;display:flex;flex-direction:column;gap:8px;text-align:left}
+.gam-lu-item{display:flex;align-items:center;gap:12px;background:var(--surf-low);border-radius:14px;padding:9px 12px;font:700 14px 'Manrope',sans-serif}
+.gam-lu-item small{display:block;font:600 10.5px 'Inter',sans-serif;color:var(--on-sv);text-transform:uppercase;letter-spacing:1px}
+.gam-lu-ic{width:38px;height:38px;border-radius:12px;background:var(--gold-l);color:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gam-lu-none{position:relative;font-size:14px;color:var(--on-sv);line-height:1.6}
+
+/* ── Modal personnage ── */
+#modal-gam-char .md{max-width:720px}
+.gch-layout{display:grid;grid-template-columns:200px 1fr;gap:20px}
+.gch-preview{background:radial-gradient(circle at 50% 45%,var(--surf-mid),var(--surf-low));border-radius:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;align-self:start;position:sticky;top:0}
+.gch-preview-name{font:800 15px 'Manrope',sans-serif;margin-top:6px}
+.gch-sections .fl{margin:12px 0 8px}
+.gch-sections .fl:first-child{margin-top:0}
+.gch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+.gch-colors{grid-template-columns:repeat(auto-fill,minmax(40px,1fr))}
+.gch-opt{position:relative;aspect-ratio:1;border-radius:14px;border:2px solid var(--border-subtle);background:var(--surf-low);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:4px;transition:transform var(--t-fast) var(--spring),border-color .15s}
+.gch-opt:hover:not(:disabled){transform:translateY(-2px);border-color:var(--outline-v)}
+.gch-opt.sel{border-color:var(--gold);background:var(--gold-l)}
+.gch-opt.locked{cursor:not-allowed}
+.gch-opt.locked>*:not(.gch-lock){opacity:.28;filter:grayscale(1)}
+.gch-lock{position:absolute;inset:auto 3px 3px auto;display:flex;align-items:center;gap:1px;font:800 10px 'Manrope',sans-serif;color:var(--on-sv);background:var(--surface);border-radius:99px;padding:1px 5px 1px 3px}
+.gch-lock .ms{font-size:11px}
+.gch-swatch{width:100%;height:100%;border-radius:10px;display:block}
+.gch-none{font-size:22px;color:var(--on-sv)}
+@media (max-width:640px){.gch-layout{grid-template-columns:1fr}.gch-preview{position:static}}
+
+/* ── Modal récompenses ── */
+#modal-gam-rewards .md{max-width:640px}
+.grw-list{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto;padding-right:4px}
+.grw-row{display:grid;grid-template-columns:86px 1fr;gap:10px;align-items:center;padding:8px 10px;border-radius:14px;background:var(--surf-low)}
+.grw-row.done{opacity:.6}
+.grw-row.next{outline:2px solid var(--gold);background:var(--gold-l)}
+.grw-lv{display:flex;align-items:center;gap:5px;font:800 13px 'Manrope',sans-serif}
+.grw-lv .ms{font-size:17px;color:var(--on-sv)}
+.grw-row.done .grw-lv .ms{color:var(--tertiary)}
+.grw-items{display:flex;flex-wrap:wrap;gap:6px}
+.grw-item{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;background:var(--surface);border:1px solid var(--border-subtle);border-radius:99px;padding:4px 10px 4px 7px}
+.grw-item .ms{font-size:16px;color:var(--on-sv)}
+.grw-item i{width:14px;height:14px;border-radius:50%;display:inline-block}
+.grw-room{border-color:var(--gold)}
+.grw-room .ms{color:var(--gold)}
+.grw-howto ul{margin:4px 0 0;padding-left:18px;font-size:13px;color:var(--on-sv);line-height:1.8}
+.grw-howto b{color:var(--on-surface)}
+
+/* =========================================================
+   Maison 3D
+   ========================================================= */
+#screen-house.screen{padding-bottom:0;min-height:0}
+.house-screen-wrap{position:relative;margin-top:64px;height:calc(100vh - 64px);height:calc(100dvh - 64px);overflow:hidden;background:#bfe3f5;color:#1d2b22;font-family:'Manrope',sans-serif}
+@media (max-width:1119px){.house-screen-wrap{height:calc(100dvh - 64px - 84px)}}
+body.topbar-hidden .house-screen-wrap{margin-top:0;height:100dvh}
+.house-stage{position:absolute;inset:0}
+.house-canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.house-labels{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}
+.hl-room{position:absolute;left:0;top:0;background:rgba(255,255,255,.94);border:2px solid #fff;color:#1d2b22;border-radius:12px;padding:5px 12px;text-align:center;font:800 13px 'Manrope',sans-serif;box-shadow:0 6px 16px rgba(0,0,0,.14);white-space:nowrap;will-change:transform}
+.hl-room b{display:flex;align-items:center;gap:4px;justify-content:center}
+.hl-room .ms{font-size:14px;color:#9a8f7a}
+.hl-room small{display:block;font:700 11px 'Manrope',sans-serif;color:#3c8a5a}
+.hl-room.hl-unlocked{background:rgba(29,43,34,.78);color:#fff;border-color:transparent;font-size:12px;padding:3px 10px}
+.hl-bubble{position:absolute;left:0;top:0;max-width:220px;background:#fff;color:#1d2b22;border-radius:16px;padding:9px 13px;font:700 13px/1.35 'Manrope',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18);text-align:center;white-space:normal}
+.hl-bubble::after{content:'';position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fff}
+
+.house-hud-tl{position:absolute;top:14px;left:14px;right:170px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:3;pointer-events:none}
+.house-hud-tl>*,.house-hud-tr>*{pointer-events:auto}
+.house-hud-tr{position:absolute;top:14px;right:14px;z-index:3;display:flex;gap:8px}
+.house-level-card{display:flex;align-items:center;gap:10px;background:#fff;border-radius:22px;padding:7px 18px 7px 7px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:230px}
+.hlc-av{width:50px;height:50px;border-radius:50%;background:#eef6ea;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hlc-title{font:800 16px 'Manrope',sans-serif}
+.hlc-sub{font:600 11.5px 'Inter',sans-serif;color:#5b6b60}
+.house-level-card .gam-bar{background:#e6ece3;width:150px}
+.house-pill{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#1d2b22;border:none;border-radius:99px;padding:11px 18px;font:800 14px 'Manrope',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.12);cursor:pointer;transition:transform var(--t-fast) var(--spring),background .15s}
+.house-pill:hover{transform:translateY(-2px)}
+.house-pill .ms{font-size:19px}
+.house-pill.active{background:#1d2b22;color:#fff}
+.house-cam{position:absolute;left:14px;bottom:14px;display:flex;gap:8px;z-index:3;transition:bottom .3s var(--ease)}
+.house-cam button{width:42px;height:42px;border-radius:50%;background:#fff;color:#1d2b22;border:none;box-shadow:0 6px 16px rgba(0,0,0,.14);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.house-cam button:hover{background:#f1f5ef}
+.house-cam button.active{background:#1d2b22;color:#fff}
+.house-cam .ms{font-size:21px}
+.house-screen-wrap.deco .house-cam{bottom:calc(min(300px,48%) + 26px)}
+.house-screen-wrap.visiting .house-hud-tl .house-pill,.house-screen-wrap.visiting .house-hud-tr{display:none}
+
+.house-deco{position:absolute;left:14px;right:14px;bottom:14px;height:min(300px,48%);background:rgba(255,255,255,.97);border-radius:22px;box-shadow:0 12px 40px rgba(0,0,0,.18);flex-direction:column;padding:14px 14px 10px;z-index:4;animation:mSlide .25s var(--ease)}
+.hd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hd-title{font:800 16px 'Manrope',sans-serif;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hd-title small{font:500 12px 'Inter',sans-serif;color:#5b6b60}
+.hd-close{display:inline-flex;align-items:center;gap:4px;background:#1d2b22;color:#fff;border:none;border-radius:99px;padding:8px 14px;font:800 13px 'Manrope',sans-serif;cursor:pointer;flex-shrink:0}
+.hd-close .ms{font-size:17px}
+.hd-cats{display:flex;gap:6px;overflow-x:auto;padding:10px 0 8px;scrollbar-width:none}
+.hd-cats::-webkit-scrollbar{display:none}
+.hd-cat{flex-shrink:0;display:inline-flex;align-items:center;gap:3px;border:1.5px solid #e1e7dd;background:#fff;color:#1d2b22;border-radius:99px;padding:6px 12px;font:700 12.5px 'Manrope',sans-serif;cursor:pointer}
+.hd-cat .ms{font-size:13px;color:#9a8f7a}
+.hd-cat.active{background:#1d2b22;color:#fff;border-color:#1d2b22}
+.hd-cat.locked{color:#8a958d}
+.hd-items{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:8px;align-content:start;padding:2px}
+.hd-item{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:88px;border:2px solid #e8ede5;background:#f8faf6;border-radius:16px;cursor:pointer;padding:8px 6px;color:#1d2b22;transition:transform var(--t-fast) var(--spring),border-color .15s}
+.hd-item:hover:not(:disabled){transform:translateY(-2px);border-color:#9fd3a8}
+.hd-item .ms{font-size:28px;color:#3c8a5a}
+.hd-item-name{font:700 12px/1.2 'Manrope',sans-serif;text-align:center}
+.hd-item-size{font:600 10.5px 'Inter',sans-serif;color:#8a958d}
+.hd-item-lock{display:flex;align-items:center;gap:2px;font:800 10.5px 'Manrope',sans-serif;color:#9a8f7a}
+.hd-item-lock .ms{font-size:12px;color:#9a8f7a}
+.hd-item.locked{cursor:not-allowed;opacity:.55}
+.hd-item.locked .ms:not(.hd-item-lock .ms){color:#a7b0a9}
+.hd-item.armed{border-color:#3ddc84;background:#e9fbf0;box-shadow:0 0 0 3px rgba(61,220,132,.25)}
+
+.house-sel-bar{position:absolute;top:84px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:#fff;border-radius:99px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:5;max-width:calc(100% - 28px);overflow-x:auto}
+.house-sel-bar .hsb-name{display:flex;align-items:center;gap:5px;font:800 13px 'Manrope',sans-serif;padding:0 8px 0 10px;white-space:nowrap}
+.house-sel-bar .hsb-name .ms{font-size:18px;color:#3c8a5a}
+.house-sel-bar button{display:inline-flex;align-items:center;gap:4px;border:none;background:#f1f5ef;color:#1d2b22;border-radius:99px;padding:7px 12px;font:700 12.5px 'Manrope',sans-serif;cursor:pointer;white-space:nowrap}
+.house-sel-bar button .ms{font-size:16px}
+.house-sel-bar button.danger{background:#fdecec;color:#c0392b}
+.house-sel-bar button.ghost{background:transparent;padding:7px}
+
+.house-visit-banner{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:10px;background:#1d2b22;color:#fff;border-radius:99px;padding:6px 6px 6px 16px;font:700 13px 'Manrope',sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2);white-space:nowrap}
+.house-visit-banner button{border:none;background:#fff;color:#1d2b22;border-radius:99px;padding:7px 12px;font:800 12.5px 'Manrope',sans-serif;cursor:pointer}
+.house-screen-wrap:not(.visiting) .house-visit-banner{display:none}
+
+.house-loading{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#bfe3f5;font:800 15px 'Manrope',sans-serif;color:#1d2b22;text-align:center}
+.house-loading small{font:500 12.5px 'Inter',sans-serif;color:#45604f}
+.house-loading small.house-err{font-size:11px;opacity:.7;max-width:420px}
+.house-spinner{width:38px;height:38px;border-radius:50%;border:4px solid rgba(29,43,34,.15);border-top-color:#1d2b22;animation:gamSpin .8s linear infinite}
+.house-back{display:none}
+@media (max-width:640px){
+  .house-hud-tl{right:62px;top:10px;left:10px;gap:6px}
+  .house-level-card{min-width:0;padding-right:12px}
+  .house-level-card .gam-bar{width:96px}
+  .hlc-sub{display:none}
+  .house-pill{padding:9px 12px;font-size:12.5px}
+  .house-pill span.lbl{display:none}
+  .house-hud-tr{top:10px;right:10px}
+  .house-cam{left:10px;bottom:14px;gap:5px}
+  .house-cam button{width:36px;height:36px}
+  .house-deco{left:8px;right:8px;bottom:8px}
+  .hd-title small{display:none}
+}
+
+/* ── Vignettes 3D du catalogue + aperçu qui tourne (v2) ── */
+.hd-item{min-height:118px;padding-top:6px}
+.hd-thumb{width:68px;height:68px;display:flex;align-items:center;justify-content:center}
+.hd-thumb img{width:68px;height:68px;object-fit:contain;display:block}
+.hd-thumb .ms{font-size:28px;color:#3c8a5a}
+.hd-item.locked{opacity:1}
+.hd-item.locked .hd-thumb img{filter:grayscale(1);opacity:.4}
+.hd-item.locked .hd-item-name{opacity:.55}
+.hd-new{position:absolute;top:6px;right:6px;background:#3ddc84;color:#0b3d22;font:800 9px 'Manrope',sans-serif;border-radius:99px;padding:2px 6px;text-transform:uppercase;letter-spacing:.5px}
+.house-armed{position:absolute;top:84px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:#fff;color:#1d2b22;border-radius:22px;padding:8px 10px 8px 8px;box-shadow:0 12px 34px rgba(0,0,0,.2);z-index:5;max-width:calc(100% - 28px);animation:mSlide .22s var(--ease)}
+.ha-spin{width:100px;height:100px;border-radius:16px;background:radial-gradient(circle at 50% 40%,#f6faf4,#e1eadc);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ha-spin img{width:96px;height:96px;object-fit:contain}
+.ha-txt{display:flex;flex-direction:column;min-width:0;gap:2px}
+.ha-txt small{font:700 10.5px 'Manrope',sans-serif;color:#5b6b60;text-transform:uppercase;letter-spacing:.8px}
+.ha-txt b{font:800 17px 'Manrope',sans-serif}
+.ha-txt span{font:500 12px 'Inter',sans-serif;color:#5b6b60}
+.ha-btns{display:flex;flex-direction:column;gap:6px}
+.ha-btns button{display:inline-flex;align-items:center;gap:4px;border:none;background:#f1f5ef;color:#1d2b22;border-radius:99px;padding:7px 12px;font:700 12.5px 'Manrope',sans-serif;cursor:pointer;white-space:nowrap}
+.ha-btns button.ghost{background:transparent}
+.ha-btns .ms{font-size:16px}
+.house-sel-bar .hsb-name img{width:36px;height:36px;object-fit:contain}
+@media (max-width:640px){
+  .house-armed{top:62px;gap:8px;padding:6px}
+  .ha-spin{width:64px;height:64px}.ha-spin img{width:60px;height:60px}
+  .ha-txt span{display:none}
+  .ha-btns{flex-direction:row}
+}

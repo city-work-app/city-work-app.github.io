@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Migration Kiné+</title>
+<style>
+  body { font-family: system-ui, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#f0f4f8; }
+  .card { background:white; border-radius:16px; padding:40px; max-width:420px; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,.12); }
+  h1 { margin:0 0 8px; font-size:1.4rem; }
+  p { color:#666; margin:0 0 28px; line-height:1.5; }
+  button { background:#1DB954; color:white; border:none; border-radius:12px; padding:14px 32px; font-size:1rem; font-weight:600; cursor:pointer; width:100%; }
+  button:hover { background:#17a349; }
+  #status { margin-top:20px; font-weight:600; min-height:24px; }
+  .ok { color:#1DB954; }
+  .err { color:#e53e3e; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>📦 Migration Kiné+</h1>
+  <p>Copie tes données de <code>file://</code> vers <code>localhost:8080</code>. Clique une seule fois.</p>
+  <button onclick="migrate()">Transférer mes données</button>
+  <div id="status"></div>
+</div>
+<script>
+async function migrate() {
+  const status = document.getElementById('status');
+  status.textContent = 'Lecture des données…';
+  status.className = '';
+
+  const keys = Object.keys(localStorage).filter(k => k.startsWith('kcu'));
+  const data = {};
+  let found = 0;
+  keys.forEach(k => {
+    const v = localStorage.getItem(k);
+    if (v) { data[k] = v; found++; }
+  });
+
+  if (found === 0) {
+    status.textContent = '❌ Aucune donnée trouvée dans ce localStorage.';
+    status.className = 'err';
+    return;
+  }
+
+  status.textContent = `Envoi de ${found} clés vers localhost:8080…`;
+
+  try {
+    const res = await fetch('http://localhost:8080/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok) {
+      status.innerHTML = '✅ Données transférées ! <br><a href="http://localhost:8080/files/" target="_blank">Ouvrir Kiné+ →</a>';
+      status.className = 'ok';
+    } else {
+      throw new Error('Serveur: ' + res.status);
+    }
+  } catch(e) {
+    status.textContent = '❌ Erreur : ' + e.message + ' — Le serveur est bien lancé ?';
+    status.className = 'err';
+  }
+}
+</script>
+</body>
+</html>

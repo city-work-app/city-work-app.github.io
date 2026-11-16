@@ -1,0 +1,305 @@
+/* =========================================================
+   atelier-ia.css — Atelier IA (copier-coller vers Gemini / ChatGPT / Claude) + lecteur de cours interactif
+   Préfixe .kia- ; couleurs Cobalt (--kc-*), --c = couleur du type
+   ========================================================= */
+.kia{--kia-ink:var(--kc-ink,#14161a);--kia-ink2:var(--kc-ink-2,#5b6170);--kia-line:var(--kc-border,#e4e6eb);--kia-surf:var(--kc-surface,#fff);
+  --kia-surf2:var(--kc-surface-2,#f5f6f8);--kia-pri:var(--kc-primary,#2453d6);--kia-ok:var(--kc-success,#16a34a);--kia-ok-s:var(--kc-success-soft,#e8f7ee);
+  --kia-ok-t:var(--kc-success-text,#127a3a);--kia-ko:var(--kc-danger,#dc2626);--kia-ko-s:var(--kc-danger-soft,#fdecec);--kia-ko-t:var(--kc-danger-text,#b42318);
+  color:var(--kia-ink);font-family:var(--kc-font,inherit);}
+.kia-bg{--kia-ink:var(--kc-ink,#14161a);--kia-ink2:var(--kc-ink-2,#5b6170);--kia-line:var(--kc-border,#e4e6eb);--kia-surf:var(--kc-surface,#fff);
+  --kia-surf2:var(--kc-surface-2,#f5f6f8);--kia-pri:var(--kc-primary,#2453d6);--kia-ok:var(--kc-success,#16a34a);--kia-ok-s:var(--kc-success-soft,#e8f7ee);
+  --kia-ok-t:var(--kc-success-text,#127a3a);--kia-ko:var(--kc-danger,#dc2626);--kia-ko-s:var(--kc-danger-soft,#fdecec);--kia-ko-t:var(--kc-danger-text,#b42318);}
+.kia .ms,.kia-bg .ms{font-size:20px;line-height:1;}
+.kia-flex{flex:1;}
+.kia kbd,.kia-bg kbd{font:600 12px var(--kc-mono,ui-monospace,monospace);padding:2px 6px;border:1px solid var(--kia-line);border-bottom-width:2px;border-radius:6px;background:var(--kia-surf2);white-space:nowrap;}
+
+/* ───── Accueil de l'atelier ───── */
+#screen-atelier{padding:var(--kc-top,64px) 0 0!important;}
+.kia-wrap{max-width:1040px;margin:0 auto;padding:12px 20px 96px;}
+.kia-top{display:flex;align-items:center;margin-bottom:4px;}
+.kia-hero{padding:18px 0 26px;}
+.kia-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 8px;border-radius:99px;background:color-mix(in srgb,var(--c,var(--kia-pri)) 11%,transparent);color:var(--c,var(--kia-pri));font-size:12.5px;font-weight:650;letter-spacing:.01em;}
+.kia-badge .ms{font-size:16px;}
+.kia-hero h1{margin:14px 0 8px;font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.03em;font-weight:700;}
+.kia-hero h1 em{font-style:normal;color:var(--kia-pri);}
+.kia-hero>p{max-width:640px;margin:0;color:var(--kia-ink2);font-size:16px;line-height:1.55;}
+.kia-flow{display:flex;gap:10px;margin:22px 0 0;padding:0;list-style:none;flex-wrap:wrap;counter-reset:f;}
+.kia-flow li{display:flex;align-items:center;gap:10px;padding:10px 16px 10px 10px;border:1px solid var(--kia-line);border-radius:14px;background:var(--kia-surf);position:relative;}
+.kia-flow li>.ms{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:var(--kia-surf2);color:var(--kia-pri);font-size:19px;}
+.kia-flow b{display:block;font-size:14px;}
+.kia-flow small{color:var(--kia-ink2);font-size:12.5px;}
+.kia-flow li+li::before{content:'';position:absolute;left:-10px;top:50%;width:10px;height:1px;background:var(--kia-line);}
+
+.kia-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.kia-kind{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:18px 18px 16px;border:1px solid var(--kia-line);border-radius:16px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;}
+.kia-kind:hover{border-color:color-mix(in srgb,var(--c) 45%,var(--kia-line));transform:translateY(-1px);box-shadow:0 6px 22px -12px color-mix(in srgb,var(--c) 60%,transparent);}
+.kia-kind:focus-visible{outline:2px solid var(--c);outline-offset:2px;}
+.kia-kind-ic{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;margin-bottom:8px;background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c);}
+.kia-kind-ic .ms{font-size:23px;}
+.kia-kind b{font-size:15.5px;font-weight:650;letter-spacing:-.01em;}
+.kia-kind small{color:var(--kia-ink2);font-size:13px;line-height:1.45;}
+.kia-kind-go{position:absolute;top:18px;right:16px;color:var(--kia-ink2);opacity:0;transform:translateX(-4px);transition:.15s;}
+.kia-kind:hover .kia-kind-go{opacity:1;transform:none;color:var(--c);}
+
+.kia-mine{margin-top:34px;}
+.kia-mine h2{display:flex;align-items:center;gap:8px;margin:0 0 12px;font-size:17px;font-weight:650;letter-spacing:-.01em;}
+.kia-mine h2 span{font:600 12px var(--kc-mono,monospace);padding:2px 7px;border-radius:99px;background:var(--kia-surf2);color:var(--kia-ink2);}
+.kia-list{display:flex;flex-direction:column;border:1px solid var(--kia-line);border-radius:16px;background:var(--kia-surf);overflow:hidden;}
+.kia-it{display:flex;align-items:center;gap:4px;padding-right:10px;}
+.kia-it+.kia-it{border-top:1px solid var(--kia-line);}
+.kia-it-main{flex:1;min-width:0;display:flex;align-items:center;gap:14px;padding:14px 8px 14px 16px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;}
+.kia-it-main:hover .kia-it-go{color:var(--c);}
+.kia-it-ic{flex:none;width:38px;height:38px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c);}
+.kia-it-t{flex:1;min-width:0;}
+.kia-it-t b{display:block;font-size:14.5px;font-weight:620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kia-it-t small{display:block;color:var(--kia-ink2);font-size:12.5px;margin-top:1px;}
+.kia-it-bar{display:block;height:4px;margin-top:8px;max-width:260px;border-radius:9px;background:var(--kia-surf2);overflow:hidden;}
+.kia-it-bar i{display:block;height:100%;border-radius:9px;background:var(--c);}
+.kia-it-go{display:flex;align-items:center;gap:4px;color:var(--kia-ink2);font-size:13px;font-weight:600;white-space:nowrap;}
+.kia-it-go .ms{font-size:18px;}
+.kia-ib{flex:none;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:10px;background:none;color:var(--kia-ink2);cursor:pointer;}
+.kia-ib:hover{background:var(--kia-surf2);color:var(--kia-ink);}
+.kia-empty{display:flex;align-items:center;gap:14px;padding:20px;border:1px dashed var(--kia-line);border-radius:16px;color:var(--kia-ink2);}
+.kia-empty>.ms{font-size:28px;}
+.kia-empty b{display:block;color:var(--kia-ink);font-size:14.5px;}
+.kia-empty small{font-size:13px;}
+
+/* ───── Fenêtre ───── */
+.kia-bg{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,12,18,.45);backdrop-filter:blur(3px);opacity:0;transition:opacity .16s;color:var(--kia-ink);font-family:var(--kc-font,inherit);}
+.kia-bg.open{opacity:1;}
+.kia-dlg{width:min(720px,100%);max-height:min(860px,calc(100vh - 48px));display:flex;flex-direction:column;border:1px solid var(--kia-line);border-radius:20px;background:var(--kia-surf);box-shadow:0 30px 80px -20px rgba(0,0,0,.35);transform:translateY(8px) scale(.985);transition:transform .2s;overflow:hidden;}
+.kia-bg.open .kia-dlg{transform:none;}
+.kia-dh{display:flex;align-items:center;gap:12px;padding:18px 18px 12px 20px;}
+.kia-dh-ic{flex:none;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c);}
+.kia-dh-t{flex:1;min-width:0;}
+.kia-dh-t b{display:block;font-size:17px;font-weight:650;letter-spacing:-.01em;}
+.kia-dh-t small{display:block;color:var(--kia-ink2);font-size:13px;}
+.kia-x{flex:none;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:10px;background:none;color:var(--kia-ink2);cursor:pointer;}
+.kia-x:hover{background:var(--kia-surf2);color:var(--kia-ink);}
+.kia-steps{display:flex;gap:6px;margin:0;padding:0 20px 14px;list-style:none;border-bottom:1px solid var(--kia-line);}
+.kia-steps li{flex:1;display:flex;align-items:center;gap:8px;color:var(--kia-ink2);font-size:13px;font-weight:550;}
+.kia-steps li>span{flex:none;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--kia-line);font:600 11.5px var(--kc-mono,monospace);}
+.kia-steps li>span .ms{font-size:14px;}
+.kia-steps li.on{color:var(--kia-ink);}
+.kia-steps li.on>span{background:var(--kia-pri);border-color:var(--kia-pri);color:var(--kc-on-primary,#fff);}
+.kia-steps li.done>span{background:color-mix(in srgb,var(--kia-pri) 12%,transparent);border-color:transparent;color:var(--kia-pri);}
+.kia-steps li+li::before{content:'';flex:0 0 14px;height:1px;background:var(--kia-line);margin-right:2px;}
+.kia-body{flex:1;overflow:auto;padding:18px 20px 20px;}
+.kia-df{display:flex;align-items:center;gap:10px;padding:14px 20px;border-top:1px solid var(--kia-line);background:var(--kia-surf);}
+.kia-df .btn .ms{font-size:18px;}
+.kia-note{display:flex;align-items:center;gap:6px;color:var(--kia-ink2);font-size:13px;}
+.kia-note .ms{font-size:17px;}
+.kia-dlg .kia-kinds{grid-template-columns:repeat(2,1fr);gap:10px;}
+.kia-dlg .kia-kind{padding:14px;}
+.kia-dlg .kia-kind-ic{width:36px;height:36px;margin-bottom:4px;}
+.kia-dlg .kia-kind-ic .ms{font-size:20px;}
+.kia-lbl{margin:18px 0 8px;color:var(--kia-ink2);font-size:12.5px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;}
+.kia-body>.kia-lbl:first-child{margin-top:0;}
+.kia-srcs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.kia-src{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;padding:12px;border:1px solid var(--kia-line);border-radius:12px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;text-align:left;cursor:pointer;}
+.kia-src .ms{grid-row:1/3;color:var(--kia-ink2);}
+.kia-src b{font-size:14px;font-weight:620;}
+.kia-src small{color:var(--kia-ink2);font-size:12px;line-height:1.35;}
+.kia-src.on{border-color:var(--kia-pri);box-shadow:0 0 0 1px var(--kia-pri) inset;background:color-mix(in srgb,var(--kia-pri) 5%,var(--kia-surf));}
+.kia-src.on .ms{color:var(--kia-pri);}
+.kia-in{width:100%;margin-top:10px;}
+.kia-hint{display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--kia-surf2);color:var(--kia-ink2);font-size:13px;line-height:1.45;}
+.kia-hint .ms{font-size:18px;flex:none;}
+.kia-hint.ok{background:var(--kia-ok-s);color:var(--kia-ok-t);}
+.kia-hint.err{background:var(--kia-ko-s);color:var(--kia-ko-t);}
+.kia-hint.warn{background:color-mix(in srgb,var(--kc-amber,#d97706) 12%,transparent);color:color-mix(in srgb,var(--kc-amber,#d97706) 75%,var(--kia-ink));}
+.kia-seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;border-radius:11px;background:var(--kia-surf2);}
+.kia-seg button{padding:7px 13px;border:0;border-radius:8px;background:none;color:var(--kia-ink2);font:inherit;font-size:13.5px;font-weight:550;cursor:pointer;}
+.kia-seg button.on{background:var(--kia-surf);color:var(--kia-ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.kia-row2{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;}
+.kia-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.kia-chip{padding:6px 12px;border:1px solid var(--kia-line);border-radius:99px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;font-size:13px;cursor:pointer;}
+.kia-chip.on{border-color:var(--kia-pri);background:color-mix(in srgb,var(--kia-pri) 9%,transparent);color:var(--kia-pri);font-weight:600;}
+.kia-lead{margin:0 0 14px;font-size:15px;line-height:1.5;}
+.kia-ais{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.kia-ai{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--kia-line);border-radius:14px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.kia-ai:hover{border-color:color-mix(in srgb,var(--c) 55%,var(--kia-line));box-shadow:0 6px 20px -12px color-mix(in srgb,var(--c) 70%,transparent);}
+.kia-ai>span:nth-child(2){flex:1;min-width:0;}
+.kia-ai b{display:block;font-size:15px;font-weight:620;}
+.kia-ai small{display:block;color:var(--kia-ink2);font-size:12.5px;}
+.kia-ai>.ms{color:var(--kia-ink2);font-size:18px;}
+.kia-ai.last{border-color:color-mix(in srgb,var(--c) 45%,var(--kia-line));}
+.kia-ai-dot{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:var(--c);color:#fff;font-weight:700;font-size:16px;}
+.kia-how{margin:16px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;}
+.kia-how li{display:flex;gap:12px;align-items:flex-start;padding:8px 0;font-size:14px;line-height:1.5;color:var(--kia-ink);}
+.kia-how li>span{flex:none;width:24px;height:24px;display:grid;place-items:center;border-radius:50%;background:var(--kia-surf2);color:var(--kia-ink2);font:600 12px var(--kc-mono,monospace);margin-top:1px;}
+.kia-how-pdf>span{background:color-mix(in srgb,var(--kia-pri) 12%,transparent)!important;color:var(--kia-pri)!important;}
+.kia-cp{font-size:16px!important;vertical-align:-3px;}
+.kia-tools{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:14px;}
+.kia-tools .btn .ms{font-size:17px;}
+.kia-see{flex-basis:100%;}
+.kia-see summary{display:inline-flex;align-items:center;gap:6px;color:var(--kia-ink2);font-size:13px;cursor:pointer;list-style:none;}
+.kia-see summary::-webkit-details-marker{display:none;}
+.kia-see summary .ms{font-size:17px;}
+.kia-see pre{max-height:220px;overflow:auto;margin:8px 0 0;padding:12px;border-radius:10px;background:var(--kia-surf2);font:12px/1.5 var(--kc-mono,monospace);white-space:pre-wrap;word-break:break-word;color:var(--kia-ink2);}
+.kia-paste{position:relative;}
+.kia-ta{width:100%;min-height:220px;resize:vertical;padding:14px 14px 44px;border:1px solid var(--kia-line);border-radius:14px;background:var(--kia-surf2);color:var(--kia-ink);font:12.5px/1.5 var(--kc-mono,ui-monospace,monospace);box-sizing:border-box;}
+.kia-ta:focus{outline:none;border-color:var(--kia-pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--kia-pri) 16%,transparent);background:var(--kia-surf);}
+.kia-pbtn{position:absolute;right:10px;bottom:12px;}
+.kia-check{display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--kia-surf2);color:var(--kia-ink2);font-size:14px;line-height:1.5;}
+.kia-check>.ms{flex:none;font-size:21px;}
+.kia-check ul{margin:6px 0 0;padding-left:18px;}
+.kia-check li{margin:2px 0;}
+.kia-check.ok{background:var(--kia-ok-s);color:var(--kia-ok-t);}
+.kia-check.err{background:var(--kia-ko-s);color:var(--kia-ko-t);}
+.kia-check.warn{background:color-mix(in srgb,var(--kc-amber,#d97706) 12%,transparent);color:color-mix(in srgb,var(--kc-amber,#d97706) 75%,var(--kia-ink));}
+
+/* ───── Lecteur ───── */
+.kia-play{min-height:100%;}
+.kia-ph{position:sticky;top:var(--kc-top,64px);z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px 8px;background:color-mix(in srgb,var(--kc-bg,var(--kia-surf)) 88%,transparent);backdrop-filter:blur(10px);}
+.kia-ph-t{flex:1;min-width:0;}
+.kia-ph-t small{display:block;color:var(--kia-ink2);font-size:12px;font-weight:550;}
+.kia-ph-t b{display:block;font-size:15px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kia-xp{display:inline-flex;align-items:center;gap:4px;padding:5px 10px 5px 7px;border-radius:99px;background:color-mix(in srgb,var(--kc-amber,#d97706) 13%,transparent);color:color-mix(in srgb,var(--kc-amber,#d97706) 80%,var(--kia-ink));font:600 13px var(--kc-mono,monospace);white-space:nowrap;}
+.kia-xp .ms{font-size:17px;}
+.kia-pbar{position:sticky;top:calc(var(--kc-top,64px) + 56px);z-index:5;display:flex;gap:4px;max-width:760px;margin:0 auto;padding:0 20px 6px;}
+.kia-pbar button{flex:1;height:5px;padding:0;border:0;border-radius:9px;background:var(--kia-line);cursor:pointer;transition:background .2s;}
+.kia-pbar button.done{background:var(--c);}
+.kia-pbar button.on{background:color-mix(in srgb,var(--c) 45%,var(--kia-line));box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 25%,transparent);}
+.kia-pm{max-width:760px;margin:0 auto;padding:18px 20px 110px;}
+.kia-step,.kia-intro,.kia-end{animation:kiaIn .28s ease both;}
+@keyframes kiaIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.kia-in{animation:kiaIn .28s ease both;}
+.kia-step-k{color:var(--c);font:600 12.5px var(--kc-mono,monospace);letter-spacing:.04em;text-transform:uppercase;}
+.kia-step-k span{color:var(--kia-ink2);}
+.kia-step h1,.kia-intro h1,.kia-end h1{margin:6px 0 16px;font-size:clamp(24px,3.6vw,32px);line-height:1.15;letter-spacing:-.025em;font-weight:700;}
+.kia-md{font-size:16.5px;line-height:1.7;color:var(--kia-ink);}
+.kia-md h2,.kia-md h3,.kia-md h4{margin:22px 0 8px;font-size:18px;letter-spacing:-.01em;line-height:1.3;}
+.kia-md h4{font-size:16px;}
+.kia-md p{margin:0 0 12px;}
+.kia-md ul,.kia-md ol{margin:0 0 12px;padding-left:22px;}
+.kia-md li{margin:4px 0;}
+.kia-md li.sub{margin-left:18px;list-style:circle;}
+.kia-md strong{font-weight:650;}
+.kia-md mark{background:color-mix(in srgb,var(--kc-amber,#f59e0b) 30%,transparent);color:inherit;border-radius:3px;padding:0 2px;}
+.kia-md blockquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid var(--c);background:var(--kia-surf2);border-radius:0 10px 10px 0;}
+.kia-md .kai-tbl{overflow-x:auto;margin:0 0 14px;border:1px solid var(--kia-line);border-radius:12px;}
+.kia-md table{width:100%;border-collapse:collapse;font-size:14.5px;}
+.kia-md th,.kia-md td{padding:8px 12px;border-bottom:1px solid var(--kia-line);text-align:left;vertical-align:top;}
+.kia-md th{background:var(--kia-surf2);font-weight:620;}
+.kia-md tr:last-child td{border-bottom:0;}
+.kia-md code{font-family:var(--kc-mono,monospace);font-size:.9em;}
+.kia-case{padding:16px 18px;border:1px solid var(--kia-line);border-radius:16px;background:var(--kia-surf);}
+.kia-case-h,.kia-keys-h{display:flex;align-items:center;gap:7px;margin-bottom:8px;color:var(--c);font-size:13px;font-weight:650;letter-spacing:.02em;text-transform:uppercase;}
+.kia-case-h .ms,.kia-keys-h .ms{font-size:18px;}
+.kia-case .kia-md{font-size:15.5px;}
+.kia-keys{margin:18px 0 0;padding:14px 18px;border-radius:14px;background:color-mix(in srgb,var(--c) 7%,var(--kia-surf));border:1px solid color-mix(in srgb,var(--c) 18%,transparent);}
+.kia-keys ul{margin:0;padding-left:20px;}
+.kia-keys li{margin:5px 0;font-size:15px;line-height:1.5;}
+.kia-after{margin-top:18px;padding:16px 18px;border-radius:14px;border:1px solid var(--kia-line);background:var(--kia-surf);}
+.kia-after .kia-md{font-size:15.5px;}
+.kia-check-h{display:flex;align-items:center;gap:8px;margin:30px 0 12px;font-size:17px;font-weight:650;letter-spacing:-.01em;}
+.kia-check-h .ms{color:var(--c);}
+.kia-check-h small{margin-left:auto;color:var(--kia-ink2);font:600 12.5px var(--kc-mono,monospace);}
+.kia-qs{display:flex;flex-direction:column;gap:12px;}
+.kia-q{padding:16px;border:1px solid var(--kia-line);border-radius:16px;background:var(--kia-surf);}
+.kia-q-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.kia-q-tag{padding:3px 8px;border-radius:7px;background:var(--kia-surf2);color:var(--kia-ink2);font-size:11.5px;font-weight:650;letter-spacing:.03em;text-transform:uppercase;}
+.kia-q-res{display:inline-flex;align-items:center;gap:4px;margin-left:auto;font-size:13px;font-weight:650;}
+.kia-q-res .ms{font-size:18px;}
+.kia-q-res.ok{color:var(--kia-ok-t);}
+.kia-q-res.ko{color:var(--kia-ko-t);}
+.kia-q-t{font-size:16px;font-weight:560;line-height:1.5;}
+.kia-q-t p{margin:0 0 6px;}
+.kia-opts,.kia-tf{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.kia-tf{flex-direction:row;}
+.kia-tf .kia-opt{flex:1;justify-content:center;}
+.kia-opt{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border:1px solid var(--kia-line);border-radius:12px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;font-size:15px;line-height:1.4;text-align:left;cursor:pointer;transition:border-color .12s,background .12s;}
+.kia-opt:not(:disabled):hover{border-color:color-mix(in srgb,var(--c) 50%,var(--kia-line));background:color-mix(in srgb,var(--c) 4%,var(--kia-surf));}
+.kia-opt>span:nth-child(2){flex:1;}
+.kia-tf .kia-opt>span:nth-child(2){flex:none;font-weight:600;}
+.kia-opt-l{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:8px;background:var(--kia-surf2);color:var(--kia-ink2);font:600 12.5px var(--kc-mono,monospace);}
+.kia-opt:disabled{cursor:default;}
+.kia-opt.right{border-color:var(--kia-ok);background:var(--kia-ok-s);color:var(--kia-ok-t);}
+.kia-opt.right .kia-opt-l{background:var(--kia-ok);color:#fff;}
+.kia-opt.wrong{border-color:var(--kia-ko);background:var(--kia-ko-s);color:var(--kia-ko-t);}
+.kia-opt.wrong .kia-opt-l{background:var(--kia-ko);color:#fff;}
+.kia-opt.dim{opacity:.55;}
+.kia-why{display:flex;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;background:var(--kia-surf2);font-size:14.5px;line-height:1.55;animation:kiaIn .25s ease both;}
+.kia-why>.ms{flex:none;color:var(--kc-amber,#d97706);font-size:19px;}
+.kia-why p{margin:0;}
+.kia-open{width:100%;margin:10px 0 8px;padding:11px 13px;border:1px solid var(--kia-line);border-radius:12px;background:var(--kia-surf2);color:var(--kia-ink);font:inherit;font-size:15px;line-height:1.5;resize:vertical;box-sizing:border-box;}
+.kia-open:focus{outline:none;border-color:var(--c);background:var(--kia-surf);}
+.kia-model{margin-top:4px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb,var(--kia-ok) 35%,transparent);background:var(--kia-ok-s);font-size:15px;line-height:1.55;animation:kiaIn .25s ease both;}
+.kia-model>b{display:block;margin-bottom:4px;color:var(--kia-ok-t);font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;}
+.kia-model p{margin:0 0 6px;}
+.kia-self{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:var(--kia-ink2);}
+.kia-self .btn .ms{font-size:17px;}
+.kia-nav{display:flex;align-items:center;gap:10px;margin-top:28px;padding-top:18px;border-top:1px solid var(--kia-line);}
+.kia-nav .btn .ms{font-size:18px;}
+.kia-left{color:var(--kia-ink2);font-size:13px;}
+.kia-big{padding:12px 22px;font-size:15.5px;}
+.kia-intro>p{margin:0 0 16px;color:var(--kia-ink2);font-size:16.5px;line-height:1.6;}
+.kia-intro h1{margin-top:14px;}
+.kia-facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px;}
+.kia-facts>span{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;background:var(--kia-surf2);color:var(--kia-ink2);font-size:13.5px;font-weight:550;}
+.kia-facts .ms{font-size:17px;}
+.kia-plan{margin:0;padding:0;list-style:none;border:1px solid var(--kia-line);border-radius:16px;background:var(--kia-surf);overflow:hidden;}
+.kia-plan li+li{border-top:1px solid var(--kia-line);}
+.kia-plan button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;background:none;color:var(--kia-ink);font:inherit;font-size:15px;text-align:left;cursor:pointer;}
+.kia-plan button:hover{background:var(--kia-surf2);}
+.kia-plan button>span:nth-child(2){flex:1;}
+.kia-plan small{color:var(--kia-ink2);font:500 12px var(--kc-mono,monospace);}
+.kia-plan-n{flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;border:1px solid var(--kia-line);font:600 12px var(--kc-mono,monospace);color:var(--kia-ink2);}
+.kia-plan li.done .kia-plan-n{border-color:transparent;background:var(--c);color:#fff;}
+.kia-plan-n .ms{font-size:15px;}
+.kia-end{text-align:center;}
+.kia-end>p{color:var(--kia-ink2);font-size:15.5px;margin:0 0 22px;}
+.kia-end>p b{color:var(--kia-ink);}
+.kia-ring{position:relative;width:132px;height:132px;margin:18px auto 6px;}
+.kia-ring svg{width:100%;height:100%;transform:rotate(-90deg);}
+.kia-ring circle{fill:none;stroke-width:9;}
+.kia-ring .bg{stroke:var(--kia-surf2);}
+.kia-ring .fg{stroke:var(--c);stroke-linecap:round;transition:stroke-dashoffset .9s cubic-bezier(.2,.8,.2,1);}
+.kia-ring>div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.kia-ring b{font-size:30px;font-weight:700;letter-spacing:-.03em;}
+.kia-ring small{color:var(--kia-ink2);font-size:12px;}
+.kia-sum{text-align:left;margin-bottom:18px;}
+.kia-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;text-align:left;}
+.kia-act{display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:2px;align-content:start;padding:14px;border:1px solid var(--kia-line);border-radius:14px;background:var(--kia-surf);color:var(--kia-ink);font:inherit;text-align:left;}
+button.kia-act{cursor:pointer;}
+button.kia-act:hover{border-color:color-mix(in srgb,var(--c) 50%,var(--kia-line));}
+.kia-act>.ms{grid-row:1/3;width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--c) 12%,transparent);color:var(--c);}
+.kia-act b{font-size:14.5px;font-weight:620;}
+.kia-act small{color:var(--kia-ink2);font-size:12.5px;line-height:1.4;}
+.kia-act-row,.kia-act .kia-done{grid-column:1/3;display:flex;gap:6px;margin-top:10px;}
+.kia-act-row .fi{flex:1;min-width:0;}
+.kia-done{align-items:center;color:var(--kia-ok-t);font-size:13.5px;font-weight:600;}
+.kia-done .ms{font-size:18px;}
+.kia-end .kia-nav{text-align:left;}
+
+/* ───── Petits écrans ───── */
+@media (max-width:820px){
+  .kia-kinds{grid-template-columns:repeat(2,1fr);}
+  .kia-row2{grid-template-columns:1fr;gap:0;}
+}
+@media (max-width:560px){
+  .kia-wrap{padding:8px 16px 96px;}
+  .kia-kinds,.kia-dlg .kia-kinds{grid-template-columns:1fr;}
+  .kia-kind{padding:14px;flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:12px;}
+  .kia-kind-ic{margin:0;}
+  .kia-kind small{flex-basis:100%;}
+  .kia-flow{flex-direction:column;}
+  .kia-flow li+li::before{display:none;}
+  .kia-bg{padding:0;align-items:stretch;}
+  .kia-dlg{max-height:none;height:100%;border-radius:0;border:0;}
+  .kia-srcs{grid-template-columns:1fr;}
+  .kia-ais{grid-template-columns:1fr;}
+  .kia-steps li{font-size:0;gap:0;flex:none;}
+  .kia-steps li.on{font-size:13px;gap:8px;flex:1;}
+  .kia-pm{padding:12px 16px 110px;}
+  .kia-pbar{padding:0 16px 6px;}
+  .kia-md{font-size:16px;}
+  .kia-it-go{display:none;}
+  .kia-nav{flex-wrap:wrap;}
+  .kia-left{flex-basis:100%;order:-1;}
+}
+
+/* ───── Branchements ailleurs dans le site ───── */
+@media (min-width:901px){.kc-tiles:has(> :nth-child(5)){grid-template-columns:repeat(5,minmax(0,1fr));}}
+.kia-new{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--kc-primary,#2453d6) 12%,transparent);color:var(--kc-primary,#2453d6);font-size:11px;font-weight:650;vertical-align:2px;}

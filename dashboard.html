@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiné+ Dashboard</title>
+<link rel="stylesheet" href="dashboard.css">
+
+<!-- Apply saved theme before paint (no flash) -->
+<script>
+(function(){
+  const saved = localStorage.getItem('kineplus.theme') || 'rose-noir';
+  const THEME_VARS = {
+    'rose-noir':   {'--bg':'#0a0608','--bg-elev':'#100a0d','--surface':'#161013','--surface-2':'#1c1418','--border':'rgba(255,255,255,0.07)','--border-strong':'rgba(255,255,255,0.14)','--text':'#f5ebef','--text-muted':'#a08a92','--text-soft':'rgba(255,255,255,0.4)','--accent':'#ec4f6c','--accent-2':'#f97373','--accent-soft':'rgba(236,79,108,0.18)','--accent-glow':'rgba(236,79,108,0.4)','--gold':'#d4af37','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'emeraude':    {'--bg':'#06100e','--bg-elev':'#0a1816','--surface':'#0e1c19','--surface-2':'#13241f','--border':'rgba(255,255,255,0.07)','--border-strong':'rgba(255,255,255,0.14)','--text':'#eaf4f0','--text-muted':'#8aa39b','--text-soft':'rgba(255,255,255,0.4)','--accent':'#2dd4bf','--accent-2':'#5eead4','--accent-soft':'rgba(45,212,191,0.15)','--accent-glow':'rgba(45,212,191,0.35)','--gold':'#d4af37','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'brume':       {'--bg':'#f4f6f5','--bg-elev':'#fafbfa','--surface':'#ffffff','--surface-2':'#eef2f1','--border':'rgba(15,30,28,0.08)','--border-strong':'rgba(15,30,28,0.18)','--text':'#0e1f1c','--text-muted':'#5b6e6a','--text-soft':'rgba(14,31,28,0.4)','--accent':'#0f766e','--accent-2':'#14b8a6','--accent-soft':'rgba(15,118,110,0.12)','--accent-glow':'rgba(15,118,110,0.25)','--gold':'#92400e','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'bordeaux':    {'--bg':'#f9f4ef','--bg-elev':'#fcf8f3','--surface':'#ffffff','--surface-2':'#f3ebe2','--border':'rgba(40,20,15,0.08)','--border-strong':'rgba(40,20,15,0.18)','--text':'#2a1812','--text-muted':'#7a6258','--text-soft':'rgba(42,24,18,0.4)','--accent':'#9f1239','--accent-2':'#be123c','--accent-soft':'rgba(159,18,57,0.10)','--accent-glow':'rgba(159,18,57,0.25)','--gold':'#92400e','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'aurora':      {'--bg':'#060818','--bg-elev':'#0a0e26','--surface':'rgba(20,24,52,0.5)','--surface-2':'rgba(30,34,68,0.5)','--border':'rgba(255,255,255,0.08)','--border-strong':'rgba(192,132,252,0.3)','--text':'#eef0ff','--text-muted':'#9aa0c8','--text-soft':'rgba(238,240,255,0.4)','--accent':'#c084fc','--accent-2':'#22d3ee','--accent-soft':'rgba(192,132,252,0.18)','--accent-glow':'rgba(192,132,252,0.45)','--gold':'#f0d56a','--display':"'Cormorant Garamond', serif",'--bg-pattern':'none'},
+    'verre':       {'--bg':'#0c1422','--bg-elev':'#101c32','--surface':'rgba(255,255,255,0.045)','--surface-2':'rgba(255,255,255,0.07)','--border':'rgba(255,255,255,0.10)','--border-strong':'rgba(255,255,255,0.20)','--text':'#eaf3ff','--text-muted':'#8fa3bd','--text-soft':'rgba(234,243,255,0.4)','--accent':'#7dd3fc','--accent-2':'#a5b4fc','--accent-soft':'rgba(125,211,252,0.15)','--accent-glow':'rgba(125,211,252,0.35)','--gold':'#f0d56a','--display':"'Playfair Display', serif",'--bg-pattern':'radial-gradient(circle at 15% 20%, rgba(125,211,252,0.15), transparent 40%), radial-gradient(circle at 85% 70%, rgba(165,180,252,0.12), transparent 40%)'},
+    'pastel':      {'--bg':'#fbf6f9','--bg-elev':'#fdf9fc','--surface':'#ffffff','--surface-2':'#f3edf5','--border':'rgba(60,30,80,0.06)','--border-strong':'rgba(60,30,80,0.14)','--text':'#2d1b3d','--text-muted':'#7a6a8c','--text-soft':'rgba(45,27,61,0.4)','--accent':'#a78bfa','--accent-2':'#f0abfc','--accent-soft':'rgba(167,139,250,0.14)','--accent-glow':'rgba(167,139,250,0.3)','--gold':'#92400e','--display':"'Playfair Display', serif",'--bg-pattern':'none'},
+    'royal':       {'--bg':'#0a1326','--bg-elev':'#0e1a35','--surface':'#13203f','--surface-2':'#192b50','--border':'rgba(212,175,55,0.10)','--border-strong':'rgba(212,175,55,0.30)','--text':'#f4eed8','--text-muted':'#a09a78','--text-soft':'rgba(244,238,216,0.4)','--accent':'#d4af37','--accent-2':'#f0d56a','--accent-soft':'rgba(212,175,55,0.14)','--accent-glow':'rgba(212,175,55,0.35)','--gold':'#f0d56a','--display':"'Cormorant Garamond', serif",'--bg-pattern':'none'},
+    'foret':       {'--bg':'#0a140e','--bg-elev':'#0e1c14','--surface':'#13241c','--surface-2':'#192e23','--border':'rgba(255,255,255,0.06)','--border-strong':'rgba(132,204,22,0.25)','--text':'#eaf3e8','--text-muted':'#8ba38f','--text-soft':'rgba(234,243,232,0.4)','--accent':'#84cc16','--accent-2':'#bef264','--accent-soft':'rgba(132,204,22,0.14)','--accent-glow':'rgba(132,204,22,0.35)','--gold':'#d4af37','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'brutaliste':  {'--bg':'#f0eee9','--bg-elev':'#f5f3ee','--surface':'#ffffff','--surface-2':'#f0eee9','--border':'#0a0a0a','--border-strong':'#0a0a0a','--text':'#0a0a0a','--text-muted':'#3a3a3a','--text-soft':'rgba(10,10,10,0.4)','--accent':'#0a0a0a','--accent-2':'#facc15','--accent-soft':'#facc15','--accent-glow':'rgba(250,204,21,0.55)','--gold':'#0a0a0a','--display':"'Space Grotesk', sans-serif",'--bg-pattern':'none'},
+    'mocha':       {'--bg':'#f4ebe0','--bg-elev':'#f8f1e6','--surface':'#fdf8f0','--surface-2':'#ede1d0','--border':'rgba(60,30,10,0.10)','--border-strong':'rgba(60,30,10,0.22)','--text':'#3b2415','--text-muted':'#8a6f55','--text-soft':'rgba(59,36,21,0.4)','--accent':'#92400e','--accent-2':'#c2410c','--accent-soft':'rgba(146,64,14,0.10)','--accent-glow':'rgba(146,64,14,0.25)','--gold':'#92400e','--display':"'Fraunces', serif",'--bg-pattern':'none'},
+    'neon':        {'--bg':'#0a0118','--bg-elev':'#13042a','--surface':'#190736','--surface-2':'#220a45','--border':'rgba(255,0,170,0.15)','--border-strong':'rgba(255,0,170,0.45)','--text':'#fbeaff','--text-muted':'#a78bba','--text-soft':'rgba(251,234,255,0.4)','--accent':'#ff2db8','--accent-2':'#22d3ee','--accent-soft':'rgba(255,45,184,0.16)','--accent-glow':'rgba(255,45,184,0.55)','--gold':'#22d3ee','--display':"'Space Grotesk', sans-serif",'--bg-pattern':'none'},
+  };
+  const vars = THEME_VARS[saved] || THEME_VARS['rose-noir'];
+  const root = document.documentElement;
+  Object.entries(vars).forEach(([k,v]) => root.style.setProperty(k, v));
+  if (saved === 'brutaliste') document.documentElement.classList.add('brutaliste-pre');
+  if (saved === 'verre') document.documentElement.classList.add('glass-pre');
+})();
+</script>
+</head>
+<body>
+
+<!-- Particles canvas -->
+<canvas id="particles"></canvas>
+
+<!-- Custom cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- ── APP SHELL ────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Logo -->
+    <a class="sidebar-logo" href="#">
+      <div class="sidebar-logo-icon">
+        <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 3C10.5 3 7 5.5 7 9.5c0 2.5 1.5 4.5 3.5 6L14 18l3.5-2.5C19.5 14 21 12 21 9.5 21 5.5 17.5 3 14 3z" fill="currentColor" opacity="0.85"/>
+          <path d="M14 18l-3.5 2.5C8.5 22 8 23 8 24.5h12C20 23 19.5 22 17.5 20.5L14 18z" fill="currentColor" opacity="0.5"/>
+          <rect x="13" y="8" width="2" height="7" rx="1" fill="white" opacity="0.9"/>
+          <rect x="10.5" y="10.5" width="7" height="2" rx="1" fill="white" opacity="0.9"/>
+        </svg>
+      </div>
+      <div class="sidebar-logo-text">
+        <span class="sidebar-logo-name">Kiné<em>+</em></span>
+        <span class="sidebar-logo-sub">STUDY · K2</span>
+      </div>
+    </a>
+
+    <!-- Profile Pill -->
+    <div class="profile-pill">
+      <div class="profile-avatar">S</div>
+      <div class="profile-info">
+        <div class="profile-name">Samiche</div>
+        <div class="profile-streak">🔥 29 jours de série</div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+      <button class="nav-item active">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>
+        Tableau de bord
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l1.5 3 3.5.5-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-.5L8 2z"/></svg>
+        S'entraîner
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h5v10H2zM9 3h5v10H9z"/></svg>
+        Mes matières
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v4l2.5 1.5"/></svg>
+        Partiels
+      </button>
+      <div class="nav-divider"></div>
+      <button class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a5 5 0 100 10A5 5 0 008 1z"/><path d="M3.5 13.5s1-2 4.5-2 4.5 2 4.5 2"/></svg>
+        Profil
+      </button>
+      <button class="nav-item">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+        Paramètres
+      </button>
+    </nav>
+
+    <!-- Deadline Card -->
+    <div class="deadline-card">
+      <div class="deadline-label">Prochaine échéance</div>
+      <div class="deadline-title">Concours blanc kiné</div>
+      <div class="deadline-days">41 <span>jours</span></div>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN ───────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Header -->
+    <header class="top-header">
+      <button class="theme-pill" id="theme-pill" onclick="openThemeSelector()" title="Changer de thème" aria-label="Changer de thème"></button>
+      <button class="icon-btn" title="Profil" aria-label="Profil">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1a3 3 0 100 6A3 3 0 008 1z"/><path d="M2 14s1-3 6-3 6 3 6 3"/></svg>
+      </button>
+      <button class="icon-btn" title="Statistiques" aria-label="Statistiques">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="11" y="2" width="3" height="12" rx="1"/></svg>
+      </button>
+      <button class="icon-btn" title="Paramètres" aria-label="Paramètres">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+      </button>
+      <button class="icon-btn" title="Réduire" aria-label="Réduire">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10l5-5 5 5"/></svg>
+      </button>
+    </header>
+
+    <!-- Page Content -->
+    <div class="page-content">
+
+      <!-- ── GREETING ──────────────────────────────────── -->
+      <section class="greeting">
+        <h1>Bonjour Samiche,<br>on continue <span class="gradient-text">brillamment</span><span class="dot">.</span></h1>
+        <p class="greeting-sub">Tes révisions sont bien engagées — 29 jours d'affilée, continue sur cette lancée.</p>
+      </section>
+
+      <!-- ── HERO CARD ─────────────────────────────────── -->
+      <section>
+        <div class="hero-card card" id="hero-card">
+          <div class="hero-glow-blob"></div>
+          <div class="hero-left">
+            <div class="hero-badge">
+              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4.5"/><path d="M6 3.5v3l1.5 1"/></svg>
+              Révision programmée
+            </div>
+            <div class="hero-title">Physiologie articulaire — FEC</div>
+            <div class="hero-desc">22 questions à maturité · 8 difficiles identifiées. Session estimée à 18 min.</div>
+            <div class="hero-meta">
+              <span>Physiologie</span>
+              <span>·</span>
+              <div class="hero-meta-chip">⏱ 17:12 passées aujourd'hui</div>
+            </div>
+          </div>
+          <div class="hero-right">
+            <button class="btn-primary">
+              <svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="4,2 13,7.5 4,13"/></svg>
+              Réviser maintenant
+            </button>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--text-muted);">22 questions · ~18 min</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── STATS ROW ──────────────────────────────────── -->
+      <section>
+        <div class="stat-row">
+
+          <!-- Card 1 — Objectif du jour -->
+          <div class="stat-card card glow">
+            <div class="stat-label">Objectif du jour</div>
+            <div class="stat-ring-row">
+              <div class="ring-wrap">
+                <svg id="ring-svg" viewBox="0 0 84 84">
+                  <defs>
+                    <linearGradient id="ring-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="var(--accent)"/>
+                      <stop offset="100%" stop-color="var(--accent-2)"/>
+                    </linearGradient>
+                  </defs>
+                  <circle class="ring-bg" cx="42" cy="42" r="34"/>
+                  <circle class="ring-fill" cx="42" cy="42" r="34"/>
+                </svg>
+                <div class="ring-pct">72%</div>
+              </div>
+              <div>
+                <div class="ring-info">25 questions<br>restantes</div>
+                <div class="ring-meta">sur 90 aujourd'hui</div>
+                <div class="ring-chip">⏱ 17:12 passées</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2 — Série -->
+          <div class="stat-card card glow">
+            <div class="stat-label">
+              Série
+              <span class="stat-icon-accent">
+                <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1c-.5 2-2 3.5-2 5.5a2 2 0 004 0C10 4.5 8.5 3 8 1zM5 9c-1.5 1-2 2.5-2 4h10c0-1.5-.5-3-2-4-1 1.5-3 2-3 2S6 10.5 5 9z"/></svg>
+              </span>
+            </div>
+            <div class="stat-big">29 <span class="stat-big-unit">jours</span></div>
+            <div class="stat-quote">"La régularité bat l'intensité."</div>
+            <div class="bars-7day" id="bars-7day"></div>
+          </div>
+
+          <!-- Card 3 — Maîtrise -->
+          <div class="stat-card card glow">
+            <div class="stat-label">
+              <span style="display:flex;align-items:center;gap:5px">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span>
+                Maîtrise
+              </span>
+            </div>
+            <div class="mastery-pct">46 <span class="mastery-pct-unit">%</span></div>
+            <div class="mastery-sub">918 / 1977 questions maîtrisées</div>
+            <div class="mastery-bar-wrap">
+              <div class="mastery-bar-track">
+                <div class="mastery-bar-fill" style="width:0%" id="mastery-fill"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── AI RECOMMENDATIONS ─────────────────────────── -->
+      <section>
+        <div class="section-header">
+          <div class="section-kicker"><span class="kicker-dot"></span> Studio IA</div>
+          <h2 class="section-title">Recommandations personnalisées</h2>
+          <p class="section-sub">Trois sessions ciblées calculées sur tes 7 derniers jours.</p>
+        </div>
+        <div class="reco-grid">
+
+          <div class="reco-card card">
+            <div class="reco-top">
+              <div class="reco-pill">
+                <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="5.5" y1="2" x2="5.5" y2="9"/><line x1="2" y1="5.5" x2="9" y2="5.5"/></svg>
+                Ciblé
+              </div>
+              <span class="reco-num">01</span>
+            </div>
+            <div class="reco-title">Lombalgies chroniques</div>
+            <div class="reco-desc">Tu rates 38% des questions sur ce sujet. Ce module cible tes erreurs les plus récentes pour combler les lacunes rapidement.</div>
+            <div class="reco-footer">
+              <span class="reco-meta">12 questions · ~9 min</span>
+              <span class="reco-arrow"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7h10M8 3l4 4-4 4"/></svg></span>
+            </div>
+          </div>
+
+          <div class="reco-card card">
+            <div class="reco-top">
+              <div class="reco-pill">
+                <svg viewBox="0 0 11 11" fill="currentColor"><path d="M5.5 1l1 3h3l-2.5 2 1 3-2.5-2-2.5 2 1-3L1.5 4h3z"/></svg>
+                À chaud
+              </div>
+              <span class="reco-num">02</span>
+            </div>
+            <div class="reco-title">Anatomie de l'épaule</div>
+            <div class="reco-desc">Maturation proche — ces questions ont atteint l'intervalle idéal de révision. C'est le bon moment pour les ancrer durablement.</div>
+            <div class="reco-footer">
+              <span class="reco-meta">8 questions · ~5 min</span>
+              <span class="reco-arrow"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7h10M8 3l4 4-4 4"/></svg></span>
+            </div>
+          </div>
+
+          <div class="reco-card card">
+            <div class="reco-top">
+              <div class="reco-pill">
+                <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 1l.8 2.5H9l-2 1.5.8 2.5-2.3-1.7-2.3 1.7.8-2.5-2-1.5h2.7L5.5 1z"/></svg>
+                Défi
+              </div>
+              <span class="reco-num">03</span>
+            </div>
+            <div class="reco-title">Cas cliniques complexes</div>
+            <div class="reco-desc">Niveau supérieur disponible — tes performances récentes te permettent d'aborder des cas pluripathologiques plus exigeants.</div>
+            <div class="reco-footer">
+              <span class="reco-meta">6 cas · ~18 min</span>
+              <span class="reco-arrow"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7h10M8 3l4 4-4 4"/></svg></span>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── S'ENTRAÎNER ────────────────────────────────── -->
+      <section>
+        <div class="section-header">
+          <div class="section-kicker"><span class="kicker-dot"></span> Pratique</div>
+          <h2 class="section-title">S'entraîner</h2>
+        </div>
+        <div class="train-grid">
+
+          <div class="train-card card">
+            <div class="train-icon accent">
+              <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2L4 13h7l-2 7 9-11h-7l2-7z"/></svg>
+            </div>
+            <div class="train-body">
+              <div class="train-tag">Conseillé</div>
+              <div class="train-title">Flash rapide</div>
+              <div class="train-desc">10 questions aléatoires · ~5 min · idéal pour démarrer</div>
+            </div>
+            <div class="train-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></div>
+          </div>
+
+          <div class="train-card card">
+            <div class="train-icon neutral">
+              <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M7 11h8M11 7v8"/></svg>
+            </div>
+            <div class="train-body">
+              <div class="train-title">Tout mélangé</div>
+              <div class="train-desc">Toutes tes questions dans un ordre aléatoire</div>
+            </div>
+            <div class="train-arrow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── PROGRESSION ────────────────────────────────── -->
+      <section>
+        <div class="section-header">
+          <div class="section-kicker"><span class="kicker-dot"></span> Progression</div>
+          <h2 class="section-title">Ta lancée</h2>
+        </div>
+        <div class="bottom-row">
+
+          <!-- Streak Heatmap -->
+          <div class="streak-chart-card">
+            <div class="streak-header">
+              <div class="streak-header-left">
+                <div class="streak-stat-label">Série · 14 semaines</div>
+                <div class="streak-big">1&thinsp;423</div>
+                <div class="streak-big-sub">questions répondues sur la période</div>
+              </div>
+              <div class="heatmap-legend">
+                <span>Moins</span>
+                <div class="heatmap-swatch" style="--intensity:10%"></div>
+                <div class="heatmap-swatch" style="--intensity:30%"></div>
+                <div class="heatmap-swatch" style="--intensity:60%"></div>
+                <div class="heatmap-swatch" style="--intensity:90%"></div>
+                <span>Plus</span>
+              </div>
+            </div>
+            <div class="heatmap-grid" id="heatmap-grid"></div>
+            <div class="streak-footer">
+              <div class="streak-footer-stat">
+                <div class="streak-footer-val">29</div>
+                <div class="streak-footer-key">Jours actuels</div>
+              </div>
+              <div class="streak-footer-stat">
+                <div class="streak-footer-val">41</div>
+                <div class="streak-footer-key">Record</div>
+              </div>
+              <div class="streak-footer-stat">
+                <div class="streak-footer-val">87%</div>
+                <div class="streak-footer-key">Jours actifs</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="achievements-card">
+            <div class="achievements-header">
+              <span class="card-label">Badges · 3 / 12</span>
+              <span class="card-link">Voir tout</span>
+            </div>
+            <div class="badges-row">
+              <div class="badge-item unlocked" title="7 jours de série">
+                <span class="badge-icon">🔥</span>
+                <span class="badge-name">7 jours</span>
+              </div>
+              <div class="badge-item unlocked" title="21 jours de série">
+                <span class="badge-icon">⚡</span>
+                <span class="badge-name">21 jours</span>
+              </div>
+              <div class="badge-item unlocked" title="500 questions">
+                <span class="badge-icon">★</span>
+                <span class="badge-name">500 Q</span>
+              </div>
+              <div class="badge-item locked" title="Session parfaite">
+                <span class="badge-icon">◆</span>
+                <span class="badge-name">100%</span>
+              </div>
+              <div class="badge-item locked" title="1000 questions">
+                <span class="badge-icon">✦</span>
+                <span class="badge-name">1000 Q</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaderboard -->
+          <div class="leaderboard-card">
+            <div class="leaderboard-header">
+              <div class="leaderboard-title">
+                <svg viewBox="0 0 13 13" fill="currentColor"><path d="M6.5 1L8 4.5h4l-3 2.5 1 4-3.5-2-3.5 2 1-4L1 4.5h4L6.5 1z"/></svg>
+                Classement · Promo K2
+              </div>
+              <span class="leaderboard-week">Sem. 24</span>
+            </div>
+            <div class="leaderboard-list">
+              <div class="leaderboard-row">
+                <span class="lb-rank gold">1</span>
+                <div class="lb-avatar">M</div>
+                <span class="lb-name">Mélanie R.</span>
+                <span class="lb-score">2 847</span>
+              </div>
+              <div class="leaderboard-row">
+                <span class="lb-rank gold" style="color:var(--text-muted)">2</span>
+                <div class="lb-avatar me">S</div>
+                <span class="lb-name me">Samiche</span>
+                <span class="lb-score">2 631</span>
+              </div>
+              <div class="leaderboard-row">
+                <span class="lb-rank">3</span>
+                <div class="lb-avatar">T</div>
+                <span class="lb-name">Thomas B.</span>
+                <span class="lb-score">2 410</span>
+              </div>
+              <div class="leaderboard-row">
+                <span class="lb-rank">4</span>
+                <div class="lb-avatar">L</div>
+                <span class="lb-name">Léa M.</span>
+                <span class="lb-score">2 188</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div><!-- /page-content -->
+  </main>
+
+</div><!-- /app -->
+
+<!-- ── THEME SELECTOR MODAL ─────────────────────────────── -->
+<div class="modal-overlay" id="theme-modal" role="dialog" aria-modal="true" aria-label="Sélecteur de thèmes">
+  <div class="modal-container">
+    <div class="modal-header">
+      <div class="modal-kicker"><span class="kicker-dot"></span> Système de thèmes</div>
+      <h2 class="modal-title">Choisis ton ambiance</h2>
+      <p class="modal-sub">12 univers pensés pour la révision. Hover pour prévisualiser, clic pour appliquer.</p>
+      <button class="modal-close" onclick="closeThemeSelector()" aria-label="Fermer">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l10 10M13 3L3 13"/></svg>
+      </button>
+    </div>
+    <div class="theme-grid" id="theme-grid"></div>
+  </div>
+</div>
+
+<!-- ── SCRIPTS ──────────────────────────────────────────── -->
+<script src="js/themes.js"></script>
+<script src="js/effects.js"></script>
+<script>
+
+/* ── THEME SELECTOR ─────────────────────────────────────── */
+
+function buildThemeGrid() {
+  const grid = document.getElementById('theme-grid');
+  if (!grid) return;
+  const active = getSavedTheme();
+
+  grid.innerHTML = THEMES.map(theme => {
+    const v = theme.vars;
+    const isActive = theme.id === active;
+    const fontStyle = `font-family:${v['--display']};`;
+
+    return `
+      <button class="theme-tile ${isActive ? 'active' : ''}" data-theme="${theme.id}"
+        onclick="onTileClick(event, '${theme.id}')"
+        style="${isActive ? `border-color:${v['--accent']};box-shadow:0 0 0 4px ${v['--accent-soft']},0 20px 40px -10px rgba(0,0,0,0.4);` : ''}">
+
+        <!-- Preview -->
+        <div class="tile-preview" style="background:${v['--bg']};${v['--bg-pattern'] && v['--bg-pattern'] !== 'none' ? 'background-image:' + v['--bg-pattern'] + ';background-color:' + v['--bg'] + ';' : ''}">
+
+          <!-- Active check -->
+          <div class="tile-active-check" style="background:${v['--accent']}">
+            <svg viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2"><path d="M2 6l3 3 5-5"/></svg>
+          </div>
+
+          <!-- Mini Hero -->
+          <div class="tile-mini-hero"
+            style="background:linear-gradient(135deg,color-mix(in srgb,${v['--accent']} 18%,${v['--surface']}) 0%,${v['--surface']} 60%);border:1px solid ${v['--border']};border-radius:8px;padding:8px 10px;">
+            <div class="tile-mini-hero-badge"
+              style="background:color-mix(in srgb,${v['--accent']} 12%,transparent);border:1px solid color-mix(in srgb,${v['--accent']} 30%,transparent);color:${v['--accent']};font-size:7px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:4px">
+              RÉVISION
+            </div>
+            <div style="color:${v['--text']};font-size:11px;font-weight:600;${fontStyle}line-height:1.2">FEC · Physiologie</div>
+            <div style="display:inline-block;margin-top:4px;background:${v['--accent']};color:#fff;font-size:8px;font-weight:600;padding:2px 8px;border-radius:999px">Réviser →</div>
+          </div>
+
+          <!-- Mini Stats -->
+          <div class="tile-mini-stats">
+            ${['OBJ. 72%','SÉR. 29','MAÎT. 46%'].map(s => `
+              <div class="tile-mini-stat" style="background:${v['--surface']};border:1px solid ${v['--border']};border-radius:6px;padding:5px 6px;flex:1">
+                <div style="color:${v['--text']};font-size:10px;font-weight:700;${fontStyle}">${s.split(' ')[1]}</div>
+                <div style="color:${v['--text-muted']};font-size:6px;text-transform:uppercase;letter-spacing:.06em;opacity:.8">${s.split(' ')[0]}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="tile-footer" style="background:${v['--surface']};border-top:1px solid ${v['--border']}">
+          <span class="tile-name" style="color:${v['--text']};${theme.brutaliste ? 'text-transform:uppercase;font-size:10px;' : ''}">${theme.name}</span>
+          <span class="tile-blurb" style="color:${v['--text-muted']}">${theme.blurb}</span>
+          <div class="tile-swatches">
+            <div class="tile-swatch" style="background:${v['--accent']}"></div>
+            <div class="tile-swatch" style="background:${v['--accent-2']}"></div>
+            <div class="tile-swatch" style="background:${v['--bg']}"></div>
+          </div>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
+
+function onTileClick(event, themeId) {
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  applyTheme(themeId, x, y);
+  // update tile borders
+  document.querySelectorAll('.theme-tile').forEach(tile => {
+    const t = THEMES.find(t => t.id === tile.dataset.theme);
+    if (!t) return;
+    if (tile.dataset.theme === themeId) {
+      tile.style.borderColor = t.vars['--accent'];
+      tile.style.boxShadow = `0 0 0 4px ${t.vars['--accent-soft']},0 20px 40px -10px rgba(0,0,0,0.4)`;
+      tile.style.borderWidth = '2px';
+    } else {
+      tile.style.borderColor = '';
+      tile.style.boxShadow = '';
+      tile.style.borderWidth = '';
+    }
+  });
+}
+
+function openThemeSelector() {
+  buildThemeGrid();
+  const modal = document.getElementById('theme-modal');
+  modal.classList.add('open');
+}
+
+function closeThemeSelector() {
+  document.getElementById('theme-modal').classList.remove('open');
+}
+
+// Close on overlay click
+document.getElementById('theme-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeThemeSelector();
+});
+
+// Close on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeThemeSelector();
+});
+
+/* ── INIT ────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  // Apply full theme (particles etc)
+  const saved = getSavedTheme();
+  const theme = THEMES.find(t => t.id === saved);
+
+  // Theme pill gradient
+  const pill = document.getElementById('theme-pill');
+  if (pill && theme) {
+    pill.style.background = `linear-gradient(135deg, ${theme.vars['--accent']}, ${theme.vars['--accent-2']})`;
+  }
+
+  // Mastery bar animation
+  setTimeout(() => {
+    const fill = document.getElementById('mastery-fill');
+    if (fill) fill.style.width = '46%';
+  }, 300);
+
+  // Nav active state
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', function() {
+      document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+});
+
+</script>
+</body>
+</html>

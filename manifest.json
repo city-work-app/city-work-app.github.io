@@ -1,0 +1,16 @@
+{
+  "name": "City Work",
+  "short_name": "City Work",
+  "description": "Application de révision QCM pour kinésithérapie",
+  "display": "standalone",
+  "orientation": "portrait",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#004d75",
+  "background_color": "#004d75",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "apple touch icon" }
+  ]
+}

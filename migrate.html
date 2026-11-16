@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Migration</title></head>
+<body>
+<h2>Migration des données</h2>
+<p id="status">Chargement...</p>
+<script>
+const keys = ['kcu_f','kcu_sf','kcu_c','kcu_q','kcu_s','kcu_diff','kcu_goal','kcu_boycott'];
+const data = {};
+let found = 0;
+keys.forEach(k => {
+  const v = localStorage.getItem(k);
+  if (v) { data[k] = v; found++; }
+});
+if (found > 0) {
+  document.getElementById('status').innerHTML = `✅ ${found} clés trouvées ! <a href="http://localhost:8080/files/migrate.html">Clique ici pour importer sur localhost</a>`;
+  localStorage.setItem('MIGRATION_DATA', JSON.stringify(data));
+} else {
+  const mig = localStorage.getItem('MIGRATION_DATA');
+  if (mig) {
+    const d = JSON.parse(mig);
+    Object.entries(d).forEach(([k,v]) => localStorage.setItem(k,v));
+    localStorage.removeItem('MIGRATION_DATA');
+    document.getElementById('status').innerHTML = '✅ Données importées ! <a href="http://localhost:8080/files/">Aller sur Kiné+</a>';
+  } else {
+    document.getElementById('status').textContent = 'Aucune donnée trouvée.';
+  }
+}
+</script>
+</body>
+</html>

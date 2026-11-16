@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://city-work-app.github.io/sitemap.xml
