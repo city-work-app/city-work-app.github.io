@@ -33,7 +33,7 @@ const save=o=>{try{localStorage.setItem(KEY,JSON.stringify(o));localStorage.setI
 const BLOCKS=[
   {id:'goal',n:'Objectif du jour',ic:'flag',size:'L'},
   {id:'progress',n:'Progression & série',ic:'trending_up',size:'S'},
-  {id:'modes',n:'Raccourcis (Flash, Annales, Survie, Flashcards)',ic:'bolt',size:'F'},
+  {id:'modes',n:'Raccourcis',ic:'bolt',size:'F'},
   {id:'activity',n:'Activité',ic:'bar_chart',size:'L'},
   {id:'weak',n:'À renforcer',ic:'my_location',size:'S'},
   {id:'agenda',n:'Prochaines révisions',ic:'event_upcoming',size:'L'},
@@ -325,7 +325,7 @@ function homeUI(){
     <div class="kl-list" data-list="home">${c.map(x=>{const B=BLOCKS.find(b=>b.id===x.id);return `<div class="kl-item${x.hide?' off':''}" data-id="${x.id}">
       <button class="kl-grip" aria-label="Déplacer"><span class="ms">drag_indicator</span></button>
       <span class="kl-ic"><span class="ms">${B.ic}</span></span>
-      <div class="kl-main"><b>${esc(B.n)}</b><div class="kl-seg">${SIZES.map(([v,l])=>`<button class="${x.size===v&&!x.w?'on':''}" data-a="size" data-v="${v}">${l}</button>`).join('')}${x.w?`<i class="kl-wtag" title="Largeur réglée à la souris">${x.w}/12</i>`:''}</div></div>
+      <div class="kl-main"><b>${esc(B.n)}</b>${x.id==='modes'?'<button class="kl-pick" data-a="modes"><span class="ms">tune</span>Choisir les raccourcis (0 à 8)</button>':''}<div class="kl-seg">${SIZES.map(([v,l])=>`<button class="${x.size===v&&!x.w?'on':''}" data-a="size" data-v="${v}">${l}</button>`).join('')}${x.w?`<i class="kl-wtag" title="Largeur réglée à la souris">${x.w}/12</i>`:''}</div></div>
       <button class="kl-eye" data-a="hide" title="${x.hide?'Afficher':'Cacher'}"><span class="ms">${x.hide?'visibility_off':'visibility'}</span></button></div>`;}).join('')}</div>
     <div class="kl-sep"></div>
     <button class="kl-link" data-a="wx"><span class="ms">partly_cloudy_day</span><span><b>Météo de ma ville</b><small>Le vrai ciel et le vrai temps de chez toi sur la carte « Ma ville »</small></span><span class="ms">chevron_right</span></button>
@@ -365,6 +365,7 @@ function onClick(e){
   const a=b.dataset.a,item=b.closest('.kl-item'),id=item&&item.dataset.id;
   if(a==='close'){close();return;}
   if(a==='direct'){kcHomeEdit(true);return;}
+  if(a==='modes'){if(window.kcShortcutsPick)kcShortcutsPick();return;}
   if(a==='size'||a==='hide'){const c=homeCfg(),x=c.find(y=>y.id===id);if(!x)return;if(a==='size'){x.size=b.dataset.v;delete x.w;}else x.hide=!x.hide;setCfg('home',c);draw();return;}
   if(a==='tbput'){if(tbAdd(b.dataset.id))draw();return;}
   if(a==='tbrm'){tbRemove(id);draw();return;}
@@ -398,6 +399,7 @@ function decorate(){
     if(!cv){cv=document.createElement('div');cv.className='kh-ecover';el.appendChild(cv);}
     cv.innerHTML=`<div class="kh-ebar"><span class="kh-egrip"><span class="ms">drag_indicator</span><b>${esc(blkName(c.id))}</b></span>
       <span class="kh-eseg">${SIZES.map(([v,l])=>`<button type="button" class="${c.size===v&&!c.w?'on':''}" data-e="size" data-v="${v}" title="${l}">${v==='S'?'Petit':v==='L'?'Large':'Plein'}</button>`).join('')}</span>
+      ${c.id==='modes'?'<button type="button" class="kh-eeye kh-epick" data-e="modes" title="Choisir les raccourcis (0 à 8)"><span class="ms">tune</span><span>Choisir</span></button>':''}
       <button type="button" class="kh-eeye" data-e="hide" title="${c.hide?'Afficher':'Cacher'}"><span class="ms">${c.hide?'visibility_off':'visibility'}</span></button></div>
       ${c.hide?'<span class="kh-ehid">Caché</span>':''}
       <i class="kh-rz kh-rz-e" data-rz="e" title="Tire pour régler la largeur (double-clic : taille d’origine)"></i>
@@ -642,6 +644,7 @@ document.addEventListener('click',e=>{
     const a=b.dataset.e,blk=b.closest('.kh-blk');
     if(a!=='tbadd'&&a!=='tbput'&&a!=='space'&&a!=='spreset')closePop();
     if(a==='size'||a==='hide'){const c=homeCfg(),x=c.find(y=>y.id===blk.dataset.blk);if(!x)return;if(a==='size'){x.size=b.dataset.v;delete x.w;}else x.hide=!x.hide;const o=load();o.home=c;save(o);applyHome();decorate();}
+    else if(a==='modes'){if(window.kcShortcutsPick)kcShortcutsPick();}
     else if(a==='done')kcHomeEdit(false);
     else if(a==='more'){kcHomeEdit(false);open('nav');}
     else if(a==='reset'){const o=load();delete o.home;delete o.homeGap;delete o.homeMax;delete o.nav;delete o.top;save(o);document.body.classList.remove('kc-nav-right');applyAll();decorate();if(typeof showNotif==='function')showNotif('Mise en page d’origine remise','ok');}

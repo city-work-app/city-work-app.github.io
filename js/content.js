@@ -3084,6 +3084,7 @@ document.addEventListener('keydown', e=>{
   }
 
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable)return;
+  if(document.getElementById('kc-dlg'))return; /* v71 : une fenêtre est ouverte (ex. « Boycotter cette question ? ») */
 
   // Flashcard : Espace = flip, ← → = navigation
   if(document.body.dataset.screen==='concept-fc'){

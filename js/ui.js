@@ -1065,7 +1065,7 @@ function _renderExamFolderPicker(){
 
 function getAccent(){const a=localStorage.getItem('kp_accent');return a==='custom'||ACCENTS.some(x=>x.id===a)?a:'bleu';}
 // ── Personnalisation (15 nov. 2026) : fond, police, taille, cartes, animations, mode auto ──
-const LOOK_DEFAULTS={bg:'neutre',font:'geist',size:'100',cards:'filet',motion:'normal'};
+const LOOK_DEFAULTS={bg:'neutre',font:'geist',size:'100',cards:'filet',motion:'normal',glow:'petite'};
 const LOOK_FONTS={geist:['Geist',''],inter:['Inter',''],manrope:['Manrope',''],bricolage:['Bricolage Grotesque',''],
   lexend:['Lexend','Lexend:wght@400;500;600;700'],atkinson:['Atkinson Hyperlegible','Atkinson+Hyperlegible:wght@400;700'],
   serif:['Source Serif 4','Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700'],system:['','']};
@@ -1075,6 +1075,7 @@ function _sysDark(){return !!(window.matchMedia&&window.matchMedia('(prefers-col
 function applyLook(){
   const b=document.body;if(!b)return;
   b.dataset.bg=getLook('bg');b.dataset.cards=getLook('cards');
+  b.dataset.glow=getLook('glow'); /* v71 : lumière sous la souris non / petite / moyenne */
   const f=getLook('font'),fd=LOOK_FONTS[f]||LOOK_FONTS.geist;
   b.dataset.font=f;
   if(fd[1]&&!document.getElementById('kp-font-'+f)){const l=document.createElement('link');l.id='kp-font-'+f;l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+fd[1]+'&display=swap';document.head.appendChild(l);}
@@ -1209,6 +1210,7 @@ function _themePickerHTML(full){
     <div class="kp-row"><div class="kp-lbl">Taille de l'interface</div>${seg('size',[['90','90 %'],['100','100 %'],['110','110 %'],['120','120 %']])}</div>
     <div class="kp-row"><div class="kp-lbl">Cartes</div>${seg('cards',[['filet','Filet fin','crop_square'],['ombre','Ombre douce','layers'],['plat','Plates','rectangle']])}</div>
     <div class="kp-row"><div class="kp-lbl">Animations</div>${seg('motion',[['normal','Normales','animation'],['reduit','Réduites','motion_photos_off']])}</div>
+    <div class="kp-row"><div class="kp-lbl">Lumière sous la souris</div>${seg('glow',[['non','Aucune','light_off'],['petite','Petite','flashlight_on'],['moyenne','Moyenne','light_mode']])}</div>
     <button type="button" class="kp-reset" onclick="resetLook()"><span class="ms">restart_alt</span>Revenir au style d'origine</button>`;
 }
 function openAppearanceSettings(){

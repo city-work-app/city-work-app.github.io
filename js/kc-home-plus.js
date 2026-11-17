@@ -25,7 +25,7 @@ function kcDlg(o){
     <div class="kc-dlg-b">${o.body||''}</div>
     ${o.foot===false?'':`<div class="kc-dlg-f">${o.foot||'<button class="btn btn-g" data-x>Annuler</button><button class="btn btn-p" data-ok>OK</button>'}</div>`}</div>`;
   const close=()=>{bg.classList.remove('open');document.removeEventListener('keydown',key,true);setTimeout(()=>bg.remove(),180);if(o.onClose)o.onClose();};
-  const key=e=>{if(e.key==='Escape'){e.stopPropagation();close();}else if(e.key==='Enter'&&o.onOk&&!e.target.closest('textarea')&&!e.target.closest('.kc-wx-res')){e.preventDefault();ok();}};
+  const key=e=>{if(e.key==='Escape'){e.stopPropagation();close();}else if(e.key==='Enter'&&o.onOk&&!e.target.closest('textarea')&&!e.target.closest('.kc-wx-res')){e.preventDefault();e.stopPropagation();ok();}};
   const ok=()=>{if(!o.onOk||o.onOk(bg)!==false)close();};
   bg.addEventListener('mousedown',e=>{bg._d=e.target===bg;});
   bg.addEventListener('click',e=>{

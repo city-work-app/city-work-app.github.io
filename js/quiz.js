@@ -173,7 +173,15 @@ function doQuit(){
   if(typeof updateQuizIndicator==='function') updateQuizIndicator();
   goBack();
 }
-function doBoycott(){if(!session||!session.qs[session.cur])return;boycottQuestion(session.qs[session.cur].id);showNotif('Question boycottée ⛔','ok');setTimeout(()=>nextQ(),500);}
+/* v71 : on demande d'abord si on est sûr (fenêtre maison kcConfirm) */
+async function doBoycott(){
+  if(!session||!session.qs[session.cur])return;
+  const q=session.qs[session.cur],at=session.cur,sess=session;
+  const ok=typeof kcConfirm==='function'?await kcConfirm('Boycotter cette question ? Elle ne te sera plus jamais proposée en révision. Tu pourras la remettre depuis la page de son cours.',{ok:'Boycotter',danger:true,icon:'do_not_disturb_on'}):true;
+  if(!ok||session!==sess)return;
+  boycottQuestion(q.id);showNotif('Question boycottée','ok');
+  setTimeout(()=>{if(session===sess&&session.cur===at)nextQ();},400);
+}
 function toggleFavoriteQ(){
   if(!session||!session.qs[session.cur])return;
   const q=session.qs[session.cur];

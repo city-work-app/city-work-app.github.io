@@ -83,7 +83,7 @@ if(fine){
     if(e.pointerType!=='mouse')return;
     mx=e.clientX;my=e.clientY;
     lightEl();
-    const off=calm()||!!(e.target&&e.target.closest&&e.target.closest('.km-app,#screen-city,.cty-root,.ca-v'));
+    const off=calm()||document.body.dataset.glow==='non'||!!(e.target&&e.target.closest&&e.target.closest('.km-app,#screen-city,.cty-root,.ca-v'));
     if(lx<-1000){lx=mx;ly=my;}
     ltx=mx;lty=my;lta=off?0:1;lightKick();
   },{passive:true});

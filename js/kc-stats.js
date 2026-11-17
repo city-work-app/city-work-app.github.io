@@ -117,7 +117,8 @@ function render(){
   const allQ=D.qs.filter(q=>!D.boy(q.id));
   const cnt={acquired:0,easy:0,medium:0,hard:0,new:0};allQ.forEach(q=>{const d=D.gd(q.id);cnt[d in cnt?d:'new']++;});
   const tot=allQ.length||1,mastPct=Math.round((cnt.acquired+cnt.easy)/tot*100);
-  const parts=[{k:'acquired',l:'Acquises',n:cnt.acquired,c:'var(--kc-primary)'},{k:'easy',l:'Faciles',n:cnt.easy,c:'var(--kc-green,#12A35E)'},{k:'medium',l:'Moyennes',n:cnt.medium,c:'var(--kc-amber,#E8930C)'},{k:'hard',l:'Difficiles',n:cnt.hard,c:'var(--kc-rose,#E5394F)'},{k:'new',l:'Jamais vues',n:cnt.new,c:'color-mix(in srgb,var(--kc-ink-2) 35%,transparent)'}];
+  /* v71 : couleurs logiques, rouge → orange → vert clair → vert (avant, « Acquises » prenait la couleur d'accent : rose ≈ « Difficiles ») */
+  const parts=[{k:'acquired',l:'Acquises',n:cnt.acquired,c:'#22C55E'},{k:'easy',l:'Faciles',n:cnt.easy,c:'#A3E635'},{k:'medium',l:'Moyennes',n:cnt.medium,c:'#F59E0B'},{k:'hard',l:'Difficiles',n:cnt.hard,c:'#EF4444'},{k:'new',l:'Jamais vues',n:cnt.new,c:'color-mix(in srgb,var(--kc-ink-2) 35%,transparent)'}];
   /* par matière */
   const subj=D.fs.filter(f=>f.type!=='annales'&&!(typeof isFolderArchived==='function'&&isFolderArchived(f.id))).map(f=>{
     const cids=new Set(D.cs.filter(c=>c.folderId===f.id).map(c=>c.id)),fq=allQ.filter(q=>cids.has(q.courseId));

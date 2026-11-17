@@ -15,7 +15,7 @@
 const KEY='kcu_gemini_key',BASE='https://generativelanguage.googleapis.com/v1beta/';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const getKey=()=>{try{return localStorage.getItem(KEY)||'';}catch(e){return '';}};
-const setKey=k=>{try{if(k)localStorage.setItem(KEY,k);else localStorage.removeItem(KEY);}catch(e){}try{sessionStorage.removeItem('kai_models');}catch(e){}};
+const setKey=k=>{try{if(k)localStorage.setItem(KEY,k);else localStorage.removeItem(KEY);}catch(e){}try{sessionStorage.removeItem('kai_models2');}catch(e){}};
 function Err(msg,kind,wait){const e=new Error(msg);e.kind=kind;e.wait=wait||0;return e;}
 async function readErr(r){
   let j=null;try{j=await r.json();}catch(e){}
@@ -28,7 +28,10 @@ async function readErr(r){
   }
   if(r.status===404)return Err('Modèle introuvable','model');
   if(r.status===400&&/too large|exceeds|size/i.test(msg))return Err('Document trop gros pour l’IA : essaie un PDF plus léger.','size');
-  if(r.status>=500)return Err('Google est surchargé, réessaie dans un instant','busy',8);
+  /* v71 : 503 = modèle surchargé (fréquent avec les modèles récents / « preview ») ; 500 / 504 = erreur interne ou délai dépassé.
+     Ce n'est plus affiché tout de suite : withModels réessaie puis passe au modèle suivant. */
+  if(r.status===504)return Err('Google met trop de temps à répondre (document très long ?), réessaie','busy',4);
+  if(r.status>=500)return Err('Google est surchargé en ce moment, réessaie dans un instant','busy',4);
   return Err('Gemini : '+msg,'other');
 }
 async function call(path,body,signal){
@@ -40,13 +43,14 @@ async function call(path,body,signal){
 }
 /* Meilleurs modèles « flash » disponibles pour cette clé (gratuits), du plus récent au plus ancien */
 async function models(){
-  try{const c=JSON.parse(sessionStorage.getItem('kai_models')||'null');if(c&&c.length)return c;}catch(e){}
+  try{const c=JSON.parse(sessionStorage.getItem('kai_models2')||'null');if(c&&c.length)return c;}catch(e){}
   const j=await (await call('models?pageSize=200')).json();
-  const score=n=>{const m=n.match(/^gemini-(\d+(?:\.\d+)?)-flash(-lite)?(-preview[\w-]*|-exp[\w-]*|-\d{3})?$/);if(!m)return -1;return 200+parseFloat(m[1])*10-(m[2]?100:0)-(m[3]&&!/^-\d{3}$/.test(m[3])?3:0);};
+  /* v71 : les versions stables d'abord (les « preview » sont souvent surchargées), puis preview, puis « lite » */
+  const score=n=>{const m=n.match(/^gemini-(\d+(?:\.\d+)?)-flash(-lite)?(-preview[\w-]*|-exp[\w-]*|-\d{3})?$/);if(!m)return -1;return 300+parseFloat(m[1])*10-(m[2]?200:0)-(m[3]&&!/^-\d{3}$/.test(m[3])?100:0);};
   let ms=(j.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>String(m.name||'').replace(/^models\//,''))
     .filter(n=>score(n)>0&&!/image|tts|audio|live|thinking|8b/.test(n)).sort((a,b)=>score(b)-score(a));
   if(!ms.length)ms=['gemini-2.5-flash','gemini-2.5-flash-lite'];
-  try{sessionStorage.setItem('kai_models',JSON.stringify(ms));}catch(e){}
+  try{sessionStorage.setItem('kai_models2',JSON.stringify(ms));}catch(e){}
   return ms;
 }
 function body(o){
@@ -57,12 +61,36 @@ function body(o){
 }
 const textOf=j=>((((j||{}).candidates||[])[0]||{}).content||{}).parts?j.candidates[0].content.parts.filter(p=>!p.thought).map(p=>p.text||'').join(''):'';
 /* Essaie les modèles dans l'ordre : modèle absent ou quota du jour épuisé → modèle suivant */
-async function withModels(fn){
-  const ms=await models();let last=null;
-  for(const m of ms){
-    try{return await fn(m);}
-    catch(e){if(e&&e.name==='AbortError')throw e;last=e;if(e.kind==='model'||e.kind==='daily')continue;throw e;}
+/* v71 : surcharge (busy) ou trop de demandes (rate) → modèle suivant, puis jusqu'à 3 tours avec une pause croissante
+   (avant : « Google est surchargé » s'affichait dès la première réponse 503). o.onStatus(texte) prévient l'écran. */
+const sleep=(ms,signal)=>new Promise((res,rej)=>{const t=setTimeout(res,ms);if(signal)signal.addEventListener('abort',()=>{clearTimeout(t);const e=new Error('aborted');e.name='AbortError';rej(e);},{once:true});});
+let goodModel='';/* dernier modèle qui a répondu : essayé en premier */
+async function withModels(fn,o){
+  o=o||{};
+  let ms=await models();
+  if(goodModel&&ms.includes(goodModel))ms=[goodModel].concat(ms.filter(m=>m!==goodModel));
+  let last=null,dead=new Set();
+  for(let round=0;round<3;round++){
+    if(round){
+      const wait=round===1?2500:6000;
+      try{o.onStatus&&o.onStatus('Google est très demandé en ce moment, nouvel essai…');}catch(e){}
+      await sleep(wait,o.signal);
+    }
+    let tried=0;
+    for(const m of ms){
+      if(dead.has(m))continue;tried++;
+      try{const r=await fn(m);goodModel=m;try{o.onStatus&&o.onStatus('');}catch(e){}return r;}
+      catch(e){
+        if(e&&e.name==='AbortError')throw e;
+        last=e;
+        if(e.kind==='model'||e.kind==='daily'){dead.add(m);continue;}
+        if(e.kind==='busy'||e.kind==='rate'){if(e.kind==='rate'&&e.wait>20)dead.add(m);continue;}
+        throw e;
+      }
+    }
+    if(!tried)break;
   }
+  if(last&&(last.kind==='busy'||last.kind==='rate'))last.message='Google est surchargé en ce moment (tous les modèles gratuits sont occupés). Réessaie dans une minute.';
   throw last||Err('Aucun modèle Gemini disponible','model');
 }
 async function ask(o){
@@ -73,7 +101,7 @@ async function ask(o){
     const t=textOf(j);
     if(!o.json)return t;
     try{return JSON.parse(t);}catch(e){const m2=t.match(/[\[{][\s\S]*[\]}]/);if(m2)return JSON.parse(m2[0]);throw Err('Réponse illisible, réessaie','other');}
-  });
+  },o);
 }
 async function stream(o){
   return withModels(async m=>{
@@ -87,13 +115,13 @@ async function stream(o){
         const line=buf.slice(0,i).trim();buf=buf.slice(i+1);
         if(!line.startsWith('data:'))continue;
         let j=null;try{j=JSON.parse(line.slice(5));}catch(e){continue;}
-        if(j.error)throw Err('Gemini : '+(j.error.message||'erreur'),'other');
+        if(j.error){const em=j.error.message||'erreur';if(!full&&(/overload|unavailable|internal|exhausted/i.test(em)||(j.error.code||0)>=429))throw Err('Google est surchargé','busy',4);throw Err('Gemini : '+em,'other');}
         const t=textOf(j);if(t){full+=t;o.onText&&o.onText(full,t);}
       }
     }
-    if(!full)throw Err('L’IA n’a rien répondu, réessaie','other');
+    if(!full)throw Err('L’IA n’a rien répondu, réessaie','busy');
     return full;
-  });
+  },o);
 }
 
 /* PDF → partie de message : le PDF lui-même (l'IA voit aussi les schémas) si ≤ 14 Mo, sinon le texte extrait */

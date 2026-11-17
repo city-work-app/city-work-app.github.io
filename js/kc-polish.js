@@ -32,7 +32,7 @@ window.kcConfirm=function(msg,o){
     const p=split(msg),danger=o.danger!==undefined?o.danger:DANGER.test(p.t);
     const ok=o.ok||(danger?(p.t.match(/^(\S+)/)||[0,'Supprimer'])[1].replace(/^./,c=>c.toUpperCase()):'OK');
     let done=false;
-    window.kcDlg({title:p.t,sub:'',icon:danger?'delete':'help',
+    window.kcDlg({title:p.t,sub:'',icon:o.icon||(danger?'delete':'help'),
       body:p.s?`<p class="kc-dlg-msg">${esc(p.s)}</p>`:'',
       foot:`<button class="btn btn-g" data-x>Annuler</button><button class="btn btn-p${danger?' kc-btn-danger':''}" data-ok>${esc(ok)}</button>`,
       onOk(){done=true;res(true);},onClose(){if(!done)res(false);},

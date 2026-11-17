@@ -158,6 +158,8 @@ function renderProgress(st){
 /* ---------- Modes ---------- */
 function renderModes(){
   const best=g('bestSurvivalStreak')|0;
+  /* v71 : les tuiles sont choisies par l'utilisateur (kc-shortcuts.js) → elles peuvent être absentes */
+  if(!$('kh-surv-desc')||!$('kh-fc-desc')){if(window.kcShortcutsRender)kcShortcutsRender();return;}
   $('kh-surv-desc').textContent=best?`3 vies · ton record : ${best}`:'3 vies · bats ton record';
   const due=typeof getDueCount==='function'?getDueCount():0;
   let total=0;try{total=(g('flashcards')||[]).length+(g('concepts')||[]).length;}catch(e){}

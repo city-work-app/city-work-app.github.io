@@ -79,7 +79,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="cobalt.css?v=7">
 <link rel="stylesheet" href="cobalt-plus.css?v=4">
 <link rel="stylesheet" href="atelier-ia.css?v=1">
-<link rel="stylesheet" href="cobalt-more.css?v=5">
+<link rel="stylesheet" href="cobalt-more.css?v=6">
 <!-- Styles déplacés vers styles7.css — voir section "Composants base" -->
 </head>
 <body data-screen="home">
@@ -1317,10 +1317,23 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
         <button class="btn btn-p" onclick="kcHomeEdit(true)"><span class="ms" style="font-size:18px;vertical-align:-4px">open_with</span> Déplacer les cadres</button>
+        <button class="btn btn-g" onclick="kcShortcutsPick()"><span class="ms" style="font-size:18px;vertical-align:-4px">bolt</span> Raccourcis de l’accueil</button>
         <button class="btn btn-g" onclick="kcLayoutOpen('nav')"><span class="ms" style="font-size:18px;vertical-align:-4px">menu</span> Le menu</button>
         <button class="btn btn-g" onclick="kcLayoutOpen('top')"><span class="ms" style="font-size:18px;vertical-align:-4px">toolbar</span> La barre du haut</button>
         <button class="btn btn-g" onclick="kcWeatherSetup()"><span class="ms" style="font-size:18px;vertical-align:-4px">partly_cloudy_day</span> Météo de ma ville</button>
       </div>
+    </div>
+
+    <!-- Raccourcis clavier (v71) — js/kc-shortcuts.js -->
+    <div class="settings-card" id="kp-keys-card">
+      <div class="settings-card-header">
+        <span class="ms" style="font-size:18px;color:var(--primary)">keyboard</span>
+        <div>
+          <div class="settings-card-title">Raccourcis clavier</div>
+          <div class="settings-card-desc">Choisis tes propres touches pour répondre, passer à la question suivante, mettre en favori, boycotter, ou aller directement à une page</div>
+        </div>
+      </div>
+      <div id="kp-keys-body" class="kpk"></div>
     </div>
 
     <!-- Sons (v63) — rempli par js/kc-extras.js -->
@@ -2954,9 +2967,9 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <!-- 16 nov. 2026 : les scripts sont chargés par KBoot (js/kstore.js) une fois la grande mémoire (IndexedDB) lue. Ordre = ordre de la liste. -->
 <script>KBoot([
   "js/data.js?v=12",
-  "js/content.js?v=61",
-  "js/quiz.js?v=10",
-  "js/ui.js?v=29",
+  "js/content.js?v=62",
+  "js/quiz.js?v=11",
+  "js/ui.js?v=30",
   "js/premium.js?v=9",
   "js/features.js?v=7",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
@@ -2979,20 +2992,21 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/agenda.js?v=2",
   "js/social.js?v=6",
   "js/city.js?v=36",
-  "js/home-cobalt.js?v=8",
-  "js/quiz-cobalt.js?v=1",
+  "js/home-cobalt.js?v=9",
+  "js/quiz-cobalt.js?v=2",
   "js/flashcards-cobalt.js?v=5",
-  "js/ai-gemini.js?v=2",
+  "js/ai-gemini.js?v=3",
   "js/fc-editor.js?v=4",
-  "js/ultra-ai.js?v=3",
+  "js/ultra-ai.js?v=4",
   "js/cobalt-plus.js?v=1",
-  "js/ux-cobalt.js?v=4",
+  "js/ux-cobalt.js?v=5",
   "js/kc-extras.js?v=2",
   "js/atelier-ia.js?v=2",
-  "js/kc-home-plus.js?v=4",
-  "js/kc-layout.js?v=5",
-  "js/kc-stats.js?v=1",
-  "js/kc-polish.js?v=1"
+  "js/kc-home-plus.js?v=5",
+  "js/kc-layout.js?v=6",
+  "js/kc-stats.js?v=2",
+  "js/kc-polish.js?v=2",
+  "js/kc-shortcuts.js?v=1"
 ]);</script>
 
 <!-- ══════════ MODAL: RECHERCHE GLOBALE ══════════ -->

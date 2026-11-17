@@ -518,7 +518,8 @@ async function reply(){
   let raf=0,last='';
   try{
     const full=await KAI.stream({system:sysPrompt(),contents:U.contents,signal:U.ctrl.signal,temperature:.55,
-      onText:t=>{last=t;if(!raf)raf=requestAnimationFrame(()=>{raf=0;renderAI(m,last,false);scrollEnd();});}});
+      onText:t=>{last=t;if(!raf)raf=requestAnimationFrame(()=>{raf=0;renderAI(m,last,false);scrollEnd();});},
+      onStatus:t=>{const ty=m.querySelector('.ua-typing');if(!ty)return;let st=m.querySelector('.ua-status');if(!t){if(st)st.remove();return;}if(!st){st=document.createElement('div');st.className='ua-status';ty.after(st);}st.textContent=t;}});
     if(raf)cancelAnimationFrame(raf);
     U.contents.push({role:'model',parts:[{text:full}]});
     renderAI(m,full,true);scrollEnd();
@@ -531,8 +532,11 @@ async function reply(){
       if(last)renderAI(m,last,true);
       const bub=m.querySelector('.ua-bub');
       const err=document.createElement('div');err.className='ua-err';
-      err.innerHTML=`<span class="ms">error</span><span>${esc(e.message||'Erreur')}</span>${e.kind==='key'?'<button class="btn btn-g btn-sm">Changer la clé</button>':'<button class="btn btn-g btn-sm">Réessayer</button>'}`;
-      (last?m:bub).appendChild(err);if(!last)bub.querySelector('.ua-typing')&&bub.querySelector('.ua-typing').remove();
+      /* v71 : si Google est surchargé, on propose aussi l'Atelier IA (copier-coller vers ChatGPT / Gemini / Claude, sans clé) */
+      const alt=(e.kind==='busy'||e.kind==='rate'||e.kind==='daily')?'<button class="btn btn-g btn-sm ua-alt" type="button"><span class="ms">content_paste</span>Avec ChatGPT (copier-coller)</button>':'';
+      err.innerHTML=`<span class="ms">error</span><span>${esc(e.message||'Erreur')}</span>${e.kind==='key'?'<button class="btn btn-g btn-sm">Changer la clé</button>':'<button class="btn btn-g btn-sm">Réessayer</button>'}${alt}`;
+      (last?m:bub).appendChild(err);if(!last){bub.querySelector('.ua-typing')&&bub.querySelector('.ua-typing').remove();bub.querySelector('.ua-status')&&bub.querySelector('.ua-status').remove();}
+      const ab=err.querySelector('.ua-alt');if(ab)ab.onclick=()=>{if(typeof showScreen==='function')showScreen('atelier');};
       err.querySelector('button').onclick=()=>{m.remove();if(e.kind==='key')KAI.openKeyDialog().then(ok=>{if(ok)reply();});else reply();};
     }
   }finally{U.ctrl=null;setBusy(false);}

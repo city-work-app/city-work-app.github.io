@@ -186,7 +186,7 @@ document.addEventListener('keydown',e=>{
   if(document.body.dataset.screen!=='quiz'||!g('session'))return;
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
-  if(document.querySelector('.mdbg.open'))return;
+  if(document.querySelector('.mdbg.open')||document.getElementById('kc-dlg'))return;
   const n=['1','2','3','4','5','6'].indexOf(e.key);
   if(n>-1){const o=[...document.querySelectorAll('#qopts .ob:not(:disabled)')][n];if(o){e.preventDefault();o.click();}return;}
   if(e.key==='Enter'){const b=$('kq-next');if(b&&!b.disabled){e.preventDefault();nextQ();}}
