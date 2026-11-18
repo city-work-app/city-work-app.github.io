@@ -68,11 +68,9 @@ function render(){
   box.dataset.n=list.length;
   box.innerHTML=list.length?list.map((id,i)=>tile(byId(id),i)).join('')
     :`<button type="button" class="kh-mode kh-mode-add" data-ksc-add><span class="ms">add</span><span>Ajouter des raccourcis</span></button>`;
-  const blk=box.closest('.kh-blk-modes');
-  if(blk&&!blk.querySelector(':scope>.kh-modes-edit')){
-    const b=document.createElement('button');b.type='button';b.className='kh-modes-edit';b.title='Choisir mes raccourcis';b.setAttribute('aria-label','Choisir mes raccourcis');
-    b.innerHTML='<span class="ms">tune</span>';b.onclick=e=>{e.stopPropagation();pick();};blk.appendChild(b);
-  }
+  /* v72 : plus de bouton ⚙ au survol (« je veux pas qu'il soit là ») : on choisit les raccourcis depuis le mode édition
+     de l'accueil (bouton « Choisir » du cadre), le panneau Mise en page ou Paramètres */
+  document.querySelectorAll('.kh-modes-edit').forEach(b=>b.remove());
 }
 document.addEventListener('click',e=>{
   const a=e.target.closest('.kh-modes [data-ksc]');
@@ -86,7 +84,7 @@ function pickBody(){
   const list=cfg(),full=list.length>=MAX;
   const grps=[...new Set(CAT.map(c=>c.grp))];
   return `<div class="ksc-h"><b>Sur l’accueil</b><small>${list.length} / ${MAX}</small></div>
-    <div class="ksc-sel" data-ksc-sel>${list.length?list.map((id,i)=>{const c=byId(id);return `<div class="ksc-chip t-${c.t}" draggable="true" data-id="${id}">
+    <div class="ksc-sel" data-ksc-sel>${list.length?list.map((id,i)=>{const c=byId(id);return `<div class="ksc-chip t-${c.t}" data-id="${id}">
         <span class="ms ksc-grip">drag_indicator</span><span class="ksc-ic"><span class="ms${c.f?' f':''}">${c.ic}</span></span><b>${esc(c.n)}</b>
         <span class="ksc-mv"><button type="button" data-k="left" ${i?'':'disabled'} title="Plus tôt" aria-label="Déplacer avant"><span class="ms">chevron_left</span></button><button type="button" data-k="right" ${i<list.length-1?'':'disabled'} title="Plus tard" aria-label="Déplacer après"><span class="ms">chevron_right</span></button></span>
         <button type="button" class="ksc-x" data-k="rm" title="Enlever" aria-label="Enlever ${esc(c.n)}"><span class="ms">close</span></button></div>`;}).join('')
@@ -115,16 +113,45 @@ function pick(){
         else return;
         setCfg(list);redraw();
       });
-      /* glisser-déposer (ordinateur) */
-      bg.addEventListener('dragstart',e=>{const c=e.target.closest('.ksc-chip');if(!c)return;dragId=c.dataset.id;c.classList.add('drag');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragId);}catch(err){}});
-      bg.addEventListener('dragover',e=>{const c=e.target.closest('.ksc-chip');if(!c||!dragId)return;e.preventDefault();});
-      bg.addEventListener('drop',e=>{
-        const c=e.target.closest('.ksc-chip');if(!c||!dragId||c.dataset.id===dragId)return;e.preventDefault();
-        const list=cfg(),from=list.indexOf(dragId);if(from<0)return;list.splice(from,1);
-        const r=c.getBoundingClientRect(),after=e.clientX>r.left+r.width/2;let to=list.indexOf(c.dataset.id);if(after)to++;
-        list.splice(to,0,dragId);dragId=null;setCfg(list);redraw();
+      /* v72 : glisser-déposer à la souris ou au doigt, les autres pastilles se poussent en direct (avant : glisser HTML5,
+         la liste était redessinée au lâcher et ça « sautait » ; impossible de lâcher entre deux pastilles) */
+      let D=null;
+      const chips=()=>[...bg.querySelectorAll('[data-ksc-sel] .ksc-chip')];
+      bg.addEventListener('pointerdown',e=>{
+        const c=e.target.closest('.ksc-chip');if(!c||e.button>0||e.target.closest('button'))return;
+        e.preventDefault();
+        const r=c.getBoundingClientRect(),box=c.parentElement;
+        const gh=c.cloneNode(true);gh.classList.add('ksc-ghost');gh.style.width=r.width+'px';gh.style.height=r.height+'px';
+        gh.style.left=r.left+'px';gh.style.top=r.top+'px';document.body.appendChild(gh);
+        c.classList.add('ksc-ph');
+        D={c,box,gh,ox:e.clientX-r.left,oy:e.clientY-r.top,id:e.pointerId,moved:false};
+        try{c.setPointerCapture(e.pointerId);}catch(_){}
       });
-      bg.addEventListener('dragend',()=>{dragId=null;bg.querySelectorAll('.ksc-chip.drag').forEach(x=>x.classList.remove('drag'));});
+      bg.addEventListener('pointermove',e=>{
+        if(!D||e.pointerId!==D.id)return;e.preventDefault();D.moved=true;
+        D.gh.style.left=(e.clientX-D.ox)+'px';D.gh.style.top=(e.clientY-D.oy)+'px';
+        /* pastille la plus proche du pointeur → on insère avant / après elle */
+        let best=null,bd=1e9;
+        chips().forEach(x=>{if(x===D.c)return;const r=x.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;const d=Math.hypot((e.clientX-cx)/1.6,e.clientY-cy);if(d<bd){bd=d;best={x,r};}});
+        if(!best)return;
+        const after=e.clientY>best.r.bottom?true:e.clientY<best.r.top?false:e.clientX>best.r.left+best.r.width/2;
+        const ref=after?best.x.nextElementSibling:best.x;
+        if(ref===D.c||D.c.nextElementSibling===ref)return;
+        /* petite animation FLIP pour que les pastilles glissent au lieu de sauter */
+        const before=new Map(chips().map(x=>[x,x.getBoundingClientRect()]));
+        D.box.insertBefore(D.c,ref);
+        chips().forEach(x=>{const a=before.get(x),b=x.getBoundingClientRect();if(!a||x===D.c)return;const dx=a.left-b.left,dy=a.top-b.top;if(!dx&&!dy)return;
+          x.style.transition='none';x.style.transform=`translate(${dx}px,${dy}px)`;requestAnimationFrame(()=>{x.style.transition='transform .18s cubic-bezier(.2,.8,.2,1)';x.style.transform='';});});
+      });
+      const drop=e=>{
+        if(!D||e.pointerId!==D.id)return;
+        const d=D;D=null;d.gh.remove();d.c.classList.remove('ksc-ph');
+        if(!d.moved)return;
+        const order=chips().map(x=>x.dataset.id);
+        setCfg(order);redraw();
+      };
+      bg.addEventListener('pointerup',drop);bg.addEventListener('pointercancel',drop);
+      bg.addEventListener('dragstart',e=>{if(e.target.closest&&e.target.closest('.ksc-chip'))e.preventDefault();});
     }});
 }
 window.kcShortcutsPick=pick;
@@ -154,8 +181,22 @@ const ACT=[
   {id:'g_mindmap',grp:'Partout',n:'Cartes mentales',def:''},
   {id:'g_agenda',grp:'Partout',n:'Agenda',def:''},
   {id:'g_city',grp:'Partout',n:'Ma ville',def:''},
-  {id:'g_set',grp:'Partout',n:'Paramètres',def:''}
+  {id:'g_set',grp:'Partout',n:'Paramètres',def:''},
+  /* v72 : Spotify au clavier. « soft » = peut partager sa touche avec une touche du quiz (pendant un quiz, la
+     touche du quiz gagne). Ne fait rien si Spotify n'est pas connecté (la touche garde son effet normal). */
+  {id:'sp_play',grp:'Musique (Spotify)',n:'Lecture / pause',def:'s',soft:1,sp:1},
+  {id:'sp_next',grp:'Musique (Spotify)',n:'Morceau suivant',def:'d',soft:1,sp:1},
+  {id:'sp_prev',grp:'Musique (Spotify)',n:'Morceau précédent',def:'',soft:1,sp:1},
+  {id:'sp_up',grp:'Musique (Spotify)',n:'Monter le son',def:'',soft:1,sp:1},
+  {id:'sp_down',grp:'Musique (Spotify)',n:'Baisser le son',def:'',soft:1,sp:1}
 ];
+function spOn(){try{return !!(window.spGetState&&window.spGetState().on);}catch(e){return false;}}
+function spToast(ic,t){
+  let el=$('ksp-toast');if(!el){el=document.createElement('div');el.id='ksp-toast';el.className='ksp-toast';document.body.appendChild(el);}
+  el.innerHTML=`<span class="ms">${ic}</span><span>${esc(t)}</span>`;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1600);
+}
+function spVol(d){const st=window.spGetState?window.spGetState():{};const v=Math.max(0,Math.min(100,Math.round((+st.vol||50)+d)));try{window.spVolumeInput&&window.spVolumeInput(v);window.spVolumeCommit&&window.spVolumeCommit(v);}catch(e){}spToast(v?'volume_up':'volume_off','Volume '+v+' %');}
 /* touches natives de content.js qui doivent être « coupées » si on les a réattribuées */
 const NATIVE_ALIAS={'+':['+','='],'Space':['Space']};
 const RUN={
@@ -166,7 +207,11 @@ const RUN={
   search:()=>{const ov=$('search-overlay');if(ov&&ov.classList.contains('open'))return;fn('openSearch');},
   g_home:()=>fn('switchTab','home'),g_flash:()=>fn('startFlash'),g_modes:()=>fn('showScreen','modes-hub'),g_fc:()=>fn('openAllFlashcards'),
   g_mat:()=>fn('showScreen','matieres-hub'),g_annales:()=>fn('showScreen','annales-hub'),g_mindmap:()=>fn('showScreen','mindmap'),
-  g_agenda:()=>fn('showScreen','agenda'),g_city:()=>fn('showScreen','city'),g_set:()=>fn('showScreen','manage')
+  g_agenda:()=>fn('showScreen','agenda'),g_city:()=>fn('showScreen','city'),g_set:()=>fn('showScreen','manage'),
+  sp_play:()=>{const was=window.spGetState().playing;fn('spotifyPlayPause');spToast(was?'pause':'play_arrow',was?'Pause':'Lecture');},
+  sp_next:()=>{fn('spotifyNext');spToast('skip_next','Morceau suivant');},
+  sp_prev:()=>{fn('spotifyPrev');spToast('skip_previous','Morceau précédent');},
+  sp_up:()=>spVol(10),sp_down:()=>spVol(-10)
 };
 function ans(n){const o=[...document.querySelectorAll('#qopts .ob:not(:disabled)')][n];if(o){o.focus();o.click();}}
 const custom=()=>{try{const o=JSON.parse(localStorage.getItem(KEYS)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}};
@@ -190,16 +235,17 @@ const inField=t=>t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='S
 let REC=null;/* action en cours d'enregistrement dans Paramètres */
 window.addEventListener('keydown',e=>{
   if(REC){recKey(e);return;}
-  if(inField(e.target)||$('kc-dlg')||document.querySelector('.mdbg.open'))return;
+  if(inField(e.target)||$('kc-dlg')||$('kiv')||document.querySelector('.mdbg.open'))return;
   const scr=document.body.dataset.screen,inQuiz=scr==='quiz'&&!!g('session');
   if(['mindmap-editor','city','diagram-editor'].includes(scr))return;/* ces écrans ont leurs propres raccourcis */
   const ov=$('search-overlay');if(ov&&ov.classList.contains('open'))return;
   const c=combo(e);if(!c)return;
-  const hit=ACT.find(a=>(!a.quiz||inQuiz)&&keyOf(a)===c);
+  const sp=spOn();
+  const hit=ACT.find(a=>(!a.quiz||inQuiz)&&(!a.sp||sp)&&keyOf(a)===c);
   if(hit){e.preventDefault();e.stopImmediatePropagation();try{RUN[hit.id]();}catch(err){console.warn(err);}return;}
   /* touche d'origine qui ne sert plus (réattribuée) : on l'empêche de faire son ancienne action */
   const cu=custom();
-  const stale=ACT.find(a=>(!a.quiz||inQuiz)&&a.def&&Object.prototype.hasOwnProperty.call(cu,a.id)&&cu[a.id]!==a.def&&(NATIVE_ALIAS[a.def]||[a.def]).includes(c==='='?'=':c));
+  const stale=ACT.find(a=>(!a.quiz||inQuiz)&&!a.sp&&a.def&&Object.prototype.hasOwnProperty.call(cu,a.id)&&cu[a.id]!==a.def&&(NATIVE_ALIAS[a.def]||[a.def]).includes(c==='='?'=':c));
   if(stale&&!(e.ctrlKey||e.metaKey)){e.preventDefault();e.stopImmediatePropagation();}
 },true);
 
@@ -210,7 +256,8 @@ function recKey(e){
   if(e.key==='Backspace'||e.key==='Delete'){setKey(id,'');REC=null;drawKeys();return;}
   const c=combo(e);if(!c)return;/* touche de modification seule : on attend la suite */
   if(/^[1-5]$/.test(c)||c==='Enter'||c==='ArrowRight'){notify('Cette touche est déjà réservée (1–5, Entrée et → servent toujours au quiz)','err');return;}
-  const other=ACT.find(x=>x.id!==id&&keyOf(x)===c);
+  const me=ACT.find(x=>x.id===id)||{};
+  const other=ACT.find(x=>x.id!==id&&keyOf(x)===c&&!((me.soft&&x.quiz)||(me.quiz&&x.soft)));
   if(other){setKey(other.id,'');notify(`« ${pretty(c).join(' + ')} » est retirée de « ${other.n} »`,'ok');}
   setKey(id,c);REC=null;drawKeys();
 }
@@ -227,7 +274,7 @@ function drawKeys(){
       return `<div class="kpk-row${rec?' rec':''}"><span class="kpk-n">${esc(a.n)}</span>
         <button type="button" class="kpk-key${k?'':' none'}" data-kk="${a.id}" title="Clique puis appuie sur la touche voulue">${rec?'<span class="kpk-wait">Appuie sur une touche…</span>':k?kbd(k,'kq-kbd'):'Aucune'}</button>
         ${chg?`<button type="button" class="kpk-undo" data-kr="${a.id}" title="Touche d’origine${a.def?' : '+esc(pretty(a.def).join(' + ')):' : aucune'}"><span class="ms">undo</span></button>`:'<span class="kpk-undo-ph"></span>'}</div>`;}).join('')}</div>`).join('')
-    +`<p class="kpk-hint">Clique sur une touche puis appuie sur la nouvelle (tu peux ajouter Ctrl, Alt ou Maj). <b>Retour</b> = aucune touche, <b>Échap</b> = annuler. Les touches 1–5, Entrée et → marchent toujours pendant un quiz.</p>
+    +`<p class="kpk-hint">Clique sur une touche puis appuie sur la nouvelle (tu peux ajouter Ctrl, Alt ou Maj). <b>Retour</b> = aucune touche, <b>Échap</b> = annuler. Les touches 1–5, Entrée et → marchent toujours pendant un quiz. Les touches <b>Musique</b> marchent quand Spotify est connecté ; pendant un quiz, si une réponse utilise la même touche, c’est la réponse qui gagne.</p>
       <button type="button" class="btn btn-g btn-sm" data-kall><span class="ms" style="font-size:16px;vertical-align:-3px">restart_alt</span> Remettre toutes les touches d’origine</button>`;
 }
 document.addEventListener('click',e=>{

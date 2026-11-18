@@ -514,7 +514,7 @@ function rzStart(e,h){
   /* le cadre est figé à sa taille actuelle, en pixels : il ne dépend plus de la grille pendant le geste */
   el.style.transition='none';
   if(dir!=='s'&&cols===12){el.style.width=r.width+'px';el.style.justifySelf='start';el.style.maxWidth='none';}
-  if(dir!=='e'){el.style.alignSelf='start';el.style.minHeight=r.height+'px';}
+  if(dir!=='e'){el.style.alignSelf='start';el.style.height=r.height+'px';el.style.minHeight='0';}
   h.classList.add('on');el.classList.add('kh-rzing');document.body.classList.add('kh-resizing','kh-rzdir-'+dir);   /* surtout pas « kh-rz-e » : c'est la classe des poignées (largeur 16 px) → toute la page rétrécissait */
   if(cols===12&&dir!=='s'){g.classList.add('kh-cols');g.style.setProperty('--kh-colw',colW+'px');g.style.setProperty('--kh-colg',gap+'px');}
   try{h.setPointerCapture(e.pointerId);}catch(_){}
@@ -530,11 +530,12 @@ function rzFrame(){
     tip.push(d.n===12?'Toute la largeur':'Largeur '+d.n+' / 12');
   }
   if(d.dir!=='e'){
-    const hh=Math.max(60,Math.min(2400,d.y-d.oy-r.top));
-    el.style.minHeight=hh+'px';
-    d.auto=el.getBoundingClientRect().height>hh+4;   /* le contenu est plus haut que la souris : hauteur automatique */
-    d.h=hh;
-    tip.push(d.auto?'Hauteur automatique':'Hauteur '+Math.round(hh)+' px');
+    /* v72 : vraie hauteur (avant : hauteur MINI → impossible de faire plus petit que le contenu, le cadre
+       « revenait » à sa taille au lâcher). Le contenu s'adapte (CSS @container) et défile si besoin. */
+    const hh=Math.max(90+d.epad,Math.min(2400,d.y-d.oy-r.top));
+    el.style.height=hh+'px';
+    d.auto=false;d.h=hh;
+    tip.push('Hauteur '+Math.round(hh-d.epad)+' px');
   }
   rzTip({clientX:d.x,clientY:d.y},tip.join(' · '));
 }
@@ -557,12 +558,12 @@ function rzEnd(e){
     const c=homeCfg(),x=c.find(y=>y.id===d.blk);
     if(x){
       if(d.n!=null){x.size=d.n<=5?'S':d.n<=9?'L':'F';if(d.n===4||d.n===8||d.n===12)delete x.w;else x.w=d.n;}
-      if(d.h!=null){if(d.auto)delete x.h;else x.h=Math.max(60,Math.round(d.h-d.epad));}
+      if(d.h!=null){if(d.auto)delete x.h;else x.h=Math.max(90,Math.round(d.h-d.epad));}
       const o=load();o.home=c;save(o);
     }
   }
   const fin=()=>{
-    ['width','maxWidth','justifySelf','alignSelf','minHeight','transition'].forEach(k=>{el.style[k]='';});
+    ['width','maxWidth','justifySelf','alignSelf','minHeight','height','transition'].forEach(k=>{el.style[k]='';});
     el.classList.remove('kh-rzing');d.g.classList.remove('kh-cols');
     applyHome();decorate();
   };

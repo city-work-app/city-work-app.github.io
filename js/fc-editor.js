@@ -356,6 +356,15 @@ function placeFmt(){}
 /* Photo d'une carte en grand ; « Changer » et « Retirer » sont dans cette vue. */
 function zoomImg(r,side){
   const src=r[side==='q'?'imageQ':'imageA'];if(!src)return;
+  /* v72 : visionneuse commune (kc-v72.js) : clic à côté de l'image = fermer, zoom à la molette / double-clic.
+     Avant, l'image occupait toute la zone (object-fit) : cliquer « à côté » zoomait au lieu de fermer. */
+  if(typeof window.kcImgView==='function'){
+    window.kcImgView(src,{actions:[
+      {ic:'add_photo_alternate',label:'Changer l’image',run:()=>{imgTarget={r,s:side};$('fce-file').click();}},
+      {ic:'delete',label:'Retirer',run:()=>{r[side==='q'?'imageQ':'imageA']=null;rerenderRow(r);schedule();}}
+    ]});
+    return;
+  }
   const bg=document.createElement('div');bg.className='fce-zoom';
   bg.innerHTML=`<div class="fce-zoom-pic"><img src="${src}" alt=""></div><div class="fce-zoom-bar"><button data-z="change"><span class="ms">add_photo_alternate</span>Changer l’image</button><button data-z="rm"><span class="ms">delete</span>Retirer</button><button data-z="close"><span class="ms">close</span>Fermer</button></div>`;
   const key=e=>{if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}};

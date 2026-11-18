@@ -4477,12 +4477,17 @@ function _renderAFCCard(x){
   const sel=_afcSelected.has(x.id);
   const masteryDots=typeof x.masteryLevel==='number'?`<div class="afc-mastery">${[0,1,2,3,4].map(i=>`<span class="afc-dot${i<(x.masteryLevel||0)?' afc-dot-on':''}"></span>`).join('')}</div>`:'';
   const clickAct=_afcSelectMode?`toggleAFCItem('${x.id}')`:`openConceptDef('${x.id}')`;
-  return `<div class="ci afc-item${sel?' afc-item-sel':''}" id="afc-item-${x.id}" onclick="${clickAct}">
-    <div style="display:flex;align-items:flex-start;gap:10px;flex:1">
+  /* v72 : on voit vraiment la carte (texte enrichi et photos du recto / verso) ; avant, une carte faite
+     seulement de photos donnait une ligne vide avec les 5 points */
+  const _plain=h=>String(h||'').replace(/<br\s*\/?>/gi,' ').replace(/<\/(p|div|li)>/gi,' ').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/\s+/g,' ').trim();
+  const tTxt=(x.term||'').trim()||_plain(x.termHtml),dTxt=(x.definition||'').trim()||_plain(x.defHtml);
+  const iQ=x.imageQ||x.image||'',iA=x.imageA||'';
+  const face=(lbl,txt,img,max)=>`<div class="afc-face"><span class="afc-face-l">${lbl}</span>${txt?`<div class="afc-face-t">${_esc(txt.slice(0,max)+(txt.length>max?'…':''))}</div>`:''}${img?`<img class="afc-face-img" src="${img}" alt="" loading="lazy">`:''}${!txt&&!img?'<div class="afc-face-t afc-face-none">—</div>':''}</div>`;
+  return `<div class="ci afc-item afc-item2${sel?' afc-item-sel':''}" id="afc-item-${x.id}" onclick="${clickAct}">
+    <div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0">
       ${_afcSelectMode?`<span class="ms afc-check-icon${sel?' afc-check-on':''}" id="afc-chk-${x.id}">${sel?'check_circle':'radio_button_unchecked'}</span>`:''}
       <div style="flex:1;min-width:0">
-        <div class="cname" style="white-space:normal">${_esc(x.term||'')}</div>
-        <div class="cmeta" style="white-space:normal;margin-top:3px;color:var(--on-sv)">${_esc((x.definition||'').slice(0,80)+(x.definition&&x.definition.length>80?'…':''))}</div>
+        <div class="afc-faces">${face('Recto',tTxt,iQ,160)}${face('Verso',dTxt,iA,220)}</div>
         ${kws?`<div class="afc-kws" style="margin-top:6px">${kws}</div>`:''}
       </div>
     </div>

@@ -103,8 +103,10 @@ function notifs(){
   /* révisions du jour */
   let due=0;try{due=G('getDueCount',()=>0)()||0;}catch(e){}
   if(due)out.push({id:'fc:'+tk+':'+due,ic:'style',cls:'t-green',t:due+' carte'+(due>1?'s':'')+' à revoir',s:'Flashcards · répétition espacée',go:()=>{const f=G('startDueFlashcards',null);if(f)f();}});
-  let srs=0;try{srs=(G('getSRSDueQuestions',()=>[])()||[]).length;}catch(e){}
-  if(srs)out.push({id:'srs:'+tk+':'+srs,ic:'my_location',cls:'t-rose',t:srs+' question'+(srs>1?'s':'')+' à revoir',s:'Tu risques de les oublier bientôt',go:()=>{const f=G('launchSRS',null);if(f)f();}});
+  /* v72 : plus de « 1995 questions à revoir » (évident quand on révise beaucoup) → une petite révision du jour,
+     les 20 questions les plus urgentes, sans les matières terminées (kcDailySRS, kc-v72.js) */
+  let srs=[];try{srs=G('kcDailySRS',()=>[])()||[];}catch(e){}
+  if(srs.length)out.push({id:'srs20:'+tk,ic:'my_location',cls:'t-rose',t:'Ta révision du jour : '+srs.length+' question'+(srs.length>1?'s':''),s:'Les plus urgentes à revoir · environ '+Math.max(2,Math.round(srs.length*0.4))+' min',go:()=>{const f=G('kcLaunchDailySRS',null);if(f)f();}});
   /* examens et évènements proches */
   try{
     const up=(G('_agUpcoming',()=>[])(tk)||[]),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());

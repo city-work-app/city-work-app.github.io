@@ -490,7 +490,12 @@ window.startFCSession=function(cards,returnTo){
 window.renderFCCard=function(dir){
   if(!S)return;
   const c=S.cards[S.cur],total=S.cards.length;if(!c)return;
+  /* v72 : la carte revient côté question SANS animation avant d'afficher la suivante.
+     Avant, elle se retournait en 0,5 s pendant que le nouveau contenu était déjà là → on voyait la réponse de la carte suivante. */
+  const inner0=$('cfcard-inner');
+  if(inner0){inner0.style.transition='none';const cd=$('cfcard');if(cd)cd.classList.remove('flipped');void inner0.offsetWidth;}
   setFlip(false);
+  if(inner0)requestAnimationFrame(()=>requestAnimationFrame(()=>{inner0.style.transition='';}));
   $('cfprog').style.width=(S.cur/total*100)+'%';
   $('cfn').textContent=`${S.cur+1} / ${total}`;
   const lv=level(c);
@@ -538,7 +543,7 @@ window.fcAnswer=function(g){
   const card=$('cfcard');
   card.classList.add(g>=2?'cf-swipe-right':'cf-swipe-left');
   setTimeout(()=>{
-    card.classList.remove('cf-swipe-right','cf-swipe-left','flipped');
+    card.classList.remove('cf-swipe-right','cf-swipe-left');
     S._busy=false;S.cur++;
     if(S.cur>=S.cards.length){window.endFCSession();return;}
     window.renderFCCard('right');

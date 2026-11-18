@@ -126,7 +126,10 @@ function render(){
     return {f,n:fq.length,seen,rate:at?Math.round((1-er/at)*100):null,mast:fq.length?Math.round(m/fq.length*100):0,hard:h};
   }).filter(x=>x.n>0);
   /* à retravailler */
-  const weak=allQ.map(q=>{const d=D.dd[q.id];return d&&d.attempts>=2?{q,r:(d.errors||0)/d.attempts,a:d.attempts}:null;}).filter(x=>x&&x.r>0).sort((a,b)=>b.r-a.r||b.a-a.a).slice(0,8);
+  /* v72 : les questions des matières (ou dossiers) terminées ne sont plus proposées */
+  const arch=id=>!!id&&typeof isFolderArchived==='function'&&isFolderArchived(id);
+  const liveC=new Set(D.cs.filter(c=>!arch(c.folderId)&&!arch(c.subFolderId)).map(c=>c.id));
+  const weak=allQ.filter(q=>liveC.has(q.courseId)).map(q=>{const d=D.dd[q.id];return d&&d.attempts>=2?{q,r:(d.errors||0)/d.attempts,a:d.attempts}:null;}).filter(x=>x&&x.r>0).sort((a,b)=>b.r-a.r||b.a-a.a).slice(0,8);
   window._ks2Weak=weak.map(x=>x.q);
   /* records */
   const dks=Object.keys(D.dc).filter(k=>D.dc[k]>0);

@@ -73,9 +73,10 @@ function setLit(el){
 let L=null,lx=-2000,ly=-2000,ltx=-2000,lty=-2000,la=0,lta=0,lrun=false;
 function lightEl(){if(L)return L;L=document.createElement('div');L.id='kc-light';L.setAttribute('aria-hidden','true');document.body.appendChild(L);return L;}
 function lightLoop(){
-  lx+=(ltx-lx)*.12;ly+=(lty-ly)*.12;la+=(lta-la)*.07;
+  /* v72 : la lumière est collée à la souris (avant : lissage ×0,12 → elle traînait ~2 s derrière) ; seule l'apparition est douce */
+  lx=ltx;ly=lty;la+=(lta-la)*.18;
   L.style.transform=`translate3d(${lx.toFixed(1)}px,${ly.toFixed(1)}px,0)`;L.style.opacity=la.toFixed(3);
-  if(Math.abs(ltx-lx)+Math.abs(lty-ly)>.4||Math.abs(lta-la)>.004)requestAnimationFrame(lightLoop);else lrun=false;
+  if(Math.abs(lta-la)>.004)requestAnimationFrame(lightLoop);else{la=lta;L.style.opacity=la.toFixed(3);lrun=false;}
 }
 function lightKick(){if(!lrun){lrun=true;requestAnimationFrame(lightLoop);}}
 if(fine){
@@ -85,7 +86,9 @@ if(fine){
     lightEl();
     const off=calm()||document.body.dataset.glow==='non'||!!(e.target&&e.target.closest&&e.target.closest('.km-app,#screen-city,.cty-root,.ca-v'));
     if(lx<-1000){lx=mx;ly=my;}
-    ltx=mx;lty=my;lta=off?0:1;lightKick();
+    ltx=mx;lty=my;lta=off?0:1;
+    if(L&&!lrun){lx=mx;ly=my;L.style.transform=`translate3d(${mx}px,${my}px,0)`;}
+    lightKick();
   },{passive:true});
   document.documentElement.addEventListener('mouseleave',()=>{lta=0;if(L)lightKick();});
 }
