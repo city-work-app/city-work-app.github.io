@@ -89,7 +89,7 @@ function pickBody(){
         <span class="ksc-mv"><button type="button" data-k="left" ${i?'':'disabled'} title="Plus tôt" aria-label="Déplacer avant"><span class="ms">chevron_left</span></button><button type="button" data-k="right" ${i<list.length-1?'':'disabled'} title="Plus tard" aria-label="Déplacer après"><span class="ms">chevron_right</span></button></span>
         <button type="button" class="ksc-x" data-k="rm" title="Enlever" aria-label="Enlever ${esc(c.n)}"><span class="ms">close</span></button></div>`;}).join('')
       :'<p class="ksc-empty">Aucun raccourci : le cadre affichera seulement un bouton « Ajouter ». Pour enlever tout le cadre, utilise l’œil en mode édition de l’accueil.</p>'}</div>
-    ${grps.map(gr=>`<div class="ksc-h ksc-h2"><b>${gr}</b></div><div class="ksc-grid">${CAT.filter(c=>c.grp===gr).map(c=>{const on=list.includes(c.id);return `<button type="button" class="ksc-opt t-${c.t}${on?' on':''}" data-k="tog" data-id="${c.id}" ${!on&&full?'disabled':''}>
+    ${grps.map(gr=>`<div class="ksc-h ksc-h2"><b>${gr}</b></div><div class="ksc-grid">${CAT.filter(c=>c.grp===gr).map(c=>{const on=list.includes(c.id);return `<button type="button" class="ksc-opt t-${c.t}${on?' on':''}" data-k="tog" data-id="${c.id}" title="${esc(typeof c.d==='function'?c.d():c.d)}" ${!on&&full?'disabled':''}>
         <span class="ksc-ic"><span class="ms${c.f?' f':''}">${c.ic}</span></span><span class="ksc-t"><b>${esc(c.n)}</b><small>${esc(typeof c.d==='function'?c.d():c.d)}</small></span><span class="ms ksc-ck">${on?'check_circle':'add_circle'}</span></button>`;}).join('')}</div>`).join('')}
     ${full?'<p class="ksc-full">8 raccourcis au maximum : enlèves-en un pour en ajouter un autre.</p>':''}`;
 }
@@ -184,11 +184,12 @@ const ACT=[
   {id:'g_set',grp:'Partout',n:'Paramètres',def:''},
   /* v72 : Spotify au clavier. « soft » = peut partager sa touche avec une touche du quiz (pendant un quiz, la
      touche du quiz gagne). Ne fait rien si Spotify n'est pas connecté (la touche garde son effet normal). */
-  {id:'sp_play',grp:'Musique (Spotify)',n:'Lecture / pause',def:'s',soft:1,sp:1},
-  {id:'sp_next',grp:'Musique (Spotify)',n:'Morceau suivant',def:'d',soft:1,sp:1},
-  {id:'sp_prev',grp:'Musique (Spotify)',n:'Morceau précédent',def:'',soft:1,sp:1},
-  {id:'sp_up',grp:'Musique (Spotify)',n:'Monter le son',def:'',soft:1,sp:1},
-  {id:'sp_down',grp:'Musique (Spotify)',n:'Baisser le son',def:'',soft:1,sp:1}
+  {id:'sp_play',grp:'Musique',n:'Spotify : lecture / pause',def:'s',soft:1,sp:1},
+  {id:'sp_next',grp:'Musique',n:'Spotify : morceau suivant',def:'d',soft:1,sp:1},
+  {id:'sp_prev',grp:'Musique',n:'Spotify : morceau précédent',def:'',soft:1,sp:1},
+  {id:'sp_up',grp:'Musique',n:'Spotify : monter le son',def:'',soft:1,sp:1},
+  {id:'sp_down',grp:'Musique',n:'Spotify : baisser le son',def:'',soft:1,sp:1},
+  {id:'amb',grp:'Musique',n:'Sons d’ambiance : lecture / pause',def:''}
 ];
 function spOn(){try{return !!(window.spGetState&&window.spGetState().on);}catch(e){return false;}}
 function spToast(ic,t){
@@ -211,7 +212,8 @@ const RUN={
   sp_play:()=>{const was=window.spGetState().playing;fn('spotifyPlayPause');spToast(was?'pause':'play_arrow',was?'Pause':'Lecture');},
   sp_next:()=>{fn('spotifyNext');spToast('skip_next','Morceau suivant');},
   sp_prev:()=>{fn('spotifyPrev');spToast('skip_previous','Morceau précédent');},
-  sp_up:()=>spVol(10),sp_down:()=>spVol(-10)
+  sp_up:()=>spVol(10),sp_down:()=>spVol(-10),
+  amb:()=>{if(typeof window.kcAmbToggle!=='function')return;const on=window.kcAmbToggle();spToast(on?'graphic_eq':'pause',on?'Sons d’ambiance':'Sons d’ambiance en pause');}
 };
 function ans(n){const o=[...document.querySelectorAll('#qopts .ob:not(:disabled)')][n];if(o){o.focus();o.click();}}
 const custom=()=>{try{const o=JSON.parse(localStorage.getItem(KEYS)||'{}');return o&&typeof o==='object'?o:{};}catch(e){return {};}};
@@ -267,16 +269,27 @@ function setKey(id,k){
   try{if(Object.keys(c).length)localStorage.setItem(KEYS,JSON.stringify(c));else localStorage.removeItem(KEYS);}catch(e){}
   railKeys();
 }
+/* v73 : réglages compacts — un onglet par groupe (avant : toutes les touches l'une sous l'autre, « ça prend tout l'écran ») */
+const KTAB='kp_keys_tab';
 function drawKeys(){
   const box=$('kp-keys-body');if(!box)return;
   const grps=[...new Set(ACT.map(a=>a.grp))],cu=custom();
-  box.innerHTML=grps.map(gr=>`<div class="kpk-grp"><div class="kpk-h">${gr}</div>${ACT.filter(a=>a.grp===gr).map(a=>{const k=keyOf(a),rec=REC===a.id,chg=Object.prototype.hasOwnProperty.call(cu,a.id);
-      return `<div class="kpk-row${rec?' rec':''}"><span class="kpk-n">${esc(a.n)}</span>
-        <button type="button" class="kpk-key${k?'':' none'}" data-kk="${a.id}" title="Clique puis appuie sur la touche voulue">${rec?'<span class="kpk-wait">Appuie sur une touche…</span>':k?kbd(k,'kq-kbd'):'Aucune'}</button>
-        ${chg?`<button type="button" class="kpk-undo" data-kr="${a.id}" title="Touche d’origine${a.def?' : '+esc(pretty(a.def).join(' + ')):' : aucune'}"><span class="ms">undo</span></button>`:'<span class="kpk-undo-ph"></span>'}</div>`;}).join('')}</div>`).join('')
-    +`<p class="kpk-hint">Clique sur une touche puis appuie sur la nouvelle (tu peux ajouter Ctrl, Alt ou Maj). <b>Retour</b> = aucune touche, <b>Échap</b> = annuler. Les touches 1–5, Entrée et → marchent toujours pendant un quiz. Les touches <b>Musique</b> marchent quand Spotify est connecté ; pendant un quiz, si une réponse utilise la même touche, c’est la réponse qui gagne.</p>
-      <button type="button" class="btn btn-g btn-sm" data-kall><span class="ms" style="font-size:16px;vertical-align:-3px">restart_alt</span> Remettre toutes les touches d’origine</button>`;
+  let tab=(()=>{try{return localStorage.getItem(KTAB)||grps[0];}catch(e){return grps[0];}})();
+  if(REC){const ra=ACT.find(a=>a.id===REC);if(ra)tab=ra.grp;}
+  if(!grps.includes(tab))tab=grps[0];
+  const nChg=g=>ACT.filter(a=>a.grp===g&&Object.prototype.hasOwnProperty.call(cu,a.id)).length;
+  box.innerHTML=`<div class="kpk-top"><div class="kpk-tabs" role="tablist">${grps.map(g=>`<button type="button" role="tab" class="${g===tab?'on':''}" data-ktab="${esc(g)}">${esc(g)}<small>${ACT.filter(a=>a.grp===g).length}</small>${nChg(g)?'<i title="Touches modifiées"></i>':''}</button>`).join('')}</div>
+      <button type="button" class="kpk-reset" data-kall title="Remettre toutes les touches d’origine"><span class="ms">restart_alt</span><span>Touches d’origine</span></button></div>
+    <div class="kpk-rows">${ACT.filter(a=>a.grp===tab).map(a=>{const k=keyOf(a),rec=REC===a.id,chg=Object.prototype.hasOwnProperty.call(cu,a.id);
+      return `<div class="kpk-row${rec?' rec':''}"><span class="kpk-n" title="${esc(a.n)}">${esc(a.n)}</span>
+        <button type="button" class="kpk-key${k?'':' none'}" data-kk="${a.id}" title="Clique puis appuie sur la touche voulue">${rec?'<span class="kpk-wait">Appuie…</span>':k?kbd(k,'kq-kbd'):'Aucune'}</button>
+        ${chg?`<button type="button" class="kpk-undo" data-kr="${a.id}" title="Touche d’origine${a.def?' : '+esc(pretty(a.def).join(' + ')):' : aucune'}"><span class="ms">undo</span></button>`:'<span class="kpk-undo-ph"></span>'}</div>`;}).join('')}</div>
+    <p class="kpk-hint"><span class="ms">info</span><span>Clique sur une touche puis appuie sur la nouvelle (Ctrl, Alt, Maj possibles) · <b>Retour</b> = aucune · <b>Échap</b> = annuler. 1–5, Entrée et → marchent toujours pendant un quiz.${tab==='Musique'?' Spotify : seulement s’il est connecté ; pendant un quiz, une réponse sur la même touche gagne.':''}</span></p>`;
 }
+document.addEventListener('click',e=>{
+  const t=e.target.closest('#kp-keys-body [data-ktab]');if(!t)return;
+  try{localStorage.setItem(KTAB,t.dataset.ktab);}catch(err){}REC=null;drawKeys();
+});
 document.addEventListener('click',e=>{
   const b=e.target.closest('#kp-keys-body [data-kk]');
   if(b){REC=REC===b.dataset.kk?null:b.dataset.kk;drawKeys();return;}

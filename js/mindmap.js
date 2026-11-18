@@ -2369,7 +2369,15 @@ KM.state = () => ({ B, G, V, LG, sel, kids, depth, IEL, BRANCHES, BRSTROKES, BRS
 /* Accueil des cartes mentales — v5 (16 nov. 2026) : création en tuiles, modèles avec aperçu, recherche, tri, favoris, grille / liste */
 const HUBK = 'kcu_maps_hub';
 let hubQ = '';
-function hubPrefs() { const d = readJSON(HUBK, {}) || {}; return { f: d.f || 'all', s: d.s || 'recent', v: d.v || 'grid' }; }
+function hubPrefs() { const d = readJSON(HUBK, {}) || {}; let fd = d.d || ''; if (fd && fd !== '__none' && !mfolders().some(f => f.id === fd)) fd = ''; return { f: d.f || 'all', s: d.s || 'recent', v: d.v || 'grid', d: fd }; }
+/* v73 (18 nov. 2026) : dossiers de cartes (kcu_maps_folders = [{id, name}], carte → meta.folder) + sélection multiple
+   (ranger dans un dossier, supprimer). Glisser une carte (ou la sélection) sur un dossier la range aussi. */
+const FOLK = 'kcu_maps_folders';
+function mfolders() { const a = readJSON(FOLK, []); return Array.isArray(a) ? a.filter(f => f && f.id) : []; }
+function saveMFolders(a) { writeJSON(FOLK, a); }
+function folderOfMap(m) { return m && m.folder && mfolders().some(f => f.id === m.folder) ? m.folder : ''; }
+let SELMODE = false, LASTSEL = null;
+const SEL = new Set();
 function setHubPref(k, v) { const d = hubPrefs(); d[k] = v; writeJSON(HUBK, d); }
 function courseName(id) { try { const c = id && typeof courses !== 'undefined' ? courses.find(x => x.id === id) : null; return c ? c.name : ''; } catch (e) { return ''; } }
 function tplPreview(t) {
@@ -2389,11 +2397,13 @@ const BRANCH0 = BRANCH.slice();
 function cardHTML(m, list) {
   const n = m.n || 0, cn = courseName(m.courseId);
   const thBg = m.bgc ? ' style="--km-thbg:' + esc(m.bgc).replace(/"/g, '') + '"' : '';
-  return '<div class="km-card' + (list ? ' row' : '') + '" data-hub="open" data-v="' + esc(m.id) + '" tabindex="0" role="button" aria-label="Ouvrir ' + esc(m.name) + '">' +
+  const fid = folderOfMap(m), fd = fid && !hubPrefs().d ? mfolders().find(f => f.id === fid) : null;
+  return '<div class="km-card' + (list ? ' row' : '') + (SEL.has(m.id) ? ' sel' : '') + '" draggable="true" data-hub="open" data-v="' + esc(m.id) + '" tabindex="0" role="button" aria-label="' + (SELMODE ? 'Sélectionner ' : 'Ouvrir ') + esc(m.name) + '">' +
+    (SELMODE ? '<span class="km-card-ck" aria-hidden="true"><span class="ms">check</span></span>' : '') +
     '<div class="km-card-th' + (m.bgc ? ' bg' : '') + '"' + thBg + '>' + (m.th || '<span class="ms">account_tree</span>') + '</div>' +
     '<div class="km-card-b"><div class="km-card-n">' + esc(m.name || 'Sans titre') + '</div>' +
     '<div class="km-card-m">' + n + ' idée' + (n > 1 ? 's' : '') + ' · ' + ago(m.updated) + '</div>' +
-    (cn ? '<div class="km-card-c"><span class="ms">school</span>' + esc(cn) + '</div>' : '') + '</div>' +
+    (cn || fd ? '<div class="km-card-tags">' + (fd ? '<span class="km-card-c km-card-fd"><span class="ms">folder</span>' + esc(fd.name) + '</span>' : '') + (cn ? '<span class="km-card-c"><span class="ms">school</span>' + esc(cn) + '</span>' : '') + '</div>' : '') + '</div>' +
     '<button class="km-card-fav' + (m.fav ? ' on' : '') + '" data-hub="fav" data-v="' + esc(m.id) + '" title="' + (m.fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '" aria-label="Favori"><span class="ms">' + (m.fav ? 'star' : 'star_outline') + '</span></button>' +
     '<button class="km-card-more" data-hub="more" data-v="' + esc(m.id) + '" title="Options" aria-label="Options"><span class="ms">more_horiz</span></button></div>';
 }
@@ -2402,6 +2412,7 @@ function hubList() {
   let list = index().slice();
   if (pr.f === 'fav') list = list.filter(m => m.fav);
   else if (pr.f === 'course') list = list.filter(m => m.courseId);
+  if (pr.d) list = list.filter(m => pr.d === '__none' ? !folderOfMap(m) : m.folder === pr.d);
   if (q) list = list.filter(m => norm(m.name).includes(q) || norm(courseName(m.courseId)).includes(q));
   if (pr.s === 'name') list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'fr'));
   else if (pr.s === 'size') list.sort((a, b) => (b.n || 0) - (a.n || 0));
@@ -2414,7 +2425,8 @@ function drawHubList() {
   const pr = hubPrefs(), list = hubList(), all = index().length;
   const cnt = document.getElementById('kmh-count'); if (cnt) cnt.textContent = all;
   if (!all) { box.className = 'kmh-list'; box.innerHTML = '<div class="km-empty"><span class="ms">account_tree</span><b>Aucune carte pour l’instant</b><p>Crée une carte vierge, pars d’un modèle ou génère-la depuis la fiche d’un de tes cours.</p><button class="km-hbtn pri" data-hub="new"><span class="ms">add</span>Ma première carte</button></div>'; return; }
-  if (!list.length) { box.className = 'kmh-list'; box.innerHTML = '<div class="km-empty sm"><span class="ms">search_off</span><b>Aucune carte trouvée</b></div>'; return; }
+  drawFolders(); drawSelBar();
+  if (!list.length) { box.className = 'kmh-list'; box.innerHTML = pr.d && !hubQ.trim() && pr.f === 'all' ? '<div class="km-empty sm"><span class="ms">folder_open</span><b>' + (pr.d === '__none' ? 'Toutes tes cartes sont rangées' : 'Ce dossier est vide') + '</b><p>Clique sur « Sélectionner », choisis des cartes puis « Ranger dans… » — ou glisse une carte sur le dossier.</p></div>' : '<div class="km-empty sm"><span class="ms">search_off</span><b>Aucune carte trouvée</b></div>'; return; }
   box.className = 'kmh-list ' + (pr.v === 'list' ? 'km-rows' : 'km-grid');
   box.innerHTML = list.map(m => cardHTML(m, pr.v === 'list')).join('');
 }
@@ -2438,10 +2450,108 @@ window.renderMindMapHub = function () {
     '<div class="kmh-sec kmh-sec-cards"><h2>Mes cartes <span id="kmh-count"></span></h2>' +
       '<div class="kmh-tools"><div class="kmh-chips">' + chip('all', 'Toutes') + chip('fav', 'Favorites', 'star') + chip('course', 'Liées à un cours', 'school') + '</div>' +
       '<select class="kmh-sort" data-hubsel="s" aria-label="Trier"><option value="recent"' + (pr.s === 'recent' ? ' selected' : '') + '>Plus récentes</option><option value="name"' + (pr.s === 'name' ? ' selected' : '') + '>Nom (A → Z)</option><option value="size"' + (pr.s === 'size' ? ' selected' : '') + '>Plus grandes</option></select>' +
-      '<div class="kmh-view"><button class="' + (pr.v === 'grid' ? 'on' : '') + '" data-hub="view" data-v="grid" title="Grille" aria-label="Grille"><span class="ms">grid_view</span></button><button class="' + (pr.v === 'list' ? 'on' : '') + '" data-hub="view" data-v="list" title="Liste" aria-label="Liste"><span class="ms">view_list</span></button></div></div></div>' +
+      '<div class="kmh-view"><button class="' + (pr.v === 'grid' ? 'on' : '') + '" data-hub="view" data-v="grid" title="Grille" aria-label="Grille"><span class="ms">grid_view</span></button><button class="' + (pr.v === 'list' ? 'on' : '') + '" data-hub="view" data-v="list" title="Liste" aria-label="Liste"><span class="ms">view_list</span></button></div>' +
+      '<button class="kmh-selbtn" data-hub="sel" title="Sélectionner plusieurs cartes (ou Ctrl / Maj + clic)"><span class="ms">checklist</span><span>Sélectionner</span></button></div></div>' +
+    '<div class="kmh-folders" id="kmh-folders"></div>' +
     '<div id="kmh-list"></div>';
+  SELMODE = false; SEL.clear(); host.classList.remove('kmh-selecting');
   drawHubList();
 };
+function drawFolders() {
+  const box = document.getElementById('kmh-folders'); if (!box) return;
+  const fs = mfolders(), pr = hubPrefs(), all = index();
+  const cnt = id => all.filter(m => id === '__none' ? !folderOfMap(m) : m.folder === id).length;
+  let h = '<button class="kmh-fd' + (!pr.d ? ' on' : '') + '" data-hub="fold" data-v=""><span class="ms">apps</span>Toutes<small>' + all.length + '</small></button>';
+  fs.forEach(f => { h += '<button class="kmh-fd' + (pr.d === f.id ? ' on' : '') + '" data-hub="fold" data-v="' + esc(f.id) + '" data-fdrop="' + esc(f.id) + '"><span class="ms">folder</span>' + esc(f.name) + '<small>' + cnt(f.id) + '</small></button>'; });
+  if (fs.length) h += '<button class="kmh-fd' + (pr.d === '__none' ? ' on' : '') + '" data-hub="fold" data-v="__none" data-fdrop="__none"><span class="ms">folder_off</span>Sans dossier<small>' + cnt('__none') + '</small></button>';
+  h += '<button class="kmh-fd add" data-hub="fnew"><span class="ms">create_new_folder</span>Nouveau dossier</button>';
+  if (pr.d && pr.d !== '__none') h += '<span class="kmh-fd-act"><button data-hub="fren" data-v="' + esc(pr.d) + '" title="Renommer le dossier" aria-label="Renommer le dossier"><span class="ms">edit</span></button><button data-hub="fdel" data-v="' + esc(pr.d) + '" title="Supprimer le dossier" aria-label="Supprimer le dossier"><span class="ms">delete</span></button></span>';
+  box.innerHTML = h;
+}
+function drawSelBar() {
+  const host = document.getElementById('km-hub'); if (!host) return;
+  let bar = document.getElementById('kmh-selbar');
+  if (!SELMODE) { if (bar) bar.remove(); return; }
+  if (!bar) { bar = el('div', 'kmh-selbar'); bar.id = 'kmh-selbar'; host.appendChild(bar); }
+  const n = SEL.size, vis = hubList(), allOn = vis.length && vis.every(m => SEL.has(m.id));
+  bar.innerHTML = '<b>' + (n ? n + ' carte' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '') : 'Clique sur des cartes pour les sélectionner') + '</b>' +
+    '<button data-hub="selall"><span class="ms">' + (allOn ? 'deselect' : 'select_all') + '</span>' + (allOn ? 'Aucune' : 'Tout') + '</button>' +
+    '<button data-hub="selmove"' + (n ? '' : ' disabled') + '><span class="ms">drive_file_move</span>Ranger dans…</button>' +
+    '<button data-hub="seldel" class="danger"' + (n ? '' : ' disabled') + '><span class="ms">delete</span>Supprimer</button>' +
+    '<button data-hub="seldone" class="pri"><span class="ms">check</span>Terminé</button>';
+}
+function setSelMode(on) {
+  SELMODE = !!on; if (!SELMODE) { SEL.clear(); LASTSEL = null; }
+  const host = document.getElementById('km-hub'); if (host) host.classList.toggle('kmh-selecting', SELMODE);
+  const b = document.querySelector('#km-hub .kmh-selbtn'); if (b) b.classList.toggle('on', SELMODE);
+  drawHubList();
+}
+function toggleSel(id, range) {
+  if (!SELMODE) setSelMode(true);
+  if (range && LASTSEL) {
+    const ids = hubList().map(m => m.id), a = ids.indexOf(LASTSEL), b = ids.indexOf(id);
+    if (a > -1 && b > -1) { ids.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => SEL.add(x)); }
+  } else if (SEL.has(id)) SEL.delete(id); else SEL.add(id);
+  LASTSEL = id;
+  document.querySelectorAll('#kmh-list .km-card').forEach(c => c.classList.toggle('sel', SEL.has(c.dataset.v)));
+  drawSelBar();
+}
+function askName(title, def, cb) {
+  dialog({
+    title, html: '<input class="km-in" maxlength="60" placeholder="Ex. : Anatomie, Partiels…" value="' + esc(def || '') + '">', foot: '<button class="km-b2 pri" data-k="ok">OK</button>',
+    onMount(w, close) {
+      const inp = w.querySelector('input'); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+      const ok = () => { const v = inp.value.trim(); if (v) cb(v); close(); };
+      inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter') ok(); });
+      w.addEventListener('click', e2 => { if (e2.target.closest('[data-k="ok"]')) ok(); });
+    }
+  });
+}
+function newFolder(cb) { askName('Nouveau dossier', '', name => { const a = mfolders(), f = { id: uid(), name }; a.push(f); saveMFolders(a); if (cb) cb(f); else drawHubList(); }); }
+function moveMaps(ids, fid) {
+  let n = 0;
+  ids.forEach(id => { const m = metaOf(id); if (!m) return; if (fid && fid !== '__none') m.folder = fid; else delete m.folder; n++; });
+  saveIndex();
+  const f = mfolders().find(x => x.id === fid);
+  toast(n + ' carte' + (n > 1 ? 's' : '') + (f ? ' rangée' + (n > 1 ? 's' : '') + ' dans « ' + f.name + ' »' : ' sortie' + (n > 1 ? 's' : '') + ' de leur dossier'));
+  if (SELMODE) setSelMode(false); else drawHubList();
+}
+function moveMenu(btn, ids) {
+  closeHubMenu();
+  if (!ids.length) return;
+  const m = el('div', 'km-hubmenu km-menu show'), fs = mfolders();
+  m.innerHTML = '<div class="km-mv-h">Ranger ' + ids.length + ' carte' + (ids.length > 1 ? 's' : '') + ' dans…</div>' +
+    fs.map(f => '<button data-mv="' + esc(f.id) + '"><span class="ms">folder</span><span>' + esc(f.name) + '</span></button>').join('') +
+    (fs.length ? '<button data-mv="__none"><span class="ms">folder_off</span><span>Sans dossier</span></button><hr>' : '') +
+    '<button data-mv="__new"><span class="ms">create_new_folder</span><span>Nouveau dossier…</span></button>';
+  document.body.appendChild(m);
+  const r = btn.getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8)) + 'px';
+  m.style.top = (r.top - m.offsetHeight - 8 > 8 && r.top > window.innerHeight / 2 ? r.top - m.offsetHeight - 8 : Math.min(r.bottom + 6, window.innerHeight - m.offsetHeight - 8)) + 'px';
+  m.addEventListener('click', ev => {
+    const b = ev.target.closest('[data-mv]'); if (!b) return;
+    ev.stopPropagation(); m.remove();
+    if (b.dataset.mv === '__new') newFolder(f => moveMaps(ids, f.id)); else moveMaps(ids, b.dataset.mv);
+  });
+}
+function delMaps(ids) {
+  if (!ids.length) return;
+  const n = ids.length, doDel = () => { ids.forEach(deleteBoard); setSelMode(false); toast(n + ' carte' + (n > 1 ? 's' : '') + ' supprimée' + (n > 1 ? 's' : '')); };
+  const t = 'Supprimer ' + (n > 1 ? 'ces ' + n + ' cartes' : 'cette carte') + ' ?', msg = (n > 1 ? 'Elles seront définitivement supprimées.' : '« ' + ((metaOf(ids[0]) || {}).name || '') + ' » sera définitivement supprimée.');
+  if (typeof showConfirm === 'function') showConfirm(t, msg, 'Supprimer', doDel); else if (confirm(t)) doDel();
+}
+/* glisser une carte (ou toute la sélection) sur un dossier */
+let DRAGIDS = null;
+document.addEventListener('dragstart', e => {
+  const c = e.target.closest && e.target.closest('#kmh-list .km-card'); if (!c) return;
+  DRAGIDS = SEL.has(c.dataset.v) ? [...SEL] : [c.dataset.v];
+  try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', DRAGIDS.join(',')); } catch (err) { /* rien */ }
+  document.getElementById('km-hub')?.classList.add('kmh-dragging');
+});
+document.addEventListener('dragend', () => { DRAGIDS = null; document.getElementById('km-hub')?.classList.remove('kmh-dragging'); document.querySelectorAll('.kmh-fd.over').forEach(x => x.classList.remove('over')); });
+document.addEventListener('dragover', e => { const f = DRAGIDS && e.target.closest && e.target.closest('#kmh-folders [data-fdrop]'); if (!f) return; e.preventDefault(); document.querySelectorAll('.kmh-fd.over').forEach(x => { if (x !== f) x.classList.remove('over'); }); f.classList.add('over'); });
+document.addEventListener('drop', e => { const f = DRAGIDS && e.target.closest && e.target.closest('#kmh-folders [data-fdrop]'); if (!f) return; e.preventDefault(); const ids = DRAGIDS; DRAGIDS = null; moveMaps(ids, f.dataset.fdrop); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && SELMODE && document.getElementById('kmh-selbar') && !document.querySelector('.km-dlg')) { e.preventDefault(); setSelMode(false); } });
 document.addEventListener('input', e => { if (e.target && e.target.id === 'kmh-q') { hubQ = e.target.value; drawHubList(); } });
 document.addEventListener('change', e => { if (e.target && e.target.dataset && e.target.dataset.hubsel === 's' && e.target.closest('#km-hub')) { setHubPref('s', e.target.value); drawHubList(); } });
 function hubClick(e) {
@@ -2450,7 +2560,23 @@ function hubClick(e) {
   const a = b.dataset.hub, v = b.dataset.v;
   if (a !== 'more') closeHubMenu();
   switch (a) {
-    case 'open': openBoard(v); break;
+    case 'open': if (SELMODE || e.shiftKey || e.metaKey || e.ctrlKey) { e.preventDefault(); toggleSel(v, e.shiftKey); } else openBoard(v); break;
+    case 'sel': setSelMode(!SELMODE); break;
+    case 'seldone': setSelMode(false); break;
+    case 'selall': { const vis = hubList(), allOn = vis.length && vis.every(m => SEL.has(m.id)); if (allOn) vis.forEach(m => SEL.delete(m.id)); else vis.forEach(m => SEL.add(m.id)); drawHubList(); break; }
+    case 'selmove': e.stopPropagation(); moveMenu(b, [...SEL]); break;
+    case 'seldel': delMaps([...SEL]); break;
+    case 'fold': setHubPref('d', v); drawHubList(); break;
+    case 'fnew': newFolder(); break;
+    case 'fren': { const a = mfolders(), f = a.find(x => x.id === v); if (f) askName('Renommer le dossier', f.name, name => { f.name = name; saveMFolders(a); drawHubList(); }); break; }
+    case 'fdel': {
+      const a = mfolders(), f = a.find(x => x.id === v); if (!f) break;
+      const n = index().filter(m => m.folder === v).length;
+      const go = () => { index().forEach(m => { if (m.folder === v) delete m.folder; }); saveIndex(); saveMFolders(a.filter(x => x.id !== v)); setHubPref('d', ''); drawHubList(); toast('Dossier « ' + f.name + ' » supprimé'); };
+      const msg = n ? 'Les ' + n + ' carte' + (n > 1 ? 's' : '') + ' qu’il contient ne sont pas supprimées : elles reviennent dans « Sans dossier ».' : 'Il est vide.';
+      if (typeof showConfirm === 'function') showConfirm('Supprimer le dossier « ' + f.name + ' » ?', msg, 'Supprimer le dossier', go); else if (confirm('Supprimer le dossier ?')) go();
+      break;
+    }
     case 'new': { const id = KM.newBoard(); if (id) openBoard(id, { editRoot: true }); break; }
     case 'board': { const id = KM.createBoard('Tableau blanc', []); if (id) { openBoard(id); setTool('sticky'); } break; }
     case 'ai': if (typeof window.kiaNew === 'function') window.kiaNew('map'); else toast('Atelier IA indisponible', 'error'); break;
@@ -2468,7 +2594,7 @@ function hubMenu(btn, id) {
   closeHubMenu();
   const m = el('div', 'km-hubmenu km-menu show');
   const mm = metaOf(id);
-  m.innerHTML = '<button data-hm="open"><span class="ms">open_in_new</span><span>Ouvrir</span></button><button data-hm="fav"><span class="ms">' + (mm && mm.fav ? 'star' : 'star_outline') + '</span><span>' + (mm && mm.fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '</span></button><button data-hm="rename"><span class="ms">edit</span><span>Renommer</span></button><button data-hm="dup"><span class="ms">content_copy</span><span>Dupliquer</span></button><hr><button data-hm="del" class="danger"><span class="ms">delete</span><span>Supprimer</span></button>';
+  m.innerHTML = '<button data-hm="open"><span class="ms">open_in_new</span><span>Ouvrir</span></button><button data-hm="fav"><span class="ms">' + (mm && mm.fav ? 'star' : 'star_outline') + '</span><span>' + (mm && mm.fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '</span></button><button data-hm="rename"><span class="ms">edit</span><span>Renommer</span></button><button data-hm="move"><span class="ms">drive_file_move</span><span>Ranger dans un dossier…</span></button><button data-hm="dup"><span class="ms">content_copy</span><span>Dupliquer</span></button><hr><button data-hm="del" class="danger"><span class="ms">delete</span><span>Supprimer</span></button>';
   document.body.appendChild(m);
   const r = btn.getBoundingClientRect();
   m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, window.innerWidth - m.offsetWidth - 8)) + 'px';
@@ -2478,6 +2604,7 @@ function hubMenu(btn, id) {
     ev.stopPropagation(); m.remove();
     const meta = metaOf(id); if (!meta) return;
     if (b.dataset.hm === 'open') openBoard(id);
+    else if (b.dataset.hm === 'move') moveMenu(btn, [id]);
     else if (b.dataset.hm === 'fav') { meta.fav = !meta.fav; saveIndex(); drawHubList(); }
     else if (b.dataset.hm === 'dup') { duplicateBoard(id); window.renderMindMapHub(); toast('Carte dupliquée'); }
     else if (b.dataset.hm === 'rename') {

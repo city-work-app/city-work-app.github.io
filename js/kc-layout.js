@@ -64,8 +64,40 @@ function applyHome(){
   const o=load(),gap=+o.homeGap,max=+o.homeMax,kh=g.closest('.kh');
   g.style.gap=gap>=4&&gap<=60?gap+'px':'';
   if(kh)kh.style.maxWidth=max>=800?(max>=MAXW?'none':max+'px'):'';
+  fitSoon(30);
 }
 const MAXW=2000;/* curseur « largeur de la page » au maximum = toute la largeur de l'écran */
+/* v73 (18 nov. 2026) : quand un cadre a une hauteur choisie plus petite que son contenu, le contenu RÉTRÉCIT pour tenir
+   (zoom posé sur chaque enfant direct, recherche par dichotomie entre 45 % et 100 %), au lieu d'être coupé.
+   Appelé par applyHome, pendant le redimensionnement (rzFrame), au changement de contenu (MutationObserver) et de fenêtre. */
+const FIT_SKIP='.kh-ecover,.kh-rz,.kh-modes-edit';
+function fitBlk(el){
+  if(!el)return;
+  const kids=[...el.children].filter(k=>!k.matches(FIT_SKIP));
+  kids.forEach(k=>{if(k.style.zoom)k.style.zoom='';});
+  el.classList.remove('kh-fit');
+  if(innerWidth<640||!(el.dataset.h||el.style.height)||el.hasAttribute('hidden'))return;
+  const over=()=>el.scrollHeight>el.clientHeight+1;
+  if(!over())return;
+  let lo=.45,hi=1;
+  for(let i=0;i<7;i++){const m=(lo+hi)/2;kids.forEach(k=>{k.style.zoom=m;});if(over())hi=m;else lo=m;}
+  kids.forEach(k=>{k.style.zoom=lo.toFixed(3);});
+  el.classList.add('kh-fit');
+}
+let fitT=0;
+function fitAll(){fitT=0;const g=$('kh-grid');if(!g)return;FITTING=true;g.querySelectorAll(':scope>.kh-blk').forEach(fitBlk);setTimeout(()=>{FITTING=false;},0);}
+let FITTING=false;
+function fitSoon(d){if(fitT)return;/* une seule mise à l'échelle en attente (le contenu de l'accueil change souvent) */fitT=setTimeout(fitAll,d==null?120:d);}
+window.kcHomeFit=fitAll;
+(function(){
+  const go=()=>{
+    const g=$('kh-grid');if(!g){setTimeout(go,800);return;}
+    try{new MutationObserver(()=>{if(!FITTING&&!RZ)fitSoon();}).observe(g,{childList:true,subtree:true,characterData:true});}catch(e){}
+    window.addEventListener('resize',()=>fitSoon(200));
+    fitSoon(400);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else setTimeout(go,0);
+})();
 
 /* ───────── Menu de gauche ───────── */
 let NAV0=null;/* état d'origine lu dans la page */
@@ -123,6 +155,7 @@ function applyBar(){barCfg().forEach((id,i)=>{const b=$(id);if(b)b.style.order=i
 const TB=[
   {id:'level',n:'Niveau et XP',ic:'military_tech'},
   {id:'pomo',n:'Pomodoro',ic:'timer'},
+  {id:'amb',n:'Sons d’ambiance',ic:'graphic_eq'},
   {id:'theme',n:'Thème clair / sombre',ic:'light_mode'},
   {id:'search',n:'Recherche',ic:'search'},
   {id:'profil',n:'Mon profil',ic:'person'},
@@ -156,7 +189,8 @@ function topCfg(){
   const cat=tbCat(),s=load().top||{};
   const items=(Array.isArray(s.items)?s.items:[]).filter((id,i,a)=>cat[id]&&a.indexOf(id)===i);
   const off=(Array.isArray(s.off)?s.off:[]).filter(id=>TB.some(b=>b.id===id)&&!items.includes(id));
-  TB.forEach(b=>{if(!items.includes(b.id)&&!off.includes(b.id))items.push(b.id);});
+  /* v73 : un bouton d'origine ajouté plus tard (ex. Sons d'ambiance) se place après son voisin d'origine, pas tout au bout */
+  TB.forEach((b,bi)=>{if(items.includes(b.id)||off.includes(b.id))return;const prev=TB.slice(0,bi).reverse().find(p=>items.includes(p.id));items.splice(prev?items.indexOf(prev.id)+1:items.length,0,b.id);});
   return {items,off};
 }
 function tbEl(id){const fr=tbFr();return fr?[...fr.querySelectorAll('[data-tb]')].find(x=>x.dataset.tb===id)||null:null;}
@@ -482,7 +516,8 @@ window.kcHomeEdit=function(on){
   if(on===EDIT){if(on)decorate();return;}
   EDIT=on;document.body.classList.toggle('kh-editing',on);
   if(on){if(document.body.dataset.screen!=='home'&&typeof showScreen==='function')showScreen('home');close();decorate();toolbar(true);}
-  else{undecorate();toolbar(false);}
+  else{undecorate();toolbar(false);const dl=$('kc-dlg');if(dl&&dl.classList.contains('ksc-dlg')){const x=dl.querySelector('[data-x]');if(x)x.click();}}
+  fitSoon(260);
 };
 function ghostOf(el,e){
   const r=el.getBoundingClientRect(),gh=el.cloneNode(true);
@@ -537,6 +572,7 @@ function rzFrame(){
     d.auto=false;d.h=hh;
     tip.push('Hauteur '+Math.round(hh-d.epad)+' px');
   }
+  fitBlk(el);
   rzTip({clientX:d.x,clientY:d.y},tip.join(' · '));
 }
 function rzMove(e){

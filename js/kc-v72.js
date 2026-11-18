@@ -275,6 +275,27 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='-'||e.key==='_'){e.preventDefault();fzSet(-.1);}
 });
 
+/* ───────── 5. Ville (v73) : la page ne défile plus quand on bouge la caméra ─────────
+   Les flèches / Espace / la molette sur la barre du jeu, ou le focus du canevas, faisaient défiler la page (ou le
+   cadre #city-root, pourtant en overflow:hidden) → le haut de la ville passait sous la barre du site.
+   On remet à 0 tout défilement de la page ou d'un parent de #city-root tant qu'on est sur la ville
+   (les panneaux À L'INTÉRIEUR de la ville gardent leur défilement). */
+function cityFix(e){
+  if(document.body.dataset.screen!=='city')return;
+  const root=$('city-root');if(!root)return;
+  const se=document.scrollingElement||document.documentElement;
+  const t=!e||e.target===document?se:e.target;
+  if(!t||!(t===se||t===root||(t.contains&&t.contains(root))))return;
+  if(t.scrollTop)t.scrollTop=0;if(t.scrollLeft)t.scrollLeft=0;
+}
+document.addEventListener('scroll',cityFix,true);
+window.addEventListener('keydown',e=>{
+  if(document.body.dataset.screen!=='city')return;
+  if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='SELECT'||e.target.isContentEditable))return;
+  if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','PageUp','PageDown','Home','End'].includes(e.key)&&!(e.target&&e.target.closest&&e.target.closest('.cty-panel,.cty-qz-scroll,[class*="scroll"]')))e.preventDefault();
+},false);
+(function(){const o=window.showScreen;if(typeof o!=='function'||o._v73c)return;const w=function(id){const r=o.apply(this,arguments);if(id==='city')setTimeout(()=>{window.scrollTo(0,0);cityFix();const root=$('city-root');if(root){root.scrollTop=0;const sc=$('screen-city');if(sc)sc.scrollTop=0;}},30);return r;};w._v73c=true;Object.keys(o).forEach(k=>{try{w[k]=o[k];}catch(e){}});window.showScreen=w;})();
+
 function start(){fzUI();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
