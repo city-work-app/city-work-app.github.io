@@ -40,13 +40,14 @@ const dbDel=id=>tx('readwrite',s=>s.delete(id));
 const RX_BULLET=/^(?:[•▪◦●○■□►▶✓✔➢➤→\-–—·*]\s*|\(?\d{1,2}[.)]\s+|[a-h]\)\s+)/;
 async function readCourse(bytes,prog){
   const pdf=await pdfjsLib.getDocument({data:bytes}).promise;
-  const pages=[],segs=[];let hasHL=false,oldAnnales=false;
+  const pages=[],segs=[],hl=[];let hasHL=false,oldAnnales=false;
   for(let p=1;p<=pdf.numPages;p++){
     if(prog)prog(`Lecture du cours : page ${p} sur ${pdf.numPages}…`,p/pdf.numPages);
     const page=await pdf.getPage(p),vp=page.getViewport({scale:1}),W=vp.width,H=vp.height;
     const [tc,ann]=await Promise.all([page.getTextContent(),page.getAnnotations().catch(()=>[])]);
     if(ann.some(a=>a.subtype==='Highlight'))hasHL=true;
     if(ann.some(a=>a.titleObj&&/annales?/i.test(a.titleObj.str||'')))oldAnnales=true;
+    hlCollect(ann,vp,p,hl);
     const lines=pageLines(tc,vp);
     const blocks=pageBlocks(lines);
     let title='';
@@ -79,7 +80,47 @@ async function readCourse(bytes,prog){
   const RX_NOTCOURSE=/^(caso cl[ií]nico|cas clinique|clinical case|preguntas? a resolver|preguntas|ejercicios?|exercices?|questions?( à résoudre)?|instrucciones|consignes|bibliograf|r[ée]f[ée]rences|referencias|[ií]ndice|sommaire|table des mati|plan du cours)/i;
   segs.forEach(s=>{const pt=(pages[s.p-1]&&pages[s.p-1].title)||'';if(RX_NOTCOURSE.test(pt.trim())||RX_NOTCOURSE.test((s.sec||'').trim()))s.hd=true;});
   const n=pdf.numPages;pdf.destroy();
-  return{pages,segs,numPages:n,hasHL,oldAnnales};
+  return{pages,segs,hl,numPages:n,hasHL,oldAnnales};
+}
+/* Surlignages / cadres dont la note contient des numéros de question (« Q001 », « Q017, Q018 ») — 19 nov. 2026 */
+const RX_HLSUB=/^(Highlight|Underline|Squiggly|Square|Circle|Polygon|Ink|FreeText)$/;
+function hlCollect(ann,vp,p,out){
+  const W=vp.width,H=vp.height;
+  for(const a of ann){
+    if(!RX_HLSUB.test(a.subtype||''))continue;
+    const txt=(a.contentsObj&&a.contentsObj.str)||a.contents||'';
+    const codes=[...new Set((txt.match(/\bQ\s?\d{1,3}\b/gi)||[]).map(c=>+c.replace(/\D/g,'')))];
+    if(!codes.length)continue;
+    const box=pts=>{const v=pts.map(([x,y])=>vp.convertToViewportPoint(x,y));const xs=v.map(q=>q[0]),ys=v.map(q=>q[1]);
+      return [Math.min(...xs)/W,Math.min(...ys)/H,Math.max(...xs)/W,Math.max(...ys)/H].map(x=>+Math.max(0,Math.min(1,x)).toFixed(4));};
+    let r=[];const Q=a.quadPoints;
+    if(Q&&Q.length){
+      if(Array.isArray(Q[0]))Q.forEach(q=>r.push(box(q.map(o=>[o.x,o.y]))));          // pdf.js 2.x : [[{x,y}×4]…]
+      else for(let k=0;k+7<Q.length;k+=8)r.push(box([[Q[k],Q[k+1]],[Q[k+2],Q[k+3]],[Q[k+4],Q[k+5]],[Q[k+6],Q[k+7]]]));   // 3.x+ : tableau plat
+    }
+    if(!r.length&&a.rect)r=[box([[a.rect[0],a.rect[1]],[a.rect[2],a.rect[3]]])];
+    r=r.filter(R=>R[2]-R[0]>.002&&R[3]-R[1]>.002);
+    if(r.length)out.push({p,codes,r,box:a.subtype!=='Highlight'&&a.subtype!=='Underline'&&a.subtype!=='Squiggly'});
+  }
+}
+/* Les surlignages numérotés → passages + liens vers les questions de même numéro (si les numéros sont uniques dans l'annale) */
+function hlImport(C,qs){
+  if(!C.hl||!C.hl.length)return null;
+  const byNum=new Map();qs.forEach(q=>{if(q.num!=null)byNum.set(q.num,byNum.has(q.num)?null:q);});   // null = numéro en double → ambigu
+  const codes=new Set();C.hl.forEach(h=>h.codes.forEach(c=>codes.add(c)));
+  let ok=0;codes.forEach(c=>{if(byNum.get(c))ok++;});
+  if(ok<Math.max(3,codes.size*.5))return null;
+  const segs=[],links=new Map(),pSegs={};C.segs.forEach(s=>{(pSegs[s.p]=pSegs[s.p]||[]).push(s);});
+  C.hl.forEach((h,i)=>{
+    const qsH=h.codes.map(c=>byNum.get(c)).filter(Boolean);if(!qsH.length)return;
+    const inside=s=>s.r.some(R=>{const cx=(R[0]+R[2])/2,cy=(R[1]+R[3])/2;return h.r.some(B=>cx>=B[0]-.005&&cx<=B[2]+.005&&cy>=B[1]-.01&&cy<=B[3]+.01);});
+    const t=(pSegs[h.p]||[]).filter(inside).map(s=>s.t).join(' ').trim();
+    const seg={id:'H'+(i+1),p:h.p,r:h.r,t:t?t.slice(0,600):`Zone surlignée (image / schéma), page ${h.p}`};
+    if(h.box)seg.user=true;else seg.hl=true;
+    segs.push(seg);
+    qsH.forEach(q=>{if(!links.has(q.id))links.set(q.id,[]);links.get(q.id).push(seg.id);});
+  });
+  return {segs,links,nHl:C.hl.length,nCodes:codes.size,nOk:ok};
 }
 function pageLines(tc,vp){
   const its=[];
@@ -162,6 +203,8 @@ function joinLines(ls){let s='';for(const l of ls){if(!s)s=l.t;else if(/[a-zà-�
 /* ───────────────────────── 2. L'annale : questions + bonne réponse ───────────────────────── */
 const RX_QH=/^\s*(?:Q|Pregunta|Question|Cuesti[oó]n|[IÍ]tem)\s*n?[°º.]?\s*(\d{1,3})\b\s*(?:([·•|\-–—:.)])\s*(.*))?$/i;
 const RX_QN=/^\s*(\d{1,3})\s*[.)](?!\d)\s*(.+)$/;
+const RX_QZ=/^\s*Q(\d{2,3})\s+(\S.*)$/;   // « Q001 Señale… » (annale propre faite par une IA)
+const RX_CPAGE=/^\s*cours\s*:\s*(p\.?\s*\d.*)$/i;
 const RX_A=/^\s*([*✓✔✅→►]+\s*)?[(\[]?([a-hA-H])\s*(?:[)\]]\s*|[.:\-–]\s+)(.*)$/;
 const RX_CORR=/^\s*(?:respuesta\s+correcta|respuesta|soluci[oó]n|bonne\s+r[ée]ponse|r[ée]ponse\s+correcte|r[ée]ponse|correcta|correct[e]?|answer)\s*[:=\-]\s*\(?([a-hA-H])\)?(?![a-zA-Z])/i;
 const RX_EXAM=/^\s*(?:examen|exam|convocatoria|parcial|session|sesi[oó]n|partiel)\b.{3,100}$/i;
@@ -183,6 +226,8 @@ function parseAnnale(lines){
       const isText=rest&&(!/[·•|—–]/.test(sep)||rest.length>=45||/\?/.test(rest));
       startQ(+mh[1],l,isText?rest:'');prev=l;continue;
     }
+    const mz=!mh&&t.match(RX_QZ);
+    if(mz){startQ(+mz[1],l,mz[2]);q.label='Q'+mz[1];prev=l;continue;}
     const mn=t.match(RX_QN);
     if(mn&&(!q||(q.answers.length>=2&&(+mn[1]>last&&+mn[1]<=last+3||+mn[1]===1)))){startQ(+mn[1],l,mn[2]);prev=l;continue;}
     if(!q){prev=l;continue;}
@@ -197,6 +242,9 @@ function parseAnnale(lines){
     }
     const mc=t.match(RX_CORR);
     if(mc){q.marked=mc[1].toLowerCase().charCodeAt(0)-97;mode='c';prev=l;continue;}
+    if(/^\s*bonne\s+r[ée]ponse\s*:\s*[—–-]*\s*$/i.test(t)){mode='c';prev=l;continue;}   /* « Bonne réponse : — » */
+    const mp=t.match(RX_CPAGE);
+    if(mp){q.coursP=(mp[1].match(/\d{1,4}/g)||[]).map(Number);mode='c';prev=l;continue;}
     if(mode==='q'&&tail&&(!q.text||tail.page!==l.page||(l.y-tail.y)<Math.max(6,tail.h)*3)){q.text=clean(q.text+' '+t);tail=l;}
     else if(mode==='a'&&a&&tail&&tail.page===l.page&&(l.y-tail.y)<Math.max(6,tail.h)*2.3){a.text=clean(a.text+' '+t);a.fl=a.fl.concat([0],l.fl||[]);q.yEnd=l.ph?l.y/l.ph:q.yEnd;tail=l;}
     prev=l;
@@ -207,7 +255,7 @@ function parseAnnale(lines){
   qs.forEach((q,i)=>{
     q.id='Q'+(i+1);
     const hl=q.answers.map((a,k)=>[ratio(a),k]).filter(x=>x[0]>=.5);
-    const mk=q.answers.findIndex(a=>a.mark||/^\s*[✓✔✅]/.test(a.text));
+    const mk=q.answers.findIndex(a=>a.mark||/^\s*[✓✔✅]|[✓✔✅]\s*$/.test(a.text));
     if(mk>=0)q.correct=mk;
     else if(q.marked>=0&&q.marked<q.answers.length)q.correct=q.marked;
     else if(hl.length===1)q.correct=hl[0][1];
@@ -631,20 +679,23 @@ function wzClick(e){
   else if(a==='eye'){const i=$('ca-key');if(i)i.type=i.type==='password'?'text':'password';}
   else if(a==='go')wzRun();
   else if(a==='finishLocal')finishPending('local');
+  else if(a==='useHL')hlUse();
+  else if(a==='ignoreHL'){const h=WZ._hl;WZ._hl=null;if(h)wzRun(h.P);}
   else if(a==='later'){WZ.busy=false;wzClose();if(WZ._pid)openViewer(WZ._pid);}
 }
 const copyBuf=b=>new Uint8Array(b.slice(0));
-async function wzRun(){
+async function wzRun(preP){
   if(WZ.busy)return;
   const R=WZ.rerun,key=getKey();
-  if(!R&&(!WZ.course||!WZ.annale)){wzForm(!WZ.course&&!WZ.annale?'Choisis le cours et l’annale (deux fichiers PDF).':!WZ.course?'Il manque le cours.':'Il manque l’annale.');return;}
+  if(!preP&&!R&&(!WZ.course||!WZ.annale)){wzForm(!WZ.course&&!WZ.annale?'Choisis le cours et l’annale (deux fichiers PDF).':!WZ.course?'Il manque le cours.':'Il manque l’annale.');return;}
   if(WZ.method==='gemini'&&!key){wzForm('Colle ta clé Gemini, ou choisis l’IA gratuite du navigateur.');return;}
   if(typeof pdfjsLib==='undefined'){wzForm('Le lecteur PDF n’est pas chargé : recharge la page.');return;}
   WZ.busy=true;
   const prog=(l,f)=>wzProgress(l,f,R?R.name:((WZ.course&&WZ.course.name)||'')+' + '+((WZ.annale&&WZ.annale.name)||''));
   let P;
   try{
-    if(R){P=R;}
+    if(preP){P=preP;}
+    else if(R){P=R;}
     else{
       prog('Ouverture du cours…',0);
       const courseBuf=await WZ.course.arrayBuffer(),annaleBuf=await WZ.annale.arrayBuffer();
@@ -658,6 +709,8 @@ async function wzRun(){
       P={id:newId(),name:WZ.course.name.replace(/\.pdf$/i,'').replace(/[_]+/g,' ').trim()||'Cours',created:Date.now(),
         courseName:WZ.course.name,annaleName:WZ.annale.name,course:courseBuf,annale:annaleBuf,
         pages:C.pages,segs:C.segs,qs,links:{},pending:[],showOrig:!C.oldAnnales,method:WZ.method,dupV:1};
+      const H=hlImport(C,qs);
+      if(H){WZ.busy=false;WZ._hl={P,H};hlAsk(P,H);return;}
     }
     const keepOwn=qid=>{const l=P.links[qid];return l&&(l.src==='main'||l.ok);};
     const todo=P.qs.filter(q=>!keepOwn(q.id));
@@ -675,6 +728,24 @@ async function wzRun(){
   }
   WZ.busy=false;wzClose();
   notify(`Cours relié : ${stats(P).inC} question${stats(P).inC>1?'s':''} placée${stats(P).inC>1?'s':''} dans le cours`,'ok');
+  openViewer(P.id);
+}
+function hlAsk(P,H){
+  const linked=H.links.size;
+  $('ca-wz-body').innerHTML=wzHead('Ton cours est déjà surligné','')+
+    `<div class="ca-daily"><span class="ms">auto_awesome</span><div><b>J’ai trouvé ${H.nHl} surlignage${H.nHl>1?'s':''} numéroté${H.nHl>1?'s':''} (Q001, Q002…)</b> dans ton cours, qui renvoient à <b>${linked} question${linked>1?'s':''}</b> de l’annale (sur ${P.qs.length}).<br>Je peux m’en servir directement : chaque surlignage devient un passage coloré, relié à sa question. Pas besoin d’IA.</div></div>
+    <div class="ca-foot"><button class="btn btn-g" data-a="ignoreHL"><span class="ms">search</span>Chercher quand même</button><button class="btn btn-p" data-a="useHL"><span class="ms">check</span>Utiliser ces surlignages</button></div>`;
+}
+async function hlUse(){
+  const h=WZ._hl;if(!h)return;WZ._hl=null;
+  const {P,H}=h;
+  P.segs.push(...H.segs);
+  H.links.forEach((sids,qid)=>{P.links[qid]={segs:sids,conf:1,src:'hl',ok:false};});
+  P.qs.forEach(q=>{delete q.dup;if(!P.links[q.id]&&q.coursP&&q.coursP.length)q.aiHint={p:q.coursP[0],t:''};});   // annale déjà sans doublons
+  P.method='hl';P.pending=[];P.showOrig=false;
+  try{await save(P);}catch(e){wzForm('Enregistrement impossible : '+(e&&e.message||e));return;}
+  wzClose();
+  notify(`Cours relié : ${H.links.size} question${H.links.size>1?'s':''} placée${H.links.size>1?'s':''} grâce aux surlignages`,'ok');
   openViewer(P.id);
 }
 async function runMethod(P,todo,method,key,prog){
@@ -1148,14 +1219,14 @@ function renderAll(){
   else bn.hidden=true;
   drawOverlays();renderPanel();
 }
-function qMeta(q){const m=q.dup&&V&&V.qById.get(q.dup);return `${esc(q.exam||'Annale')}${q.num?` · Q${q.num}`:''}${q.dup?` · <span title="Même question que ${m?esc((m.exam||'')+' Q'+(m.num||'')):'une autre'} : comptée une seule fois">doublon</span>`:''}`;}
+function qMeta(q){const m=q.dup&&V&&V.qById.get(q.dup);return `${esc(q.exam||'Annale')}${q.label?` · ${esc(q.label)}`:q.num?` · Q${q.num}`:''}${q.dup?` · <span title="Même question que ${m?esc((m.exam||'')+' Q'+(m.num||'')):'une autre'} : comptée une seule fois">doublon</span>`:''}`;}
 function qCard(q,opts){
   const P=V.P,l=linkOf(P,q.id),L='ABCDEFGH',uns=isUnsure(l);
   const pages=l?[...new Set(l.segs.map(s=>V.segById.get(s)&&V.segById.get(s).p).filter(Boolean))]:[];
   return `<div class="ca-qc${uns?' unsure':''}" data-q="${q.id}">
     <div class="ca-qm"><span>${qMeta(q)}</span>${l?`<span class="ca-pill${uns?' warn':''}">${uns?'à vérifier':'p. '+pages.join(', ')}</span>`:'<span class="ca-pill off">pas dans le cours</span>'}</div>
     <div class="ca-qt">${esc(q.text)}</div>
-    ${!l&&q.aiHint?`<div class="ca-hint"><span class="ms" style="font-size:16px;vertical-align:-3px">lightbulb</span> L’IA indique la page <b>${q.aiHint.p}</b>${q.aiHint.t?` : « ${esc(q.aiHint.t.slice(0,180))} »`:''}. Je n’ai pas retrouvé ce texte dans le PDF : clique sur « Placer à la main ».</div>`:''}
+    ${!l&&q.aiHint?`<div class="ca-hint"><span class="ms" style="font-size:16px;vertical-align:-3px">lightbulb</span> ${q.aiHint.t?`L’IA indique la page <b>${q.aiHint.p}</b> : « ${esc(q.aiHint.t.slice(0,180))} ». Je n’ai pas retrouvé ce texte dans le PDF : clique sur « Placer à la main ».`:`L’annale indique la page <b>${q.aiHint.p}</b> du cours, sans passage surligné : clique sur « Placer à la main » si tu le trouves.`}</div>`:''}
     <ol class="ca-ans">${q.answers.map((a,k)=>`<li class="${k===q.correct?'ok':''}"><b>${L[k]}</b><span>${esc(a)}</span>${k===q.correct?'<span class="ms">check</span>':''}</li>`).join('')}</ol>
     <div class="ca-qa">
       ${l&&opts&&opts.go?`<button class="btn btn-g btn-sm" data-a="goq" data-q="${q.id}"><span class="ms">menu_book</span>Voir dans le cours</button>`:''}
@@ -1327,5 +1398,5 @@ window.coursAnnalesOpen=m=>{if(typeof m==='string'&&m){WZ.method=m;try{localStor
 window.coursAnnalesRenderHub=renderHub;
 window.coursAnnalesView=openViewer;
 
-window._caEngine={relayOpen,relayPrompt,rerankMatch,freeMatch,lexTop,hasWebGPU,loadReranker,rrScore,readCourse,parseAnnale,addContext,passageText,buildIndex,bm25,toks,queryParts,queryUnits,unitWeights,matchUnit,matchQuestion,isHeading,loadEmbedder,embed,dot,localMatch,gemMatch,gemModels,gemPrompt,counts,stats,markDups,pdfApply,pdfParseAll,locateCit,pdfPrompt,matchAQ};
+window._caEngine={relayOpen,relayPrompt,rerankMatch,freeMatch,lexTop,hasWebGPU,loadReranker,rrScore,readCourse,parseAnnale,addContext,passageText,buildIndex,bm25,toks,queryParts,queryUnits,unitWeights,matchUnit,matchQuestion,isHeading,loadEmbedder,embed,dot,localMatch,gemMatch,gemModels,gemPrompt,counts,stats,hlImport,markDups,pdfApply,pdfParseAll,locateCit,pdfPrompt,matchAQ};
 })();
