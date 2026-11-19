@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kineplus-v80';
+const CACHE_NAME = 'kineplus-v81';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

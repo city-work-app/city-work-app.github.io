@@ -556,7 +556,8 @@ async function gemMatch(segs,qs,key,prog){
 const UNSURE=.5;
 function linkOf(P,qid){const l=P.links[qid];return l&&l.segs&&l.segs.length?l:null;}
 function isUnsure(l){return !!l&&!l.ok&&l.src!=='main'&&(l.conf||0)<(l.src==='local'?.65:l.src==='ia'?.56:UNSURE);}
-function counts(P){const m=new Map();P.qs.forEach(q=>{const l=linkOf(P,q.id);if(l)l.segs.forEach(s=>{const o=m.get(s)||{n:0,sure:0};o.n++;if(!isUnsure(l))o.sure++;m.set(s,o);});});return m;}
+function counts(P){const m=new Map();P.qs.forEach(q=>{const l=linkOf(P,q.id);if(l)l.segs.forEach(s=>{const o=m.get(s)||{n:0,sure:0,g:new Set()};const g=q.dup||q.id;if(!o.g.has(g)){o.g.add(g);o.n++;}if(!isUnsure(l))o.sure++;m.set(s,o);});});return m;}   // une question recopiée en double dans le recueil compte 1 fois (19 nov. 2026)
+const nDistinct=qs=>new Set(qs.map(q=>q.dup||q.id)).size;
 function qsOfSeg(P,sid){return P.qs.filter(q=>{const l=linkOf(P,q.id);return l&&l.segs.includes(sid);});}
 function stats(P){const pend=new Set(P.pending||[]);let inC=0,uns=0,none=0;P.qs.forEach(q=>{const l=linkOf(P,q.id);if(!l){if(!pend.has(q.id))none++;}else{inC++;if(isUnsure(l))uns++;}});return{inC,uns,none,pend:pend.size};}
 const lvl=n=>n>=3?3:n;
@@ -595,7 +596,8 @@ function wzForm(err){
     `<div class="ca-lbl">Qui cherche les passages ?</div>
     <div class="ca-meth">
       <button class="ca-m${WZ.method==='local'?' on':''}" data-a="meth" data-m="local"><span class="ms">memory</span><span><b>IA gratuite du navigateur</b><small>Gratuite et illimitée, rien à régler. Elle relit chaque passage avec la question (≈ 8 liens justes sur 10). La 1<sup>re</sup> fois : téléchargement d’environ 0,7 Go, puis 2 à 5 minutes par annale. Sur un appareil sans carte graphique compatible : méthode simple, moins précise.</small></span></button>
-      <button class="ca-m${WZ.method==='relais'?' on':''}" data-a="meth" data-m="relais"><span class="ms">content_paste</span><span><b>Gemini ou ChatGPT sur leur site · le plus précis</b><small>Gratuit, sans clé. Je prépare une consigne avec ton cours et tes questions : tu la colles dans l’IA (un clic), puis tu ramènes sa réponse ici. Environ 2 minutes.</small></span></button>
+      <button class="ca-m${WZ.method==='pdfs'?' on':''}" data-a="meth" data-m="pdfs"><span class="ms">picture_as_pdf</span><span><b>ChatGPT, Gemini ou Claude lit tes 2 PDF · le plus fiable</b><small>Gratuit, sans clé. Tu joins le cours et l’annale sur le site de l’IA avec ma consigne (un clic) : elle lit tout, même les schémas, et repère les questions en double. Tu ramènes sa réponse ici. Conseillé pour les gros cours.</small></span></button>
+      <button class="ca-m${WZ.method==='relais'?' on':''}" data-a="meth" data-m="relais"><span class="ms">content_paste</span><span><b>Gemini ou ChatGPT, avec le texte du cours dans la consigne</b><small>Gratuit, sans clé. Je mets le texte de ton cours et tes questions dans la consigne : tu la colles dans l’IA (un clic), puis tu ramènes sa réponse ici. Pour les cours pas trop longs.</small></span></button>
       <button class="ca-m${WZ.method==='gemini'?' on':''}" data-a="meth" data-m="gemini"><span class="ms">auto_awesome</span><span><b>Gemini · plus précis</b><small>Gratuit avec une clé Google. Nombre de demandes limité par jour : si la limite est atteinte, tu pourras finir avec l’IA gratuite ou reprendre le lendemain.</small></span></button>
     </div>
     <div class="ca-key"${WZ.method==='gemini'?'':' hidden'}>
@@ -651,18 +653,18 @@ async function wzRun(){
       addContext(C.segs,C.pages);
       if(typeof window._annaleReadPdf!=='function')throw new Error('le module d’annales n’est pas chargé, recharge la page');
       const lines=await window._annaleReadPdf(new Blob([annaleBuf],{type:'application/pdf'}),(l,pct)=>prog(String(l).replace(/^Lecture de la page/,'Lecture de l’annale : page'),.5+pct/200));
-      const qs=parseAnnale(lines);
+      const qs=parseAnnale(lines);markDups(qs);
       if(!qs.length)throw new Error('Je n’ai trouvé aucune question avec des réponses A, B, C… dans l’annale. Si c’est un scan, il faut d’abord le passer dans un logiciel de reconnaissance de texte (OCR).');
       P={id:newId(),name:WZ.course.name.replace(/\.pdf$/i,'').replace(/[_]+/g,' ').trim()||'Cours',created:Date.now(),
         courseName:WZ.course.name,annaleName:WZ.annale.name,course:courseBuf,annale:annaleBuf,
-        pages:C.pages,segs:C.segs,qs,links:{},pending:[],showOrig:!C.oldAnnales,method:WZ.method};
+        pages:C.pages,segs:C.segs,qs,links:{},pending:[],showOrig:!C.oldAnnales,method:WZ.method,dupV:1};
     }
     const keepOwn=qid=>{const l=P.links[qid];return l&&(l.src==='main'||l.ok);};
     const todo=P.qs.filter(q=>!keepOwn(q.id));
-    if(WZ.method==='relais'){
-      P.method='relais';P.pending=todo.map(q=>q.id);
+    if(WZ.method==='relais'||WZ.method==='pdfs'){
+      P.method=WZ.method;P.pending=todo.map(q=>q.id);
       prog('Préparation de la consigne…',1);await save(P);
-      WZ.busy=false;wzClose();relayOpen(P,todo);return;
+      WZ.busy=false;wzClose();if(WZ.method==='pdfs')pdfRelayOpen(P);else relayOpen(P,todo);return;
     }
     await runMethod(P,todo,WZ.method,key,prog);
   }catch(e){
@@ -699,6 +701,7 @@ async function finishPending(method){
   const P=(V&&V.P)||WZ.rerun;if(!P)return;
   const todo=P.qs.filter(q=>(P.pending||[]).includes(q.id));
   if(method==='relais'){if(V)closeViewer(true);relayOpen(P,todo);return;}
+  if(method==='pdfs'){if(V)closeViewer(true);pdfRelayOpen(P);return;}
   if(method==='gemini'&&!getKey()){closeViewer(true);wzOpen(P);WZ.method='gemini';wzForm('Colle ta clé Gemini pour continuer.');return;}
   if(V)closeViewer(true);   // la fenêtre de progression passe devant
   WZ.busy=true;WZ.rerun=P;
@@ -758,6 +761,209 @@ function relayOpen(P,todo){
   });
 }
 
+/* ───────── 8 ter. L'IA lit elle-même les 2 PDF (ChatGPT / Gemini / Claude, 19 nov. 2026) ─────────
+   L'utilisateur joint le cours ET l'annale sur le site de l'IA avec la consigne `pdfPrompt`.
+   Réponse JSON (en plusieurs morceaux : « suite ») : questions → page du cours + citation exacte.
+   Ici : chaque question de l'IA est retrouvée dans l'annale lue par le site (énoncé, page, numéro),
+   chaque citation est retrouvée dans les passages de sa page (puis pages voisines, puis tout le cours).
+   Jamais de surlignage sans texte retrouvé (sauf diapo-image : cadre « à vérifier » sur la diapo). */
+const tset=s=>new Set(toks(s));
+function inter(a,b){let i=0;a.forEach(x=>{if(b.has(x))i++;});return i;}
+const contain=(a,b)=>a.size?inter(a,b)/a.size:0;                 // part de a présente dans b
+const jac=(a,b)=>{const i=inter(a,b);return a.size+b.size-i?i/(a.size+b.size-i):0;};
+
+/* Questions recopiées en double dans le recueil : même énoncé + mêmes réponses (dans n'importe quel ordre).
+   q.dup = id de la 1re. En cas de doute (énoncé court ou réponses différentes) : questions distinctes. */
+function markDups(qs){
+  const F=qs.map(q=>({t:tset(q.text),a:tset((q.answers||[]).join(' '))}));
+  for(let i=0;i<qs.length;i++){
+    if(qs[i].dup||F[i].t.size<4)continue;
+    for(let j=i+1;j<qs.length;j++){
+      if(qs[j].dup)continue;
+      if(jac(F[i].t,F[j].t)>=.85&&(F[i].a.size+F[j].a.size===0||jac(F[i].a,F[j].a)>=.75))qs[j].dup=qs[i].id;
+    }
+  }
+  return qs;
+}
+
+function pdfPrompt(P){
+  return `Je t'envoie 2 PDF en espagnol : un COURS (diapos de kiné) et un recueil d'ANNALES (QCM de plusieurs examens).
+Ton travail : pour chaque question des annales, trouver le ou les passages du cours qui donnent la réponse.
+(Pour t'aider : j'ai compté environ ${P.qs.length} questions dans les annales, doublons compris.)
+
+RÈGLES
+1. Numéros de page = numéro de la page dans le fichier PDF (1 = première page du fichier), PAS le numéro écrit sur la diapo.
+2. Le recueil contient des questions en DOUBLE (même question recopiée, parfois avec les réponses dans un autre ordre). Une question répétée = UNE seule question : garde la première, et mets les autres dans "doublons". En cas de doute, considère-les comme différentes.
+3. "citation" = phrase copiée MOT POUR MOT depuis le cours, en espagnol, sans rien changer (ni corriger, ni traduire, ni résumer). La plus courte possible mais qui contient vraiment la réponse : une phrase, une puce ou une ligne de tableau. Jamais un mot seul, jamais toute la diapo.
+4. Si la question est à la négative (falsa, EXCEPTO, incorrecta, errónea…), cite les passages qui prouvent les bonnes affirmations ET celui qui contredit la fausse.
+5. Si la réponse est sur une diapo qui n'est qu'une image ou un schéma, mets "citation": "" et décris la zone dans "zone" (ex. "schéma en bas à droite").
+6. Si le cours ne contient pas la réponse (l'annale peut couvrir d'autres cours) : "passages": [] et "non_couvert": true. N'invente JAMAIS.
+7. Ignore les prénoms de profs entre parenthèses. Corrige les lettres perdues dans l'énoncé (« ti », « fi », « fl »).
+
+FORMAT DE RÉPONSE : uniquement du JSON dans un bloc de code \`\`\`json, sans texte autour.
+{
+  "questions": [
+    {
+      "id": "E1-Q12",
+      "examen": "nom de l'examen tel qu'écrit dans le PDF (ex. Junio 2025)",
+      "numero": 12,
+      "page_annales": 4,
+      "debut_enonce": "les 15 premiers mots de la question, recopiés tels quels",
+      "bonne_reponse": "B",
+      "doublons": [{"examen": "Febrero 2024", "numero": 5, "page_annales": 30}],
+      "non_couvert": false,
+      "passages": [
+        {"page_cours": 143, "citation": "texte exact de la diapo", "zone": "", "certitude": "haute"}
+      ]
+    }
+  ]
+}
+(E1 = 1er examen du recueil, E2 = 2e, etc. ; Q = numéro de la question dans cet examen. "certitude" : "haute", "moyenne" ou "faible".)
+
+ENVOI PAR MORCEAUX : réponds par blocs de 20 questions maximum, chacun dans son propre bloc de code. J'écrirai « suite » pour le bloc suivant. Après la dernière question, écris FIN et un bilan : nombre de questions lues, doublons fusionnés, questions distinctes, non couvertes.`;
+}
+
+/* Tous les blocs JSON collés (un par « suite ») → une seule liste de questions */
+function pdfParseAll(text){
+  const t=String(text||'').replace(/\r/g,'');
+  const re=/```[\w-]*[^\n]*\n([\s\S]*?)(```|$)/g;let m,parts=[];
+  while((m=re.exec(t))){parts.push(m[1]);if(!m[2])break;}
+  if(!parts.length)parts=t.split(/(?<=[}\]])\s*(?=\{\s*"questions")/);
+  let arr=[],cut=false,any=false;
+  parts.forEach(p=>{
+    const r=KIA.parseJSON(p);if(!r)return;any=true;if(r.cut)cut=true;
+    const v=r.v;
+    const a=Array.isArray(v)?v:v&&Array.isArray(v.questions||v.preguntas)?(v.questions||v.preguntas):v&&typeof v==='object'&&(v.passages||v.debut_enonce)?[v]:[];
+    arr=arr.concat(a.filter(o=>o&&typeof o==='object'));
+  });
+  const byId=new Map();arr.forEach((o,i)=>byId.set(String(o.id||('#'+i)),o));   // même id collé deux fois → la dernière version
+  return {arr:[...byId.values()],cut,any,fin:/\bFIN\b/.test(t.replace(/```[\s\S]*?(```|$)/g,''))};
+}
+
+const num=x=>{const n=parseInt(String(x==null?'':x).replace(/[^\d]/g,''),10);return isNaN(n)?null:n;};
+/* Question de l'IA → question de l'annale lue par le site */
+function matchAQ(o,qs,taken){
+  const st=tset(o.debut_enonce||o.enonce||o.question||''),pg=num(o.page_annales||o.page_annale||o.pagina_examen),n=num(o.numero||o.num);
+  let best=null,bs=0;
+  qs.forEach(q=>{
+    const ct=st.size?contain(st,tset(q.text.split(' ').slice(0,30).join(' '))):0;
+    let sc=ct+(pg&&q.page===pg?.25:pg&&Math.abs(q.page-pg)===1?.08:0)+(n&&q.num===n?.2:0)-(taken.has(q.id)?.3:0);
+    const ok=ct>=.6||(ct>=.3&&pg&&n&&q.page===pg&&q.num===n)||(!st.size&&pg&&n&&q.page===pg&&q.num===n);
+    if(ok&&sc>bs){bs=sc;best=q;}
+  });
+  return best;
+}
+/* Citation → passages du cours (page indiquée, puis ±1, ±2, puis tout le cours) */
+function locateCit(segs,page,cit){
+  const ct=tset(cit);if(ct.size<2)return null;
+  const onPage=p=>{
+    const ss=segs.filter(s=>s.p===p&&!s.user);if(!ss.length)return null;
+    let best=null,bs=0;                                           // la citation est dans un passage
+    ss.forEach(s=>{const v=contain(ct,tset(s.t));if(v>bs){bs=v;best=s;}});
+    const pick=[],cov=new Set();                                  // ou elle recouvre plusieurs passages (phrase coupée, ligne de tableau)
+    ss.forEach(s=>{if(s.title)return;const st=tset(s.t);if(st.size>=2&&contain(st,ct)>=.6){pick.push(s);st.forEach(x=>{if(ct.has(x))cov.add(x);});}});
+    const sc=cov.size/ct.size;
+    if(bs>=.6&&bs>=sc-.05)return {segs:[best.id],q:bs};
+    if(sc>=.6&&pick.length)return {segs:pick.slice(0,4).map(s=>s.id),q:sc};
+    return null;
+  };
+  if(page){
+    const r0=onPage(page);if(r0)return r0;
+    for(const d of [1,-1,2,-2]){const r=onPage(page+d);if(r)return {segs:r.segs,q:r.q*.85};}
+  }
+  let best=null,bs=0;                                             // ailleurs dans le cours : seulement si presque mot pour mot
+  segs.forEach(s=>{if(s.user)return;const v=contain(ct,tset(s.t));if(v>bs){bs=v;best=s;}});
+  return bs>=.8?{segs:[best.id],q:bs*.6}:null;
+}
+const CERT={haute:.92,high:.92,alta:.92,moyenne:.72,medium:.72,media:.72,faible:.4,low:.4,baja:.4};
+
+/* Applique la réponse au projet ; ne touche pas aux liens placés ou validés à la main */
+function pdfApply(P,arr,dry){
+  const own=qid=>{const l=P.links[qid];return l&&(l.src==='main'||l.ok);};
+  const qs=P.qs,taken=new Set(),L='abcdefgh';
+  const res={seen:arr.length,matched:0,created:0,placed:0,lost:0,dups:0,uncovered:0,links:new Map(),newQs:[],newSegs:[],dupOf:new Map(),correct:new Map(),hints:new Map()};
+  const maxP=P.pages.length;
+  arr.forEach((o,i)=>{
+    let q=matchAQ(o,qs,taken);
+    if(q)res.matched++;
+    else{                                                          // question que le site n'avait pas su lire : on la crée
+      const t=clean(o.debut_enonce||o.enonce||'');if(!t&&!o.passages)return;
+      q={id:'A'+(P.qs.length+res.newQs.length+1),ai:true,num:num(o.numero),exam:clean(o.examen||''),examN:0,text:t+(t?'…':''),answers:[],correct:-1,
+        page:Math.max(1,num(o.page_annales)||1),y:.04,yEnd:.06,pageEnd:0};
+      res.newQs.push(q);res.created++;
+    }
+    taken.add(q.id);
+    const bl=String(o.bonne_reponse||o.respuesta||'').trim().toLowerCase().charAt(0),bi=L.indexOf(bl);
+    if(q.correct<0&&bi>=0&&bi<q.answers.length)res.correct.set(q.id,bi);
+    // doublons indiqués par l'IA
+    (Array.isArray(o.doublons)?o.doublons:[]).forEach(d=>{
+      if(!d||typeof d!=='object')return;
+      const dq=matchAQ({debut_enonce:o.debut_enonce,page_annales:d.page_annales,numero:d.numero},qs.filter(x=>x.id!==q.id&&!x.dup),taken);
+      if(dq&&dq.page===num(d.page_annales)){taken.add(dq.id);res.dupOf.set(dq.id,q.id);}
+    });
+    if(own(q.id))return;
+    const ps=Array.isArray(o.passages)?o.passages:[];
+    if(o.non_couvert===true||!ps.length){res.uncovered++;res.links.set(q.id,{segs:[],conf:0});return;}
+    const ids=[];let cs=[],hint=null;
+    ps.forEach(p=>{
+      if(!p||typeof p!=='object')return;
+      const pg=num(p.page_cours||p.page||p.pagina),cit=clean(p.citation||p.cita||p.texte||p.quote||''),c=CERT[String(p.certitude||'').toLowerCase()]||.72;
+      if(!hint&&pg)hint={p:pg,t:cit||clean(p.zone||'')};
+      const f=cit?locateCit(P.segs,pg,cit):null;
+      if(f){f.segs.forEach(s=>{if(!ids.includes(s))ids.push(s);});cs.push(c*(f.q>=.85?1:f.q>=.7?.85:.65));}
+      else if(!cit&&pg&&pg<=maxP){                                // diapo-image : cadre sur la diapo, à vérifier
+        const sid='U'+Date.now().toString(36)+i+ids.length;
+        res.newSegs.push({id:sid,p:pg,r:[[.04,.12,.96,.94]],t:'Image / schéma'+(p.zone?' : '+clean(p.zone):'')+' (indiqué par l’IA), page '+pg,user:true});
+        ids.push(sid);cs.push(Math.min(c,.45));
+      }else res.lost++;
+    });
+    if(ids.length){res.placed++;res.links.set(q.id,{segs:ids.slice(0,6),conf:cs.reduce((a,b)=>a+b,0)/cs.length});}
+    else{res.links.set(q.id,{segs:[],conf:0});if(hint)res.hints.set(q.id,hint);}
+  });
+  res.dups=res.dupOf.size;
+  if(dry)return res;
+  P.qs.push(...res.newQs);
+  P.segs.push(...res.newSegs);
+  res.correct.forEach((k,qid)=>{const q=P.qs.find(x=>x.id===qid);if(q)q.correct=k;});
+  res.dupOf.forEach((main,qid)=>{const q=P.qs.find(x=>x.id===qid);if(q)q.dup=main;});
+  res.hints.forEach((h,qid)=>{const q=P.qs.find(x=>x.id===qid);if(q)q.aiHint=h;});
+  res.links.forEach((m,qid)=>{P.links[qid]={segs:m.segs,conf:m.conf,src:'pdf',ok:false};const q=P.qs.find(x=>x.id===qid);if(q&&m.segs.length)delete q.aiHint;});
+  // les doublons (de l'IA ou repérés ici) prennent les passages de leur question
+  P.qs.forEach(q=>{if(!q.dup||own(q.id))return;const l=P.links[q.dup];if(l&&l.segs&&l.segs.length)P.links[q.id]={segs:l.segs.slice(),conf:l.conf,src:l.src,ok:l.ok};});
+  const done=new Set([...res.links.keys(),...res.dupOf.keys()]);
+  P.qs.forEach(q=>{if(q.dup&&done.has(q.dup))done.add(q.id);});
+  P.pending=(P.pending||[]).filter(id=>!done.has(id));
+  return res;
+}
+
+function pdfRelayOpen(P){
+  if(!window.KIA||!KIA.relay){notify('Module Atelier IA non chargé : recharge la page','err');openViewer(P.id);return;}
+  const first=!Object.values(P.links).some(l=>l&&l.src==='pdf');
+  KIA.relay({title:'L’IA lit ton cours et ton annale',sub:P.name+' · '+P.qs.length+' questions'+(first?'':' · colle la suite'),icon:'picture_as_pdf',color:'#7c3aed',
+    prompt:pdfPrompt(P),file:'consigne-cours-annales-pdf',saveLabel:'Placer les questions dans le cours',
+    pdfNote:'Joins les <b>deux</b> fichiers : <b>le cours</b> ET <b>l’annale</b>. L’IA répond par morceaux : écris <b>« suite »</b> jusqu’à ce qu’elle écrive <b>FIN</b>, puis colle tous les morceaux ici, les uns après les autres (tu peux aussi les coller au fur et à mesure).',
+    parse(text){
+      const r=pdfParseAll(text);
+      if(!r.arr.length)return {state:'err',msg:r.any?'Je ne trouve pas la liste "questions" dans ce JSON.':'Je ne trouve pas le JSON de la réponse dans ce texte.'};
+      const d=pdfApply(P,r.arr,true);
+      const parts=[`${r.arr.length} question${r.arr.length>1?'s':''} lue${r.arr.length>1?'s':''}`,`${d.placed} placée${d.placed>1?'s':''} dans le cours`];
+      if(d.uncovered)parts.push(`${d.uncovered} pas dans ce cours`);
+      if(d.dups)parts.push(`${d.dups} doublon${d.dups>1?'s':''}`);
+      if(d.lost)parts.push(`${d.lost} citation${d.lost>1?'s':''} introuvable${d.lost>1?'s':''} (à placer à la main)`);
+      if(!r.fin)parts.push('pas encore « FIN » : écris « suite » à l’IA et colle la suite à la fin de ce texte');
+      return {state:r.cut||!r.fin?'warn':'ok',cut:r.cut,data:{arr:r.arr,fin:r.fin},msg:parts.join(' · ')};
+    },
+    async onSave(data){
+      const d=pdfApply(P,data.arr,false);
+      P.method='pdfs';if(data.fin)P.pending=[];   // « FIN » : les questions restantes ne sont pas dans ce cours
+      await save(P);
+      const st=stats(P);
+      notify(`Cours relié : ${st.inC} question${st.inC>1?'s':''} placée${st.inC>1?'s':''} dans le cours${d.lost?` · ${d.lost} citation${d.lost>1?'s':''} à placer à la main`:''}`,'ok');
+      openViewer(P.id);
+    }
+  });
+}
+
 /* ───────────────────────── 9. Lecteur ───────────────────────── */
 let V=null,saveT=null;
 async function save(P){P.updated=Date.now();await dbPut(P);}
@@ -765,6 +971,7 @@ function saveSoon(){clearTimeout(saveT);const P=V&&V.P;saveT=setTimeout(()=>{if(
 async function openViewer(id){
   const P=await dbGet(id).catch(()=>null);
   if(!P){notify('Ce cours relié est introuvable','err');return;}
+  if(P.dupV!==1){markDups(P.qs);P.dupV=1;save(P).catch(()=>{});}
   closeViewer(true);
   V={P,doc:'course',pdf:{},dims:{},zoom:1,sel:null,filter:'in',placing:null,scrollPos:{},rendered:new Map(),io:{},lay:getLay()};
   V.segById=new Map(P.segs.map(s=>[s.id,s]));V.qById=new Map(P.qs.map(q=>[q.id,q]));
@@ -937,17 +1144,18 @@ function renderAll(){
   $('ca-sub').textContent=`${st.inC} question${st.inC>1?'s':''} sur ${V.P.qs.length} dans ce cours${st.uns?` · ${st.uns} à vérifier`:''}`;
   const bn=$('ca-banner');
   if(V.placing){const q=V.qById.get(V.placing);bn.hidden=false;bn.className='ca-banner place';bn.innerHTML=`<span class="ms">ads_click</span><span>Clique sur le passage du cours qui répond à : <b>${esc((q&&q.text||'').slice(0,110))}</b><br><small>… ou <b>trace un cadre</b> à la souris où tu veux (une image, un schéma, un morceau de texte).</small></span><button class="btn btn-g btn-sm" data-a="cancelPlace">Annuler</button>`;}
-  else if(st.pend){bn.hidden=false;bn.className='ca-banner';bn.innerHTML=`<span class="ms">hourglass_bottom</span><span><b>${st.pend} question${st.pend>1?'s':''}</b> pas encore cherchée${st.pend>1?'s':''} ${V.P.method==='relais'?'(en attente de la réponse de l’IA).</span><button class="btn btn-p btn-sm" data-a="pend" data-m="relais">Coller la réponse de l’IA</button>':'(limite de Gemini).</span><button class="btn btn-g btn-sm" data-a="pend" data-m="gemini">Continuer avec Gemini</button>'}<button class="btn btn-g btn-sm" data-a="pend" data-m="local">Finir avec l’IA gratuite</button>`;}
+  else if(st.pend){bn.hidden=false;bn.className='ca-banner';bn.innerHTML=`<span class="ms">hourglass_bottom</span><span><b>${st.pend} question${st.pend>1?'s':''}</b> pas encore cherchée${st.pend>1?'s':''} ${V.P.method==='relais'||V.P.method==='pdfs'?`(en attente de la réponse de l’IA).</span><button class="btn btn-p btn-sm" data-a="pend" data-m="${V.P.method}">${V.P.method==='pdfs'?'Coller la suite de la réponse':'Coller la réponse de l’IA'}</button>`:'(limite de Gemini).</span><button class="btn btn-g btn-sm" data-a="pend" data-m="gemini">Continuer avec Gemini</button>'}<button class="btn btn-g btn-sm" data-a="pend" data-m="local">Finir avec l’IA gratuite</button>`;}
   else bn.hidden=true;
   drawOverlays();renderPanel();
 }
-function qMeta(q){return `${esc(q.exam||'Annale')}${q.num?` · Q${q.num}`:''}`;}
+function qMeta(q){const m=q.dup&&V&&V.qById.get(q.dup);return `${esc(q.exam||'Annale')}${q.num?` · Q${q.num}`:''}${q.dup?` · <span title="Même question que ${m?esc((m.exam||'')+' Q'+(m.num||'')):'une autre'} : comptée une seule fois">doublon</span>`:''}`;}
 function qCard(q,opts){
   const P=V.P,l=linkOf(P,q.id),L='ABCDEFGH',uns=isUnsure(l);
   const pages=l?[...new Set(l.segs.map(s=>V.segById.get(s)&&V.segById.get(s).p).filter(Boolean))]:[];
   return `<div class="ca-qc${uns?' unsure':''}" data-q="${q.id}">
     <div class="ca-qm"><span>${qMeta(q)}</span>${l?`<span class="ca-pill${uns?' warn':''}">${uns?'à vérifier':'p. '+pages.join(', ')}</span>`:'<span class="ca-pill off">pas dans le cours</span>'}</div>
     <div class="ca-qt">${esc(q.text)}</div>
+    ${!l&&q.aiHint?`<div class="ca-hint"><span class="ms" style="font-size:16px;vertical-align:-3px">lightbulb</span> L’IA indique la page <b>${q.aiHint.p}</b>${q.aiHint.t?` : « ${esc(q.aiHint.t.slice(0,180))} »`:''}. Je n’ai pas retrouvé ce texte dans le PDF : clique sur « Placer à la main ».</div>`:''}
     <ol class="ca-ans">${q.answers.map((a,k)=>`<li class="${k===q.correct?'ok':''}"><b>${L[k]}</b><span>${esc(a)}</span>${k===q.correct?'<span class="ms">check</span>':''}</li>`).join('')}</ol>
     <div class="ca-qa">
       ${l&&opts&&opts.go?`<button class="btn btn-g btn-sm" data-a="goq" data-q="${q.id}"><span class="ms">menu_book</span>Voir dans le cours</button>`:''}
@@ -963,8 +1171,8 @@ function renderPanel(){
   const P=V.P,pn=$('ca-panel');
   if(V.sel&&V.sel.type==='seg'){
     const s=V.segById.get(V.sel.id),qs=qsOfSeg(P,V.sel.id);
-    pn.innerHTML=`<div class="ca-ph"><button class="ca-ib" data-a="back" title="Toutes les questions"><span class="ms">arrow_back</span></button><div><b>${qs.length?`Tombé ${qs.length} fois`:'Passage'}</b><small>page ${s?s.p:'?'}</small></div></div>
-      <blockquote class="ca-quote ca-c${lvl(qs.length||1)}">${s&&s.user?'<span class="ms" style="font-size:16px;vertical-align:-3px;margin-right:4px">crop_free</span>':''}${esc(s?s.t:'')}</blockquote>
+    pn.innerHTML=`<div class="ca-ph"><button class="ca-ib" data-a="back" title="Toutes les questions"><span class="ms">arrow_back</span></button><div><b>${qs.length?`Tombé ${nDistinct(qs)} fois`:'Passage'}</b><small>page ${s?s.p:'?'}</small></div></div>
+      <blockquote class="ca-quote ca-c${lvl(nDistinct(qs)||1)}">${s&&s.user?'<span class="ms" style="font-size:16px;vertical-align:-3px;margin-right:4px">crop_free</span>':''}${esc(s?s.t:'')}</blockquote>
       ${qs.length?`<div class="ca-segbar"><button class="btn btn-g btn-sm ca-danger" data-a="rmSeg" data-s="${V.sel.id}"><span class="ms">ink_eraser</span>Retirer ce surlignage</button></div>`:''}
       <div class="ca-list">${qs.map(q=>qCard(q,{seg:V.sel.id})).join('')||'<p class="ca-empty">Aucune question reliée à ce passage.</p>'}</div>`;
     return;
@@ -1119,5 +1327,5 @@ window.coursAnnalesOpen=m=>{if(typeof m==='string'&&m){WZ.method=m;try{localStor
 window.coursAnnalesRenderHub=renderHub;
 window.coursAnnalesView=openViewer;
 
-window._caEngine={relayOpen,relayPrompt,rerankMatch,freeMatch,lexTop,hasWebGPU,loadReranker,rrScore,readCourse,parseAnnale,addContext,passageText,buildIndex,bm25,toks,queryParts,queryUnits,unitWeights,matchUnit,matchQuestion,isHeading,loadEmbedder,embed,dot,localMatch,gemMatch,gemModels,gemPrompt,counts,stats};
+window._caEngine={relayOpen,relayPrompt,rerankMatch,freeMatch,lexTop,hasWebGPU,loadReranker,rrScore,readCourse,parseAnnale,addContext,passageText,buildIndex,bm25,toks,queryParts,queryUnits,unitWeights,matchUnit,matchQuestion,isHeading,loadEmbedder,embed,dot,localMatch,gemMatch,gemModels,gemPrompt,counts,stats,markDups,pdfApply,pdfParseAll,locateCit,pdfPrompt,matchAQ};
 })();
