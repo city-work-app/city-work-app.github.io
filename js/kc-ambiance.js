@@ -51,30 +51,38 @@ function ensureCtx(){
   if(ctx)return ctx;
   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;
   ctx=new AC();
-  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-12;comp.ratio.value=3;comp.attack.value=.01;comp.release.value=.3;
-  master=ctx.createGain();master.gain.value=0;master.connect(comp);comp.connect(ctx.destination);
+  /* v74 : simple limiteur (avant : compresseur qui « pompait » à chaque crépitement → un souffle qui passe)
+     + coupe-bas 35 Hz (les infrabasses donnaient un grondement de vent) */
+  const lim=ctx.createDynamicsCompressor();lim.threshold.value=-3;lim.knee.value=4;lim.ratio.value=12;lim.attack.value=.003;lim.release.value=.25;
+  const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=35;hp.Q.value=.7;
+  master=ctx.createGain();master.gain.value=0;master.connect(hp);hp.connect(lim);lim.connect(ctx.destination);
   return ctx;
 }
-/* bruits en boucle (stéréo : deux canaux différents = son large) */
+/* bruits en boucle (stéréo : deux canaux différents = son large).
+   v74 (19 nov. 2026) : le bruit « brun » d'avant (intégrateur qui fuit à ~140 Hz, normalisé au pic) faisait de
+   grosses variations lentes = un « vent très fort qui passe » dans presque tous les sons. Maintenant : coupe-bas
+   (filtre anti-continu ~30 Hz) sur rose et brun, et niveau réglé sur la puissance moyenne (RMS 0,2), pas sur le pic. */
 function noiseBuf(kind){
   if(BUF[kind])return BUF[kind];
-  const sec=kind==='brown'?10:6,len=Math.floor(ctx.sampleRate*sec),b=ctx.createBuffer(2,len,ctx.sampleRate);
+  const sr=ctx.sampleRate,sec=8,len=Math.floor(sr*sec),b=ctx.createBuffer(2,len,sr),Rdc=1-2*Math.PI*30/sr;
   for(let ch=0;ch<2;ch++){
-    const d=b.getChannelData(ch);let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0,peak=0;
+    const d=b.getChannelData(ch);let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,br=0,xp=0,yp=0;
     for(let i=0;i<len;i++){
-      const w=Math.random()*2-1;
-      if(kind==='white')d[i]=w;
-      else if(kind==='pink'){b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;b3=.8665*b3+w*.3104856;b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;d[i]=b0+b1+b2+b3+b4+b5+b6+w*.5362;b6=w*.115926;}
-      else{last=(last+.02*w)/1.02;d[i]=last;}
+      const w=Math.random()*2-1;let v;
+      if(kind==='white')v=w;
+      else if(kind==='pink'){b0=.99886*b0+w*.0555179;b1=.99332*b1+w*.0750759;b2=.969*b2+w*.153852;b3=.8665*b3+w*.3104856;b4=.55*b4+w*.5329522;b5=-.7616*b5-w*.016898;v=b0+b1+b2+b3+b4+b5+b6+w*.5362;b6=w*.115926;}
+      else{br=br*.9975+w*.05;v=br;}
+      if(kind!=='white'){const y=v-xp+Rdc*yp;xp=v;yp=y;v=y;}   /* anti-continu : plus d'infrabasses */
+      d[i]=v;
     }
-    /* boucle sans « clic » : on retire la dérive pour que la fin rejoigne le début */
-    const drift=d[len-1]-d[0];for(let i=0;i<len;i++)d[i]-=drift*i/len;
-    for(let i=0;i<len;i++){const a=Math.abs(d[i]);if(a>peak)peak=a;}
-    const k=.9/(peak||1);for(let i=0;i<len;i++)d[i]*=k;
+    /* raccord de la boucle : fondu enchaîné de 0,25 s entre la fin et le début */
+    const X=Math.floor(sr*.25);for(let i=0;i<X;i++){const t=i/X;d[i]=d[i]*t+d[len-X+i]*(1-t);}
+    let ss=0;for(let i=0;i<len-X;i++)ss+=d[i]*d[i];
+    const k=.2/Math.sqrt(ss/(len-X)||1);for(let i=0;i<len;i++)d[i]=Math.max(-1,Math.min(1,d[i]*k));
   }
   return BUF[kind]=b;
 }
-function src(kind,o){const s=ctx.createBufferSource();s.buffer=noiseBuf(kind);s.loop=true;s.connect(o);s.start(ctx.currentTime,Math.random()*s.buffer.duration);return s;}
+function src(kind,o){const s=ctx.createBufferSource();s.buffer=noiseBuf(kind);s.loop=true;s.loopStart=0;s.loopEnd=s.buffer.duration-.25;s.connect(o);s.start(ctx.currentTime,Math.random()*(s.buffer.duration-.3));return s;}
 function flt(type,f,q){const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=f;if(q!=null)x.Q.value=q;return x;}
 function gain(v){const g=ctx.createGain();g.gain.value=v;return g;}
 function chain(...a){for(let i=0;i<a.length-1;i++)a[i].connect(a[i+1]);return a[a.length-1];}
@@ -96,89 +104,104 @@ function grain(t,out,o){
   s.onended=()=>{try{p.disconnect();}catch(e){}};
 }
 const R=(a,b)=>a+Math.random()*(b-a);
+/* fait varier un gain au hasard entre lo et hi toutes les `ms` (texture vivante : clapotis, rafales…) */
+function jitter(param,lo,hi,ms,tau,timers){timers.push(setInterval(()=>{if(ctx&&ctx.state==='running')param.setTargetAtTime(R(lo,hi),ctx.currentTime,tau);},ms));}
+/* événement ponctuel : source de bruit non bouclée qui se coupe seule */
+function burst(kind,t,dur){const s=ctx.createBufferSource(),b=noiseBuf(kind),L=b.duration-.3;s.buffer=b;if(dur>L-.5){s.loop=true;s.loopStart=0;s.loopEnd=L;s.start(t,Math.random()*L*.5,dur);}else s.start(t,Math.random()*(L-dur),dur);return s;}
 
 const BUILD={
+  /* Pluie : nappe aiguë « shhh », crépitement irrégulier, milliers de petites gouttes, quelques « plic » */
   rain(out,nodes,timers){
-    nodes.push(src('pink',chain(flt('highpass',450),flt('lowpass',7500),gain(.5),out)));
-    nodes.push(src('brown',chain(flt('lowpass',380),gain(.32),out)));
-    sched(38,t=>grain(t,out,{f:R(2200,7000),q:1.4,a:R(.04,.2),dur:R(.012,.045),pan:R(-.8,.8)}),timers);
+    nodes.push(src('pink',chain(flt('highpass',700),flt('lowpass',9500),gain(.42),out)));
+    const pat=gain(.12);nodes.push(src('white',chain(flt('bandpass',2600,.6),pat,out)));jitter(pat.gain,.05,.17,35,.012,timers);
+    sched(110,t=>grain(t,out,{f:R(1800,7000),q:2.2,a:R(.05,.2),dur:R(.003,.01),pan:R(-.9,.9)}),timers);
+    sched(2.5,t=>{const o=ctx.createOscillator(),g=ctx.createGain(),pn=pan(R(-.7,.7)),f=R(2200,3400);
+      o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*.38,t+.018);
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(R(.02,.05),t+.002);g.gain.exponentialRampToValueAtTime(.0001,t+.03);
+      chain(o,g,pn,out);o.start(t);o.stop(t+.04);o.onended=()=>{try{pn.disconnect();}catch(e){}};},timers);
   },
+  /* Tonnerre : silence, puis coups de tonnerre lointains (grondement qui roule) ou proches (craquement d'abord) */
   thunder(out,nodes,timers){
-    nodes.push(src('brown',chain(flt('lowpass',110),gain(.05),out)));
-    sched(()=>R(9,26),t=>{
-      const s=ctx.createBufferSource();s.buffer=noiseBuf('brown');
-      const f=flt('lowpass',900,.7),g=ctx.createGain(),p=pan(R(-.6,.6));
-      const pk=R(.55,1),dur=R(4,8),roll=R(.8,1.8);
-      f.frequency.setValueAtTime(R(700,1400),t);f.frequency.exponentialRampToValueAtTime(R(120,220),t+R(.4,1));
-      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(pk,t+R(.05,.35));
-      g.gain.setTargetAtTime(pk*.45,t+.5,.4);g.gain.setTargetAtTime(pk*.8,t+roll,.15);
-      g.gain.setTargetAtTime(.0001,t+roll+.3,dur/4);
-      chain(s,f,g,p,out);s.start(t,Math.random()*5,dur+1.5);s.onended=()=>{try{p.disconnect();}catch(e){}};
-    },timers,R(1.5,5));
+    sched(()=>R(10,24),t=>{
+      const near=Math.random()<.3,dur=R(5,9),pn=pan(R(-.6,.6));pn.connect(out);
+      if(near){const c=burst('white',t,.5),cf=flt('highpass',R(400,900)),cg=ctx.createGain();
+        cg.gain.setValueAtTime(0,t);cg.gain.linearRampToValueAtTime(R(.9,1.4),t+.01);cg.gain.exponentialRampToValueAtTime(.001,t+.45);chain(c,cf,cg,pn);}
+      const t0=t+(near?.12:R(.2,.8)),s0=burst('brown',t0,dur+1),f=flt('lowpass',near?900:420,.6),g=ctx.createGain(),mid=burst('pink',t0,dur),mf=flt('bandpass',320,.8),mg=ctx.createGain();
+      f.frequency.setValueAtTime(near?900:420,t0);f.frequency.exponentialRampToValueAtTime(140,t0+dur*.7);
+      const pk=near?R(1,1.4):R(.6,1);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(pk,t0+R(.15,.6));
+      let tt=t0+.7;for(let k=0,n=2+(Math.random()*3|0);k<n;k++){g.gain.setTargetAtTime(pk*R(.35,1),tt,.25);tt+=R(.6,1.6);}
+      g.gain.setTargetAtTime(.0001,tt,dur/5);
+      mg.gain.setValueAtTime(0,t0);mg.gain.linearRampToValueAtTime(pk*.18,t0+.3);mg.gain.setTargetAtTime(.0001,t0+.8,dur/6);
+      chain(s0,f,g,pn);chain(mid,mf,mg,pn);
+      s0.onended=()=>{try{pn.disconnect();}catch(e){}};
+    },timers,R(2,6));
   },
+  /* Vagues : fond de mer calme + une vague toutes les 5 à 9 s (elle monte, se brise, l'écume pétille, elle se retire) */
   waves(out,nodes,timers){
-    [[.085,560,420,.36,.3],[.118,420,300,.26,.22]].forEach(([r,f0,fd,g0,gd])=>{
-      const lp=flt('lowpass',f0,.5),g=gain(g0);
-      nodes.push(src('brown',chain(lp,g,out)));
-      const o=ctx.createOscillator();o.frequency.value=r;
-      const a=gain(fd),b=gain(gd);o.connect(a);a.connect(lp.frequency);o.connect(b);b.connect(g.gain);
-      o.start(ctx.currentTime+Math.random()*3);nodes.push(o);
-      const foam=gain(.035);nodes.push(src('white',chain(flt('highpass',2600),foam,out)));
-      const c=gain(.03);o.connect(c);c.connect(foam.gain);
-    });
+    nodes.push(src('pink',chain(flt('lowpass',480),gain(.16),out)));
+    sched(()=>R(5,9),t=>{
+      const up=R(1.8,2.8),down=R(3.5,5.5),pk=R(.45,.75),pn=pan(R(-.5,.5));pn.connect(out);
+      const s0=burst('pink',t,up+down+.5),f=flt('lowpass',250,.5),g=ctx.createGain();
+      f.frequency.setValueAtTime(250,t);f.frequency.exponentialRampToValueAtTime(R(1600,2600),t+up);f.frequency.exponentialRampToValueAtTime(380,t+up+down);
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(pk,t+up);g.gain.setTargetAtTime(.0001,t+up+.15,down/3.2);
+      const fo=burst('white',t+up-.1,down),ff=flt('highpass',2200),fg=ctx.createGain();
+      fg.gain.setValueAtTime(0,t+up-.1);fg.gain.linearRampToValueAtTime(pk*.16,t+up+.2);fg.gain.setTargetAtTime(.0001,t+up+.4,down/3);
+      chain(s0,f,g,pn);chain(fo,ff,fg,pn);
+      s0.onended=()=>{try{pn.disconnect();}catch(e){}};
+    },timers,R(.3,1.5));
   },
+  /* Vent : souffle doux qui monte et retombe en rafales, avec un léger sifflement */
   wind(out,nodes,timers){
-    const bp=flt('bandpass',520,.9),g=gain(.42),gust=gain(1);
-    nodes.push(src('pink',chain(bp,g,gust,out)));
-    lfo(.06,280,bp.frequency,nodes);lfo(.071,.28,g.gain,nodes);
-    const g2=gain(.3);nodes.push(src('brown',chain(flt('lowpass',320),g2,gust)));lfo(.045,.18,g2.gain,nodes);
-    timers.push(setInterval(()=>{if(ctx&&ctx.state==='running'){gust.gain.setTargetAtTime(R(.55,1.35),ctx.currentTime,R(.8,2));bp.frequency.setTargetAtTime(R(380,780),ctx.currentTime,1.5);}},3200));
+    const bp=flt('bandpass',600,.7),g=gain(.3);
+    nodes.push(src('pink',chain(flt('highpass',150),bp,g,out)));
+    timers.push(setInterval(()=>{if(ctx&&ctx.state==='running'){const tt=ctx.currentTime;g.gain.setTargetAtTime(R(.12,.42),tt,R(1.2,2.8));bp.frequency.setTargetAtTime(R(380,950),tt,R(1.5,3));}},2600));
+    const wh=flt('bandpass',1900,9),wg=gain(.03);nodes.push(src('pink',chain(wh,wg,out)));
+    timers.push(setInterval(()=>{if(ctx&&ctx.state==='running'){const tt=ctx.currentTime;wh.frequency.setTargetAtTime(R(1400,2600),tt,2);wg.gain.setTargetAtTime(R(0,.045),tt,1.8);}},3100));
   },
+  /* Feu de cheminée : petit ronflement très doux + crépitements en grappes, craquements du bois, sifflements de sève */
   fire(out,nodes,timers){
-    nodes.push(src('brown',chain(flt('lowpass',650),gain(.42),out)));
-    const hiss=gain(.05);nodes.push(src('pink',chain(flt('bandpass',1300,.5),hiss,out)));
-    timers.push(setInterval(()=>{if(ctx&&ctx.state==='running')hiss.gain.setTargetAtTime(R(.02,.08),ctx.currentTime,.12);},180));
-    sched(7,t=>{
-      const big=Math.random()<.1;
-      grain(t,out,{type:'highpass',f:big?900:R(1600,4200),q:.7,a:big?R(.5,.85):R(.12,.45),dur:big?R(.02,.05):R(.003,.012),pan:R(-.5,.5)});
-      if(Math.random()<.35)for(let i=1,n=2+(Math.random()*4|0);i<=n;i++)grain(t+i*R(.012,.04),out,{type:'highpass',f:R(2000,5000),q:.7,a:R(.05,.2),dur:R(.002,.008),pan:R(-.5,.5)});
+    const roar=gain(.07);nodes.push(src('pink',chain(flt('highpass',140),flt('lowpass',1000),roar,out)));jitter(roar.gain,.04,.09,400,.3,timers);
+    const crk=(t,a,f,d,p)=>grain(t,out,{type:'highpass',f,q:.7,a,dur:d,pan:p});
+    sched(()=>R(.12,.8),t=>{
+      const p=R(-.6,.6),n=1+(Math.random()*7|0);let tt=t;
+      for(let k=0;k<n;k++){crk(tt,R(.12,.7),R(1500,4500),R(.0015,.006),p+R(-.15,.15));tt+=R(.006,.06);}
+      if(Math.random()<.14)grain(t+R(0,.1),out,{type:'bandpass',f:R(650,1300),q:3,a:R(.6,1),dur:R(.008,.02),pan:p});   /* craquement du bois */
     },timers);
+    sched(()=>R(6,14),t=>{const d=R(.4,1.2),s0=burst('white',t,d+.1),f=flt('bandpass',R(3500,6000),2),g=ctx.createGain();
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(R(.04,.09),t+d*.3);g.gain.linearRampToValueAtTime(0,t+d);chain(s0,f,g,out);},timers,R(3,7));
   },
+  /* Oiseaux : feuillage qui bruisse très doucement + chants variés, à gauche et à droite */
   forest(out,nodes,timers){
-    nodes.push(src('pink',chain(flt('bandpass',2800,.35),gain(.018),out)));
-    nodes.push(src('brown',chain(flt('lowpass',300),gain(.05),out)));
-    const note=(t,f0,f1,d,a,p)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain(),pn=pan(p);o.type='sine';
-      o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+d);
+    const lv=gain(.03);nodes.push(src('pink',chain(flt('bandpass',2600,.5),lv,out)));jitter(lv.gain,.012,.04,900,.6,timers);
+    const note=(t,f0,f1,d,a,p,vib)=>{
+      const o=ctx.createOscillator(),o2=ctx.createOscillator(),g=ctx.createGain(),g2=gain(.18),pn=pan(p);o.type='sine';o2.type='sine';
+      o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+d);o2.frequency.setValueAtTime(f0*2,t);o2.frequency.exponentialRampToValueAtTime(f1*2,t+d);
+      if(vib){const l=ctx.createOscillator(),lg=gain(f0*.04);l.frequency.value=R(25,45);l.connect(lg);lg.connect(o.frequency);l.start(t);l.stop(t+d+.02);}
       g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(a,t+Math.min(.012,d/3));g.gain.exponentialRampToValueAtTime(.0001,t+d);
-      chain(o,g,pn,out);o.start(t);o.stop(t+d+.02);o.onended=()=>{try{pn.disconnect();}catch(e){}};
+      o.connect(g);o2.connect(g2);g2.connect(g);chain(g,pn,out);o.start(t);o2.start(t);o.stop(t+d+.02);o2.stop(t+d+.02);o.onended=()=>{try{pn.disconnect();}catch(e){}};
     };
-    sched(()=>R(.7,3.8),t=>{
-      const p=R(-.85,.85),a=R(.03,.11),kind=Math.random();
-      if(kind<.45){/* gazouillis : 2 à 5 notes qui montent ou descendent */
-        let tt=t;const base=R(2600,4600),n=2+(Math.random()*4|0);
-        for(let i=0;i<n;i++){const d=R(.05,.11),f=base*R(.85,1.2);note(tt,f,f*R(.7,1.45),d,a,p);tt+=d+R(.03,.09);}
-      }else if(kind<.75){/* trille rapide */
-        const f=R(3200,5200),n=7+(Math.random()*8|0);for(let i=0;i<n;i++)note(t+i*.045,f*1.05,f*.92,.035,a*.8,p);
-      }else{/* sifflement en deux temps (merle) */
-        const f=R(1700,2600);note(t,f,f*R(1.2,1.5),R(.22,.34),a,p);note(t+R(.32,.45),f*R(1.1,1.3),f*R(.8,1),R(.18,.3),a*.8,p);
-      }
+    sched(()=>R(.8,4),t=>{
+      const p=R(-.85,.85),a=R(.02,.07),kind=Math.random();
+      if(kind<.45){let tt=t;const base=R(2600,4400),n=2+(Math.random()*4|0);for(let i=0;i<n;i++){const d=R(.05,.11),f=base*R(.88,1.15);note(tt,f,f*R(.75,1.4),d,a,p);tt+=d+R(.03,.09);}}
+      else if(kind<.72){const f=R(3400,5200),n=6+(Math.random()*8|0);for(let i=0;i<n;i++)note(t+i*.05,f*1.04,f*.94,.035,a*.7,p);}
+      else{const f=R(1800,2600);note(t,f,f*R(1.15,1.4),R(.22,.34),a,p,true);note(t+R(.34,.48),f*R(1.1,1.25),f*R(.85,1),R(.18,.3),a*.8,p,true);}
     },timers,R(.2,1.2));
   },
+  /* Ruisseau : clapotis (plusieurs bandes qui gargouillent chacune à leur rythme) + petites bulles */
   stream(out,nodes,timers){
-    const g=gain(.24);nodes.push(src('white',chain(flt('bandpass',1600,.6),flt('lowpass',5000),g,out)));
-    nodes.push(src('pink',chain(flt('bandpass',650,.8),gain(.18),out)));
-    timers.push(setInterval(()=>{if(ctx&&ctx.state==='running')g.gain.setTargetAtTime(R(.13,.34),ctx.currentTime,.035);},70));
-    sched(5,t=>{
-      const o=ctx.createOscillator(),gg=ctx.createGain(),pn=pan(R(-.6,.6)),f=R(450,1300);
-      o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*R(1.5,2.2),t+.04);
-      gg.gain.setValueAtTime(0,t);gg.gain.linearRampToValueAtTime(R(.02,.07),t+.006);gg.gain.exponentialRampToValueAtTime(.0001,t+.055);
-      chain(o,gg,pn,out);o.start(t);o.stop(t+.07);o.onended=()=>{try{pn.disconnect();}catch(e){}};
+    [[480,1.1,.06],[1100,1.3,.055],[2400,1.6,.035]].forEach(([f,q,a])=>{const g=gain(a);nodes.push(src('pink',chain(flt('bandpass',f,q),g,out)));jitter(g.gain,a*.35,a*1.4,R(45,85),.02,timers);});
+    nodes.push(src('white',chain(flt('highpass',4500),gain(.018),out)));
+    sched(6,t=>{
+      const o=ctx.createOscillator(),gg=ctx.createGain(),pn=pan(R(-.6,.6)),f=R(500,1400);
+      o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(f*R(1.4,2),t+.035);
+      gg.gain.setValueAtTime(0,t);gg.gain.linearRampToValueAtTime(R(.012,.04),t+.005);gg.gain.exponentialRampToValueAtTime(.0001,t+.05);
+      chain(o,gg,pn,out);o.start(t);o.stop(t+.06);o.onended=()=>{try{pn.disconnect();}catch(e){}};
     },timers);
   },
-  brown(out,nodes){nodes.push(src('brown',chain(gain(1),out)));},
-  pink(out,nodes){nodes.push(src('pink',chain(gain(.32),out)));},
-  white(out,nodes){nodes.push(src('white',chain(flt('lowpass',9000),gain(.16),out)));}
+  /* Bruits de fond pour se concentrer : réguliers, sans rafales */
+  brown(out,nodes){nodes.push(src('brown',chain(flt('lowpass',700),gain(.9),out)));},
+  pink(out,nodes){nodes.push(src('pink',chain(gain(.38),out)));},
+  white(out,nodes){nodes.push(src('white',chain(flt('lowpass',8000),gain(.2),out)));}
 };
 function mount(id){
   if(N[id]||!ctx||!BUILD[id])return;

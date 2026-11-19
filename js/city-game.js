@@ -1591,6 +1591,24 @@ Object.assign(SVB,{mahouse(r,s){
   if(MYH.fail||THM){bc(0,-.25,1.05,.7,0,.36,'#f3ede3',FRs());gable(-1.1,-.98,1.1,.48,.36,.32,'#c8553d',true,'#f3ede3');}
   tree3(-1.28,-1.25,.12);tree3(1.28,-1.25,.11);
   return .7;}});
+/* v73 (19 nov. 2026) : tourner les bâtiments.
+   Bâtiments des zones : S.brot = {case: 1..3 quarts de tour en plus de l'orientation vers la route}.
+   Services : s.rot (+1 si carré, +2 = demi-tour s'il est rectangulaire, pour garder son emprise).
+   Bouton « Tourner » dans la fiche du bâtiment, touche T (bâtiment sélectionné ou sous la souris, ou avant de poser). */
+let PLACEROT=0,_lastPtr=null;
+function brotOf(i){return (S&&S.brot&&S.brot[i])|0;}
+function rotateAt(i){
+  if(i==null||i<0||i>=NN)return false;
+  if(VISIT){toast('Tu visites la ville d’un ami : impossible d’y toucher.','visibility');return false;}
+  const id=svcAt[i];
+  if(id){const sv=SV.get(id);if(!sv)return false;const step=sv.w===sv.d?1:2;sv.rot=((sv.rot|0)+step)&3;touchSvc(sv);D.icons=true;}
+  else if(zone[i]&&lvl[i]&&st[i]!==RUIN){S.brot=S.brot||{};const k=(brotOf(i)+1)&3;if(k)S.brot[i]=k;else delete S.brot[i];touch(i);}
+  else return false;
+  tip('Bâtiment tourné d’un quart de tour','info',1100);
+  try{save();}catch(e){}
+  if(PANEL==='inspect')renderPanel();
+  return true;
+}
 function lotDir(i){
   const x=i%N,z=(i/N)|0;
   if(z<N-1&&road[i+N])return 0;if(x<N-1&&road[i+1])return 1;if(z>0&&road[i-N])return 2;if(x>0&&road[i-1])return 3;
@@ -1618,14 +1636,14 @@ function svcViewColor(s){
 }
 function buildLot(i){
   const x=i%N,z=(i/N)|0,zn=zone[i],l=Math.min(4,lvl[i]),v=vari[i],s=st[i];
-  TX.x=x+.5;TX.z=z+.5;TX.k=lotDir(i);
+  TX.x=x+.5;TX.z=z+.5;TX.k=(lotDir(i)+brotOf(i))&3;   /* v73 : quart de tour choisi par le joueur (S.brot) */
   const r=rng(v*977+l*131+zn*7+i*3);
   OVC=VIEW?viewColor(i):null;DK=(s===ABAND||s===FIRE)?1:0;NP=(s===OK&&!pw[i])?1:0;SITEP=s===BUILD?1-tmr[i]/(3+l*3):1;
   let top;V15.kmDoor=null;const pre=gbLens();
   if(s===BUILD)top=aSite(r,zn,l,v);else if(s===RUIN)top=aRuin(r);else top=ARCH[zn][l](r,v);
   OVC=null;DK=0;NP=0;
   if(s!==BUILD&&s!==RUIN&&zn!==ZI)doorScan(i,pre,zn===ZR?(l===1?'house':'res'):zn===ZC?'shop':'off');else V15.doors.delete(i);   /* v15 : porte qui s'ouvre */
-  if(s===FIRE){flames(r,top);EMIT('fire',0,top+.25,0);}
+  /* v73 : plus de cônes figés sur le toit — flammes, braises, fumée et lueur animées par stepFireFX */
   TOP[i]=top;
 }
 function buildSvcModel(s){
@@ -1884,7 +1902,7 @@ function createEngine(){
   ['gG','gB','gT','gC','gF','gI','gD'].forEach(k=>{E[k]=new THREE.Group();scene.add(E[k]);});
   makePatterns();makeMaterials();
   for(let ci=0;ci<NCH*NCH;ci++)E.bc.push({meshes:{},emit:[],rot:[],wh:[]});
-  makeGround();makeWater();makeSlab();makeSign();makeTrees();makeCars();makeBuses();makeTaxis();makeRotors();makeWheels();makeBoats();makeSmoke();makeFlakes();makeIcons();makeLights();makeFx();
+  makeGround();makeWater();makeSlab();makeSign();makeTrees();makeCars();makeBuses();makeTaxis();makeRotors();makeWheels();makeBoats();makeSmoke();try{makeFireFX();}catch(e){console.warn('[ville] feu',e);}makeFlakes();makeIcons();makeLights();makeFx();
   extEngine();
   return E;
 }
@@ -2312,6 +2330,67 @@ function makeSmoke(){
 }
 function collectEmitters(){const L=[];E.bc.forEach(ch=>{for(let k=0;k<ch.emit.length;k+=4)L.push(ch.emit.slice(k,k+4));});E.smoke.em=L;}
 const SMOKE_COL=[[.42,.42,.44],[.95,.96,.97],[.25,.22,.2]];
+/* ── v73 (19 nov. 2026) : feu réaliste ──
+   Particules à part (E.ffx) : langues de flammes (blanc-jaune → orange → rouge, rétrécissent en montant, ondulent,
+   poussées par le vent), flammes qui sortent des fenêtres, braises qui s'envolent ; fumée noire épaisse ajoutée au
+   système de fumée (k = 2) ; une lumière orange qui vacille (créée une seule fois → pas de recompilation des shaders).
+   Mélange additif la nuit (le feu éclaire), normal le jour (sinon il devient blanc sur les toits clairs). */
+function makeFireFX(){
+  const M=900,geo=new THREE.BufferGeometry(),pos=new Float32Array(M*3),sz=new Float32Array(M),al=new Float32Array(M),col=new Float32Array(M*3);
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aSize',new THREE.BufferAttribute(sz,1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aAlpha',new THREE.BufferAttribute(al,1).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('aCol',new THREE.BufferAttribute(col,3).setUsage(THREE.DynamicDrawUsage));
+  const mat=new THREE.ShaderMaterial({uniforms:{uScale:{value:500}},transparent:true,depthWrite:false,blending:THREE.NormalBlending,
+    vertexShader:'attribute float aSize;attribute float aAlpha;attribute vec3 aCol;varying float vA;varying vec3 vC;uniform float uScale;void main(){vA=aAlpha;vC=aCol;vec4 mv=modelViewMatrix*vec4(position,1.);gl_PointSize=aSize*uScale/max(.5,-mv.z);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying float vA;varying vec3 vC;void main(){vec2 d=gl_PointCoord-.5;d.x*=1.35;d.y=d.y*.75+(d.y<0.?d.y*.35:0.);float r=length(d);if(r>.5)discard;float core=smoothstep(.5,.08,r);gl_FragColor=vec4(min(vec3(1.),vC*(.85+core*.45)),vA*core);}'});
+  const pts=new THREE.Points(geo,mat);pts.frustumCulled=false;pts.renderOrder=4;E.gD.add(pts);
+  const light=new THREE.PointLight(0xff7a2a,0,6,2);E.gD.add(light);
+  E.ffx={pts,geo,pos,sz,al,col,mat,M,p:[],src:[],scan:0,acc:new Map(),light};
+}
+const FLAME_C=[[1,.93,.6],[1,.66,.16],[.97,.36,.06],[.5,.1,.03]];
+function flameCol(f,o,k){const s=f*3,a=Math.min(2,s|0),t=s-a,c0=FLAME_C[a],c1=FLAME_C[a+1];for(let j=0;j<3;j++)o[k+j]=c0[j]+(c1[j]-c0[j])*t;}
+function stepFireFX(dt){
+  const F=E.ffx;if(!F)return;
+  F.scan-=dt;if(F.scan<=0){F.scan=.35;F.src.length=0;for(let i=0;i<NN;i++)if(st[i]===FIRE&&lvl[i])F.src.push(i);}
+  const list=F.p,wk=windK(),wx=.16*wk,t=E.t,SP=E.smoke;
+  for(const i of F.src){
+    const cx=i%N+.5,cz=((i/N)|0)+.5,top=TOP[i]||.6;
+    let a=(F.acc.get(i)||0)+dt;
+    /* ~90 flammes / s sur le toit, ~25 / s aux fenêtres, ~7 braises / s, ~14 fumées / s */
+    while(a>1/90&&list.length<F.M){a-=1/90;
+      const win=Math.random()<.22;let x,y,z;
+      if(win){const side=(Math.random()*4)|0,u=(Math.random()-.5)*.5;y=top*(.4+Math.random()*.5);x=cx+(side===0?.45:side===1?-.45:u);z=cz+(side===2?.45:side===3?-.45:u);}
+      else{const rr=Math.sqrt(Math.random())*.27,an=Math.random()*6.283;x=cx+Math.cos(an)*rr;z=cz+Math.sin(an)*rr;y=top-.06;}
+      const big=Math.random(),core=1-Math.hypot(x-cx,z-cz)/.3;
+      list.push({k:0,x,y,z,vx:(cx-x)*.5+(Math.random()-.5)*.08+wx*.6,vz:(cz-z)*.5+(Math.random()-.5)*.08,vy:win?.5+Math.random()*.35:.85+Math.random()*.7+core*.3,a:0,l:win?.35+Math.random()*.25:.5+Math.random()*.45,s0:(win?.26:.38)+big*.3,s1:.06+Math.random()*.06,ph:Math.random()*6.3});
+      if(Math.random()<.08)list.push({k:1,x:cx+(Math.random()-.5)*.5,y:top+.1,z:cz+(Math.random()-.5)*.5,vx:(Math.random()-.5)*.3+wx,vz:(Math.random()-.5)*.3,vy:.9+Math.random()*.8,a:0,l:1.4+Math.random()*1.4,s0:.045,s1:.02,ph:Math.random()*6.3});
+      if(SP&&Math.random()<.16&&SP.p.length<SP.M)SP.p.push({x:cx+(Math.random()-.5)*.4,y:top+.35+Math.random()*.2,z:cz+(Math.random()-.5)*.4,vx:.12*wk+Math.random()*.06,vz:.04+Math.random()*.04,vy:.4+Math.random()*.25,a:0,l:3.2+Math.random()*1.6,s0:.3,s1:1.25+Math.random()*.5,k:2});
+    }
+    F.acc.set(i,a);
+  }
+  if(F.acc.size>F.src.length+4)F.acc.clear();
+  for(let j=list.length-1;j>=0;j--){const p=list[j];p.a+=dt;if(p.a>=p.l){list[j]=list[list.length-1];list.pop();}}
+  let n=0;const day=E.night<.45;
+  for(const p of list){
+    const f=p.a/p.l;
+    if(p.k===0){p.vy*=1-dt*.6;p.x+=(p.vx+Math.sin(p.a*11+p.ph)*.22)*dt;p.z+=(p.vz+Math.cos(p.a*9+p.ph)*.18)*dt;p.y+=p.vy*dt;
+      F.sz[n]=p.s0+(p.s1-p.s0)*Math.pow(f,.7);F.al[n]=Math.min(1,f*7)*Math.pow(1-f,1.1)*(day?.9:.75);flameCol(f,F.col,n*3);}
+    else{p.vy*=1-dt*.35;p.x+=(p.vx+Math.sin(p.a*5+p.ph)*.25)*dt;p.z+=p.vz*dt;p.y+=p.vy*dt;
+      F.sz[n]=p.s0;F.al[n]=(1-f)*(.6+.4*Math.sin(p.a*25+p.ph));F.col[n*3]=1;F.col[n*3+1]=.62+(1-f)*.25;F.col[n*3+2]=.22;}
+    F.pos[n*3]=p.x;F.pos[n*3+1]=p.y;F.pos[n*3+2]=p.z;n++;
+  }
+  F.geo.setDrawRange(0,n);
+  if(n)['position','aSize','aAlpha','aCol'].forEach(a=>F.geo.attributes[a].needsUpdate=true);
+  const blend=day?THREE.NormalBlending:THREE.AdditiveBlending;if(F.mat.blending!==blend){F.mat.blending=blend;F.mat.needsUpdate=true;}
+  /* lueur : sur le feu le plus proche du centre de la caméra */
+  const L=F.light;
+  if(F.src.length){
+    let best=F.src[0],bd=1e9;for(const i of F.src){const d=Math.hypot(i%N+.5-CAM.x,((i/N)|0)+.5-CAM.z);if(d<bd){bd=d;best=i;}}
+    L.position.set(best%N+.5,(TOP[best]||.6)+.35,((best/N)|0)+.5);
+    L.intensity=(day?1.4:4.5)*(.72+.18*Math.sin(t*17.3)+.1*Math.sin(t*31.1)+.08*Math.random());
+  }else if(L.intensity)L.intensity=0;
+}
 function stepSmoke(dt){
   const P=E.smoke,list=P.p,em=P.em,run=SPEEDS[S.speed]?1:.35;
   if(em.length){
@@ -2497,7 +2576,7 @@ function loop(){
   updateSky(dt);
   const run=dt*animK();   // en pause, tout ce qui bouge s'arrête ; sinon tout suit le rythme du temps (v4)
   let pt=performance.now();const PF=E.pf,pk=k=>{if(PF){const t=performance.now();PF[k]=(PF[k]||0)+t-pt;pt=t;}};
-  stepCars(run);pk('cars');stepRotors(run);stepWheels(run);stepBoats(run);stepSmoke(dt);updateSeason(dt);stepFlakes(dt);pk('fx');
+  stepCars(run);pk('cars');stepRotors(run);stepWheels(run);stepBoats(run);stepSmoke(dt);try{stepFireFX(dt);}catch(e){}updateSeason(dt);stepFlakes(dt);pk('fx');
   extFrame(dt,sp);pk('ext');
   stepWater(dt);
   E.mat.fire.color.setScalar(.85+Math.sin(E.t*23)*.1+Math.sin(E.t*7.3)*.08);
@@ -2511,6 +2590,7 @@ function resize(){
   if(!E||!E.stage)return;const w=E.stage.clientWidth,h=E.stage.clientHeight;if(!w||!h)return;
   E.renderer.setSize(w,h,false);E.camera.aspect=w/h;E.camera.updateProjectionMatrix();
   E.smoke.pts.material.uniforms.uScale.value=h*E.renderer.getPixelRatio()/(2*Math.tan(E.camera.fov*Math.PI/360));
+  if(E.ffx)E.ffx.mat.uniforms.uScale.value=E.smoke.pts.material.uniforms.uScale.value;
   if(E.fx)E.fx.c.setSize(w,h);
 }
 
@@ -2536,6 +2616,7 @@ function onDown(e){
 }
 function onMove(e){
   if(!E||!S)return;
+  _lastPtr={clientX:e.clientX,clientY:e.clientY};
   const p=PTR.get(e.pointerId);
   if(!p){if(e.pointerType==='mouse')toolHover(e);return;}
   const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
@@ -2620,6 +2701,7 @@ function toolHover(e){
 function setTool(id,opt){
   if(!E)return;toolCancel();
   if(VISIT&&id!=='inspect'){toast('Tu visites la ville d’un ami : impossible d’y construire.','visibility');id='inspect';}
+  if(id!=='place'||(TOOL&&TOOL.b!==opt))PLACEROT=0;
   TOOL={id};if(id==='zone')TOOL.z=opt;if(id==='place')TOOL.b=opt;if(id==='road')TOOL.rt=opt===3?3:1;if(EXT_TOOLS[id])TOOL.k=opt;
   const zv=id==='zone'||id==='dezone';if(zv!==ZONEVIEW){ZONEVIEW=zv;redrawAllGround();}
   E.grid.visible=id!=='inspect';
@@ -2727,7 +2809,7 @@ function ghostFor(b,rot){
 }
 function showGhost(t){
   const b=BT[TOOL.b];if(!b)return;
-  const c=placeCheck(b,t.x,t.z),g=ghostFor(b,svcRot(c.x0,c.z0,b.w,b.d));
+  const c=placeCheck(b,t.x,t.z),g=ghostFor(b,(svcRot(c.x0,c.z0,b.w,b.d)+PLACEROT)&3);
   if(E.ghostG!==g){if(E.ghostG)E.gF.remove(E.ghostG);E.ghostG=g;E.gF.add(g);}
   g.position.set(c.x0,0,c.z0);g.visible=true;
   const list=[];for(let z=c.z0;z<c.z0+b.d;z++)for(let x=c.x0;x<c.x0+b.w;x++)if(x>=0&&z>=0&&x<N&&z<N)list.push([x,z,c.ok?'#3ddc84':'#ff4d4d']);
@@ -2743,7 +2825,7 @@ function noMoney(cost){
 function goStudy(){save();if(typeof startFlash==='function')startFlash();else if(typeof showScreen==='function')showScreen('home');}
 function afterAction(){checkTuto();refreshHUD(true);refreshTray();}
 let _clrBack=0;   // décor, rails, feux… effacés en construisant par-dessus : remboursés (voir extRefund)
-function clearTile(i){rec(i);_clrBack+=extRefund(i);if(road[i]&&mtn[i]&&E)E.mtnDirty=true;dgClear(i);road[i]=0;lane[i]=0;zone[i]=0;lvl[i]=0;st[i]=0;tmr[i]=0;cap[i]=0;rail[i]=0;rx[i]=0;if(deco[i]){deco[i]=0;D.deco=true;}hill[i]=0;if(tree[i]){tree[i]=0;D.trees=true;}}
+function clearTile(i){if(S&&S.brot&&S.brot[i])delete S.brot[i];rec(i);_clrBack+=extRefund(i);if(road[i]&&mtn[i]&&E)E.mtnDirty=true;dgClear(i);road[i]=0;lane[i]=0;zone[i]=0;lvl[i]=0;st[i]=0;tmr[i]=0;cap[i]=0;rail[i]=0;rx[i]=0;if(deco[i]){deco[i]=0;D.deco=true;}hill[i]=0;if(tree[i]){tree[i]=0;D.trees=true;}}
 function commitRoad(d){
   const pts=roadPath(d);let cost=0,bad=0;
   for(const [x,z] of pts){if(!roadValid(x,z))bad++;else cost+=roadCost(x,z);}
@@ -2794,7 +2876,7 @@ function placeAt(x,z){
   if(!c.ok){if(c.why==='Fonds insuffisants')noMoney(svcPrice(b));else toast(c.why,'block');return;}
   actBegin();_clrBack=0;
   for(let zz=c.z0;zz<c.z0+b.d;zz++)for(let xx=c.x0;xx<c.x0+b.w;xx++)clearTile(zz*N+xx);
-  const s=addSvc({t:b.id,x:c.x0,z:c.z0,rot:svcRot(c.x0,c.z0,b.w,b.d)});ACT.add.push(s.id);
+  const s=addSvc({t:b.id,x:c.x0,z:c.z0,rot:(svcRot(c.x0,c.z0,b.w,b.d)+PLACEROT)&3});ACT.add.push(s.id);
   const net=svcPrice(b)-_clrBack;_clrBack=0;S.money-=net;actEnd(net,b.name);
   D.util=D.pol=true;simRefresh();afterAction();floatMoney(-net);extPlaced(b,s);
   if(b.lvl){setTool('inspect');toast(`<b>${esc(b.name)}</b> inauguré(e) ! Tes révisions ont payé.`,'celebration');}
@@ -2893,7 +2975,7 @@ function buildHUD(root){
       </div>
     </div>
     <i class="cty-sep"></i>
-    <div class="cty-bs cty-rci" title="Demande : ce que réclament habitants et entreprises">
+    <div class="cty-bs cty-rci" id="cty-rci" aria-label="Demande : ce que réclament habitants et entreprises">
       ${[1,2,3,4].map(z=>`<div class="cty-rci-c" id="cty-rcic-${z}"><div class="cty-rci-b"><i id="cty-rci-${z}" style="background:${ZONES[z].col}"></i></div><span>${ZONES[z].short}</span></div>`).join('')}
     </div>
    </div>
@@ -2940,11 +3022,37 @@ function buildHUD(root){
   <div class="cty-loading" id="cty-loading"><div class="house-spinner"></div>Construction de la ville…</div>
 </div>`;
   root.addEventListener('click',onHudClick);
+  root.addEventListener('pointerover',e=>{if(e.pointerType!=='touch'&&e.target.closest&&e.target.closest('#cty-rci'))rciTip(true);});
+  root.addEventListener('pointerout',e=>{if(RCITIP&&e.target.closest&&e.target.closest('#cty-rci')&&!(e.relatedTarget&&e.relatedTarget.closest&&e.relatedTarget.closest('#cty-rci')))rciTip(false);});
+  root.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#cty-rci')){if(RCITIP)rciTip(false);else rciTip(true);}});
   root.addEventListener('input',onHudInput);
   qzBind($('cty-panel'));new ResizeObserver(()=>{if(PANEL==='quiz')qzApply();}).observe($('cty'));
   root.addEventListener('keydown',e=>{if(e.target&&e.target.id==='cty-rename'&&e.key==='Enter')renameCity();});
 }
+/* v73 : bulle d'explication des barres R C I B (avant : seulement un curseur « ? ») */
+let RCITIP=null;
+function rciTipFill(){
+  if(!RCITIP||!S)return;
+  const row=z=>{
+    const Z=ZONES[z],d=S.dem[z]||0,pc=Math.round(clamp(Math.abs(d),0,1)*100),lock=z===4&&S.ms<3;
+    const what={1:'des gens veulent venir habiter ta ville',2:'les habitants veulent plus de boutiques',3:'il manque des usines et des emplois',4:'les entreprises cherchent des bureaux'}[z];
+    const zz={1:'zones résidentielles',2:'zones de commerces',3:'zones industrielles',4:'zones de bureaux'}[z];
+    const adv=lock?`Débloqué au palier « ${esc(MS[3].name)} »`:d<0?`Trop de ${zz} pour l’instant : attends avant d’en ajouter`:d>.3?`Forte demande : ${what}. Crée des ${zz}`:d>.03?`Demande moyenne : ${what}`:'Pas de demande pour l’instant';
+    return `<div class="cty-rcit-r${lock?' off':''}"><span class="cty-rcit-l" style="background:${Z.col}">${Z.short}</span><div><b>${Z.name} <em>${lock?'—':(d<0?'−':'')+pc+' %'}</em></b><small>${adv}</small></div></div>`;
+  };
+  RCITIP.innerHTML=`<div class="cty-rcit-h">Demande dans ta ville</div>${[1,2,3,4].map(row).join('')}<div class="cty-rcit-f">Plus la barre est haute, plus il faut de zones de ce type.</div>`;
+}
+function rciTip(on){
+  if(!on){if(RCITIP){RCITIP.remove();RCITIP=null;}return;}
+  const bar=$('cty-rci'),box=$('cty');if(!bar||!box)return;
+  if(!RCITIP){RCITIP=document.createElement('div');RCITIP.className='cty-rcit';box.appendChild(RCITIP);}
+  rciTipFill();
+  const r=bar.getBoundingClientRect(),b=box.getBoundingClientRect(),w=RCITIP.offsetWidth||300;
+  RCITIP.style.left=Math.max(8,Math.min(b.width-w-8,r.left-b.left+r.width/2-w/2))+'px';RCITIP.style.top=(r.bottom-b.top+8)+'px';
+}
 function onHudClick(e){
+  /* v73 : un clic sur la barre du bas (menus, outils) enlève le carré jaune de sélection */
+  if(e.target.closest&&e.target.closest('#cty-tools,#cty-tray')&&SEL){hideSelection();if(PANEL==='inspect')closePanel();}
   const el=e.target.closest('[data-act]');if(!el||!ROOT||!ROOT.contains(el))return;
   const a=el.dataset.act;
   if(a==='panel')togglePanel(el.dataset.p);
@@ -2960,6 +3068,7 @@ function onHudClick(e){
   else if(a==='toast'){const t=TOASTS.get(+el.dataset.id);dismissToast(+el.dataset.id);if(t&&t.fn)t.fn();}
   else if(a==='tuto'){S.tutMin=!S.tutMin;renderTuto();}
   else if(a==='demolish')demolishSel();
+  else if(a==='brot'){if(SEL)rotateAt(SEL.z*N+SEL.x);}
   else if(a==='rename')renameCity();
   else if(a==='set')toggleSetting(el.dataset.k);
   else if(a==='uic')uiPick(el.dataset.c);
@@ -3011,6 +3120,7 @@ function refreshHUD(force){
     el.style.height=Math.round(clamp(Math.abs(d),0,1)*100)+'%';el.classList.toggle('neg',d<0);
     const c=$('cty-rcic-'+z);if(c)c.classList.toggle('off',z===4&&S.ms<3);
   }
+  if(RCITIP)rciTipFill();
   const um=(id,u,p,on)=>{const el=$(id);if(!el)return;el.style.display=on===false?'none':'';const r=p>0?u/p:(u>0?2:0),b=el.querySelector('b');
     b.style.width=Math.min(100,r*100).toFixed(0)+'%';el.classList.toggle('warn',r>.85&&r<=1);el.classList.toggle('bad',r>1);el.title=`${fmt(u)} / ${fmt(p)}`;};
   um('cty-u-p',ST.pu,ST.pp);um('cty-u-w',ST.wu,ST.wp);um('cty-u-g',ST.gu,ST.gp,garbageOn());
@@ -3092,6 +3202,7 @@ function renderPanel(){
   el.innerHTML=f?f():'';el.scrollTop=top;
   const sc2=el.querySelector('.cty-qz-scroll');if(sc2)sc2.scrollTop=st;   // défilement interne du Défi du maire
   extAfterRender();
+  if(PANEL==='quiz')qzFit();
 }
 // ── Fenêtre du Défi du maire : déplaçable et redimensionnable (ajout 10 nov. 2026) ──
 // S.qzw = {x,y,w,h} place et taille choisies (null = à droite, comme les autres panneaux) ; S.qzBig = grande
@@ -3109,8 +3220,23 @@ function qzApply(){
   g.x=clamp(g.x,8,W-g.w-8);g.y=clamp(g.y,8,H-g.h-8);
   g={x:Math.round(g.x),y:Math.round(g.y),w:Math.round(g.w),h:Math.round(g.h)}; // recadrée pour l'affichage seulement : S.qzw garde le choix
   Object.assign(st,{left:g.x+'px',top:g.y+'px',width:g.w+'px',height:g.h+'px',right:'auto',bottom:'auto',maxHeight:'none'});
-  st.setProperty('--qz',(clamp(g.w/QZ_W0,1,1.8)*fs).toFixed(3));   /* × taille choisie (A− / A+) */
+  const want=clamp(g.w/QZ_W0,1,1.8)*fs;el.dataset.qzw=want.toFixed(3);
+  st.setProperty('--qz',want.toFixed(3));   /* × taille choisie (A− / A+) */
   el.classList.add('cty-qzwin');
+  qzFit();
+}
+/* v73 (19 nov. 2026) : la fenêtre s'adapte à sa HAUTEUR aussi — si la question et les réponses ne tiennent pas,
+   le texte rétrécit (dichotomie sur --qz, jusqu'à 45 % de la taille voulue) au lieu de cacher la réponse D. */
+function qzFit(){
+  const el=$('cty-panel');if(!el||PANEL!=='quiz'||!el.classList.contains('cty-qzwin'))return;
+  const sc=el.querySelector('.cty-qz-scroll');if(!sc)return;
+  const want=parseFloat(el.dataset.qzw)||1,set=v=>el.style.setProperty('--qz',v.toFixed(3));
+  set(want);
+  const over=()=>sc.scrollHeight>sc.clientHeight+1;
+  if(!over())return;
+  let lo=Math.min(.5,want*.45),hi=want;
+  for(let k=0;k<8;k++){const m=(lo+hi)/2;set(m);if(over())hi=m;else lo=m;}
+  set(lo);
 }
 function qzToggleBig(){S.qzBig=!S.qzBig;renderPanel();qzApply();save();}
 // Taille du texte du Défi du maire (13 nov. 2026) : de 50 % à 160 %, en plus de l'agrandissement lié à la fenêtre
@@ -3158,7 +3284,7 @@ function panelInspect(){
     if(b.pol)R.push(['cloud','Pollution',`rayon ${b.pol.r} cases`,'bad']);
     R.push(['payments','Entretien',money(b.upkeep)+' / mois']);
     R.push([ok?'check_circle':'error','Accès routier',ok?'Relié à l’autoroute':'Non relié : il ne fonctionne pas',ok?'':'bad']);
-    return head(b.icon,esc(b.name),esc(b.desc))+rows(R)+extInspectSvc(s)+`<button class="cty-btn danger" data-act="demolish"><span class="ms">delete</span>Démolir · +${money(svcRefund(s))} remboursés</button>`;
+    return head(b.icon,esc(b.name),esc(b.desc))+rows(R)+extInspectSvc(s)+`<button class="cty-btn" data-act="brot" title="Touche T"><span class="ms">rotate_right</span>${s.w===s.d?'Tourner le bâtiment':'Retourner le bâtiment (demi-tour)'}<kbd class="cty-kbd2">T</kbd></button><button class="cty-btn danger" data-act="demolish"><span class="ms">delete</span>Démolir · +${money(svcRefund(s))} remboursés</button>`;
   }
   if(road[i])return head('add_road',road[i]===2?'Autoroute':ter[i]?'Pont':'Route',road[i]===2?'Elle relie ta ville au reste du monde.':'')+
     rows([[conn[i]?'check_circle':'error','Connexion',conn[i]?'Reliée à l’autoroute':'Coupée : rien ne pousse autour',conn[i]?'':'bad']])+extInspectRoad(i);
@@ -3192,7 +3318,7 @@ function panelInspect(){
     if(s===ABAND)note='Les occupants sont partis : vérifie l’électricité, l’eau, l’accès routier, la pollution et la demande. Le terrain se libérera bientôt.';
     else if(s===FIRE)note=COV.fire[i]?'Les pompiers sont en route.':'Aucune caserne ne couvre ce quartier : le bâtiment risque de brûler entièrement.';
     else if(s===OK)note=levelHint(i);
-    return head(Z.icon,esc(nm),esc(Z.name+' · '+stat),Z.col)+extInspectLotTop(i)+rows(R)+chips(i)+(note?`<p class="cty-p">${esc(note)}</p>`:'')+extInspectLot(i);
+    return head(Z.icon,esc(nm),esc(Z.name+' · '+stat),Z.col)+extInspectLotTop(i)+rows(R)+chips(i)+(note?`<p class="cty-p">${esc(note)}</p>`:'')+(s!==RUIN?`<button class="cty-btn" data-act="brot" title="Touche T"><span class="ms">rotate_right</span>Tourner le bâtiment<kbd class="cty-kbd2">T</kbd></button>`:'')+extInspectLot(i);
   }
   if(tree[i])return head('forest','Forêt','Les arbres filtrent un peu la pollution. Construire dessus les abat.');
   return head('grass','Terrain libre',inArea(x,z)?'Trace une route puis crée des zones le long.':'Hors du terrain constructible : il s’agrandit avec les paliers.');
@@ -4964,6 +5090,8 @@ function extKey(k){
   if(k==='Escape'&&SPP_OPEN){spPanel(false);return true;}
   if(k==='Escape'&&FOLLOW){followStop();return true;}
   if((k==='t'||k==='T')&&TOOL.id==='paste'&&CLIP){CLIPROT=(CLIPROT+1)%4;tip('Motif pivoté','info',1200);return true;}
+  if((k==='t'||k==='T')&&TOOL.id==='place'){const b=BT[TOOL.b];if(b){PLACEROT=(PLACEROT+(b.w===b.d?1:2))&3;if(_lastPtr){const t=tileAt(_lastPtr);if(t)showGhost(t);}tip('Bâtiment pivoté avant de le poser','info',1100);}return true;}
+  if(k==='t'||k==='T'){let i=SEL?SEL.z*N+SEL.x:-1;if(i<0&&_lastPtr){const t=tileAt(_lastPtr);if(t)i=t.z*N+t.x;}if(i>=0&&rotateAt(i))return true;tip('Clique d’abord sur un bâtiment, puis appuie sur T pour le tourner','info',1600);return true;}
   return false;
 }
 function extInput(t){
