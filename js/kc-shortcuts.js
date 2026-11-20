@@ -189,8 +189,19 @@ const ACT=[
   {id:'sp_prev',grp:'Musique',n:'Spotify : morceau précédent',def:'',soft:1,sp:1},
   {id:'sp_up',grp:'Musique',n:'Spotify : monter le son',def:'',soft:1,sp:1},
   {id:'sp_down',grp:'Musique',n:'Spotify : baisser le son',def:'',soft:1,sp:1},
-  {id:'amb',grp:'Musique',n:'Sons d’ambiance : lecture / pause',def:''}
+  {id:'amb',grp:'Musique',n:'Sons d’ambiance : lecture / pause',def:''},
+  /* v76 (20 nov. 2026) : F = plein écran partout (pendant un quiz, F reste « Réponse D » ; Ma ville a déjà son propre F) */
+  {id:'fs',grp:'Partout',n:'Plein écran',def:'f',soft:1}
 ];
+function fsToggle(){
+  const d=document,el=d.documentElement,on=d.fullscreenElement||d.webkitFullscreenElement;
+  try{
+    if(on){const ex=d.exitFullscreen||d.webkitExitFullscreen;const p=ex&&ex.call(d);if(p&&p.catch)p.catch(()=>{});spToast('fullscreen_exit','Plein écran désactivé');}
+    else{const rq=el.requestFullscreen||el.webkitRequestFullscreen;if(!rq){notify('Ton navigateur ne permet pas le plein écran','err');return;}
+      const p=rq.call(el);if(p&&p.catch)p.catch(()=>notify('Le navigateur a refusé le plein écran','err'));spToast('fullscreen','Plein écran · F ou Échap pour sortir');}
+  }catch(e){notify('Plein écran impossible ici','err');}
+}
+window.kcFullscreen=fsToggle;
 function spOn(){try{return !!(window.spGetState&&window.spGetState().on);}catch(e){return false;}}
 function spToast(ic,t){
   let el=$('ksp-toast');if(!el){el=document.createElement('div');el.id='ksp-toast';el.className='ksp-toast';document.body.appendChild(el);}
@@ -213,6 +224,7 @@ const RUN={
   sp_next:()=>{fn('spotifyNext');spToast('skip_next','Morceau suivant');},
   sp_prev:()=>{fn('spotifyPrev');spToast('skip_previous','Morceau précédent');},
   sp_up:()=>spVol(10),sp_down:()=>spVol(-10),
+  fs:()=>fsToggle(),
   amb:()=>{if(typeof window.kcAmbToggle!=='function')return;const on=window.kcAmbToggle();spToast(on?'graphic_eq':'pause',on?'Sons d’ambiance':'Sons d’ambiance en pause');}
 };
 function ans(n){const o=[...document.querySelectorAll('#qopts .ob:not(:disabled)')][n];if(o){o.focus();o.click();}}
