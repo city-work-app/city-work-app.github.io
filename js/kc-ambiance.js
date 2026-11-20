@@ -1,7 +1,7 @@
 /* =========================================================
    kc-ambiance.js — Sons d'ambiance fabriqués par le site (18 nov. 2026, v73)
-   Tout est synthétisé en direct avec Web Audio (aucun fichier, aucune connexion) :
-   pluie, tonnerre, vagues, vent, feu de cheminée, oiseaux, ruisseau, bruits brun / rose / blanc.
+   v75 : vrais enregistrements (voir REC_BASE) ; les anciens sons synthétisés (SYN) servent de secours hors ligne,
+   et les bruits brun / rose / blanc restent calculés.
    - Bouton de la barre du haut [data-tb="amb"] → kcAmbOpen(e) : panneau #kc-amb (lecture, volume général,
      ambiances toutes prêtes, un curseur par son, arrêt automatique 15 → 90 min).
    - kcAmbToggle() : lecture / pause (raccourci clavier « Sons d'ambiance » dans kc-shortcuts.js).
@@ -15,30 +15,58 @@
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const KEY='kp_amb';
+/* v75 (20 nov. 2026) : l'utilisateur trouvait que « tous les sons font de la pluie » (les sons calculés étaient tous
+   du bruit filtré). Maintenant : VRAIS ENREGISTREMENTS (projet libre Moodist, sons CC0 / licence Pixabay, libres
+   d'utilisation), chargés à la demande depuis raw.githubusercontent.com (version figée REC_BASE), gardés dans le
+   cache du navigateur (Cache API 'kc-amb-v1') pour marcher ensuite sans internet. Chaque son est décodé, raccourci
+   à 75 s max et bouclé avec un fondu enchaîné de 3 s (aucun « clic » au raccord). k = gain qui égalise les volumes
+   (mesurés : RMS cible ≈ 0,12). Hors ligne et jamais chargé → ancien son calculé si `syn` existe (SYN), sinon rien.
+   Bruits brun / rose / blanc : toujours calculés (`syn` seul, pas de fichier). */
+const REC_BASE='https://raw.githubusercontent.com/remvze/moodist/11c0be2200116a3635880d600fd6953899cc51a3/public/sounds/';
 const SOUNDS=[
-  {id:'rain',n:'Pluie',ic:'rainy'},
-  {id:'thunder',n:'Tonnerre',ic:'thunderstorm'},
-  {id:'waves',n:'Vagues',ic:'waves'},
-  {id:'wind',n:'Vent',ic:'air'},
-  {id:'fire',n:'Feu de cheminée',ic:'local_fire_department'},
-  {id:'forest',n:'Oiseaux',ic:'forest'},
-  {id:'stream',n:'Ruisseau',ic:'water'},
-  {id:'brown',n:'Bruit brun',ic:'texture'},
-  {id:'pink',n:'Bruit rose',ic:'grain'},
-  {id:'white',n:'Bruit blanc',ic:'blur_on'}
+  {id:'rain',n:'Pluie',ic:'rainy',g:'Pluie & orage',f:'rain/light-rain',k:7.5,syn:'rain'},
+  {id:'heavy',n:'Grosse pluie',ic:'rainy_heavy',g:'Pluie & orage',f:'rain/heavy-rain',k:1.9,syn:'rain'},
+  {id:'window',n:'Pluie sur la vitre',ic:'window',g:'Pluie & orage',f:'rain/rain-on-window',k:1.1,syn:'rain'},
+  {id:'thunder',n:'Tonnerre',ic:'thunderstorm',g:'Pluie & orage',f:'rain/thunder',k:2.6,syn:'thunder'},
+  {id:'waves',n:'Vagues',ic:'waves',g:'Nature',f:'nature/waves',k:10,syn:'waves'},
+  {id:'gulls',n:'Mouettes',ic:'sailing',g:'Nature',f:'animals/seagulls',k:3.2},
+  {id:'river',n:'Rivière',ic:'water',g:'Nature',f:'nature/river',k:5,syn:'stream'},
+  {id:'birds',n:'Oiseaux',ic:'flutter_dash',g:'Nature',f:'animals/birds',k:2,syn:'forest'},
+  {id:'trees',n:'Vent dans les arbres',ic:'park',g:'Nature',f:'nature/wind-in-trees',k:1.8,syn:'wind'},
+  {id:'wind',n:'Vent',ic:'air',g:'Nature',f:'nature/wind',k:2.8,syn:'wind'},
+  {id:'crickets',n:'Grillons (nuit d’été)',ic:'nights_stay',g:'Nature',f:'animals/crickets',k:16},
+  {id:'fire',n:'Feu de cheminée',ic:'fireplace',g:'Maison & lieux',f:'nature/campfire',k:8,syn:'fire'},
+  {id:'cat',n:'Chat qui ronronne',ic:'pets',g:'Maison & lieux',f:'animals/cat-purring',k:10},
+  {id:'cafe',n:'Café',ic:'local_cafe',g:'Maison & lieux',f:'places/cafe',k:1.9},
+  {id:'library',n:'Bibliothèque',ic:'local_library',g:'Maison & lieux',f:'places/library',k:6},
+  {id:'train',n:'Dans le train',ic:'train',g:'Maison & lieux',f:'transport/inside-a-train',k:2},
+  {id:'chimes',n:'Carillon à vent',ic:'notifications',g:'Maison & lieux',f:'things/wind-chimes',k:2.6},
+  {id:'brown',n:'Bruit brun',ic:'texture',g:'Bruits pour se concentrer',syn:'brown'},
+  {id:'pink',n:'Bruit rose',ic:'grain',g:'Bruits pour se concentrer',syn:'pink'},
+  {id:'white',n:'Bruit blanc',ic:'blur_on',g:'Bruits pour se concentrer',syn:'white'}
 ];
+const SBY={};SOUNDS.forEach(s=>SBY[s.id]=s);
 const PRESETS=[
-  {id:'focus',n:'Concentration',ic:'psychology',v:{brown:.55}},
-  {id:'rain',n:'Pluie douce',ic:'rainy',v:{rain:.6}},
-  {id:'storm',n:'Orage',ic:'thunderstorm',v:{rain:.75,thunder:.7,wind:.25}},
-  {id:'sea',n:'Bord de mer',ic:'beach_access',v:{waves:.75,wind:.2}},
-  {id:'fire',n:'Coin du feu',ic:'fireplace',v:{fire:.7,rain:.3}},
-  {id:'forest',n:'Forêt',ic:'forest',v:{forest:.55,stream:.4,wind:.12}}
+  {id:'focus',n:'Concentration',ic:'psychology',v:{brown:.5}},
+  {id:'rain',n:'Pluie douce',ic:'rainy',v:{rain:.6,window:.3}},
+  {id:'storm',n:'Orage',ic:'thunderstorm',v:{heavy:.6,thunder:.75,wind:.2}},
+  {id:'sea',n:'Bord de mer',ic:'beach_access',v:{waves:.75,gulls:.25,wind:.12}},
+  {id:'fire',n:'Coin du feu',ic:'fireplace',v:{fire:.7,window:.3}},
+  {id:'forest',n:'Forêt',ic:'forest',v:{birds:.55,river:.4,trees:.25}},
+  {id:'night',n:'Nuit d’été',ic:'nights_stay',v:{crickets:.55,trees:.15}},
+  {id:'cafe',n:'Café',ic:'local_cafe',v:{cafe:.6,window:.2}},
+  {id:'library',n:'Bibliothèque',ic:'local_library',v:{library:.6,rain:.25}},
+  {id:'train',n:'Voyage en train',ic:'train',v:{train:.6,window:.25}},
+  {id:'cosy',n:'Cocon',ic:'pets',v:{cat:.5,fire:.45,rain:.2}}
 ];
 const TIMERS=[0,15,30,45,60,90];
 
 /* ───────── Réglages ───────── */
-function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');return {v:o.v&&typeof o.v==='object'?o.v:{},m:typeof o.m==='number'?o.m:.7,t:TIMERS.includes(o.t)?o.t:0};}catch(e){return {v:{},m:.7,t:0};}}
+function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');const v=o.v&&typeof o.v==='object'?o.v:{};
+  /* anciens identifiants (v73-v74) → nouveaux */
+  if(v.forest!=null){v.birds=v.forest;delete v.forest;}if(v.stream!=null){v.river=v.stream;delete v.stream;}
+  Object.keys(v).forEach(k=>{if(!SBY[k])delete v[k];});
+  return {v,m:typeof o.m==='number'?o.m:.7,t:TIMERS.includes(o.t)?o.t:0};}catch(e){return {v:{},m:.7,t:0};}}
 let st=load();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
 const vol=id=>Math.max(0,Math.min(1,+st.v[id]||0));
@@ -109,7 +137,7 @@ function jitter(param,lo,hi,ms,tau,timers){timers.push(setInterval(()=>{if(ctx&&
 /* événement ponctuel : source de bruit non bouclée qui se coupe seule */
 function burst(kind,t,dur){const s=ctx.createBufferSource(),b=noiseBuf(kind),L=b.duration-.3;s.buffer=b;if(dur>L-.5){s.loop=true;s.loopStart=0;s.loopEnd=L;s.start(t,Math.random()*L*.5,dur);}else s.start(t,Math.random()*(L-dur),dur);return s;}
 
-const BUILD={
+const SYN={
   /* Pluie : nappe aiguë « shhh », crépitement irrégulier, milliers de petites gouttes, quelques « plic » */
   rain(out,nodes,timers){
     nodes.push(src('pink',chain(flt('highpass',700),flt('lowpass',9500),gain(.42),out)));
@@ -203,11 +231,70 @@ const BUILD={
   pink(out,nodes){nodes.push(src('pink',chain(gain(.38),out)));},
   white(out,nodes){nodes.push(src('white',chain(flt('lowpass',8000),gain(.2),out)));}
 };
+/* ───────── Vrais enregistrements : chargement, cache, boucle sans raccord ───────── */
+const RAW={};      /* id → ArrayBuffer (mp3 compressé, petit) */
+const DEC={};      /* id → AudioBuffer prêt à boucler (gros : 5 au plus gardés) */
+const DEC_ORDER=[];
+const LOADING={};  /* id → Promise */
+const FAILED={};
+const CACHE_NAME_AMB='kc-amb-v1';
+async function fetchRaw(s){
+  if(RAW[s.id])return RAW[s.id];
+  const url=REC_BASE+s.f+'.mp3';
+  let c=null;try{if(window.caches)c=await caches.open(CACHE_NAME_AMB);}catch(e){c=null;}
+  if(c){try{const hit=await c.match(url);if(hit){const ab=await hit.arrayBuffer();if(ab.byteLength>1000)return RAW[s.id]=ab;}}catch(e){}}
+  const r=await fetch(url,{mode:'cors'});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  if(c){try{await c.put(url,r.clone());}catch(e){}}
+  return RAW[s.id]=await r.arrayBuffer();
+}
+function decode(ab){
+  return new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab.slice(0),res,rej);if(p&&p.then)p.then(res,rej);});
+}
+/* découpe à 75 s max et fond la fin dans le début (3 s, puissance constante) → boucle parfaite */
+function loopable(buf){
+  const sr=buf.sampleRate,XF=Math.min(Math.floor(sr*3),Math.floor(buf.length/4));
+  const use=Math.min(buf.length,Math.floor(sr*75)+XF),len=use-XF,ch=Math.min(2,buf.numberOfChannels);
+  const out=ctx.createBuffer(2,len,sr);
+  for(let c=0;c<2;c++){
+    const d=buf.getChannelData(Math.min(c,ch-1)),o=out.getChannelData(c);
+    for(let i=0;i<len;i++)o[i]=d[i];
+    for(let i=0;i<XF;i++){const t=i/XF;o[i]=d[i]*Math.sin(t*Math.PI/2)+d[len+i]*Math.cos(t*Math.PI/2);}
+  }
+  return out;
+}
+function loadRec(s){
+  if(DEC[s.id])return Promise.resolve(DEC[s.id]);
+  if(LOADING[s.id])return LOADING[s.id];
+  return LOADING[s.id]=fetchRaw(s).then(decode).then(buf=>{
+    const lb=loopable(buf);DEC[s.id]=lb;DEC_ORDER.push(s.id);
+    for(let i=0;DEC_ORDER.length>5&&i<DEC_ORDER.length;){const k=DEC_ORDER[i];if(!N[k]&&k!==s.id){delete DEC[k];DEC_ORDER.splice(i,1);}else i++;}
+    delete LOADING[s.id];delete FAILED[s.id];return lb;
+  },e=>{delete LOADING[s.id];FAILED[s.id]=1;throw e;});
+}
+function rowState(id,cls,on){const r=document.querySelector('#kc-amb .kamb-row[data-id="'+id+'"]');if(r)r.classList.toggle(cls,!!on);}
 function mount(id){
-  if(N[id]||!ctx||!BUILD[id])return;
+  const s=SBY[id];
+  if(N[id]||!ctx||!s)return;
   const g=gain(0);g.connect(master);
   const o={g,nodes:[],timers:[]};N[id]=o;
-  try{BUILD[id](g,o.nodes,o.timers);}catch(e){console.warn('[ambiance]',id,e);}
+  const synth=()=>{if(s.syn&&SYN[s.syn]){try{SYN[s.syn](g,o.nodes,o.timers);}catch(e){console.warn('[ambiance]',id,e);}}};
+  if(!s.f){synth();return;}
+  rowState(id,'ld',true);
+  loadRec(s).then(buf=>{
+    rowState(id,'ld',false);rowState(id,'off',false);
+    if(N[id]!==o||!ctx)return;
+    const k=gain((s.k||1)*1.4),src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    src.connect(k);k.connect(g);
+    src.start(ctx.currentTime+.02,Math.random()*buf.duration*.8);
+    o.nodes.push(src,k);
+  },e=>{
+    rowState(id,'ld',false);
+    if(N[id]!==o)return;
+    console.warn('[ambiance] enregistrement indisponible',id,e);
+    if(s.syn)synth();
+    else{rowState(id,'off',true);if(typeof showNotif==='function'&&!mount.warned){mount.warned=1;showNotif('Certains sons ont besoin d’internet la première fois','err');}}
+  });
 }
 function unmount(id){
   const o=N[id];if(!o)return;delete N[id];
@@ -263,23 +350,24 @@ window.kcAmbDebug=function(){
 /* ───────── Panneau ───────── */
 function rowHTML(s){
   const v=Math.round(vol(s.id)*100);
-  return `<div class="kamb-row${v?' on':''}" data-id="${s.id}">
+  return `<div class="kamb-row${v?' on':''}${LOADING[s.id]?' ld':''}" data-id="${s.id}">
     <button type="button" class="kamb-ri" data-am="tog" data-id="${s.id}" title="${v?'Couper':'Activer'} : ${esc(s.n)}"><span class="ms">${s.ic}</span></button>
     <span class="kamb-rn">${esc(s.n)}</span>
     <input type="range" min="0" max="100" step="1" value="${v}" data-am="vol" data-id="${s.id}" aria-label="Volume : ${esc(s.n)}" style="--p:${v}%">
   </div>`;
 }
+function listHTML(){let g='',h='';SOUNDS.forEach(s=>{if(s.g!==g){g=s.g;h+=`<div class="kamb-grp">${esc(g)}</div>`;}h+=rowHTML(s);});return h;}
 function presetOn(p){return SOUNDS.every(s=>Math.abs(vol(s.id)-(p.v[s.id]||0))<.02);}
 function panelHTML(){
   const m=Math.round(st.m*100);
-  return `<div class="kamb-h"><span class="kamb-ic${PLAY?' on':''}"><span class="ms">graphic_eq</span></span><div><b>Sons d’ambiance</b><small>Fabriqués par le site · sans pub, sans internet</small></div>
+  return `<div class="kamb-h"><span class="kamb-ic${PLAY?' on':''}"><span class="ms">graphic_eq</span></span><div><b>Sons d’ambiance</b><small>Vrais enregistrements · sans pub · mélange-les</small></div>
       <button type="button" class="kamb-x" data-am="close" aria-label="Fermer"><span class="ms">close</span></button></div>
     <div class="kamb-main">
       <button type="button" class="kamb-play${PLAY?' on':''}" data-am="play" aria-label="${PLAY?'Pause':'Lecture'}"><span class="ms">${PLAY?'pause':'play_arrow'}</span></button>
       <div class="kamb-mv"><span class="ms">${m?'volume_up':'volume_off'}</span><input type="range" min="0" max="100" value="${m}" data-am="master" aria-label="Volume général" style="--p:${m}%"></div>
     </div>
     <div class="kamb-pre">${PRESETS.map(p=>`<button type="button" class="kamb-chip${presetOn(p)?' on':''}" data-am="pre" data-id="${p.id}"><span class="ms">${p.ic}</span>${esc(p.n)}</button>`).join('')}</div>
-    <div class="kamb-list">${SOUNDS.map(rowHTML).join('')}</div>
+    <div class="kamb-list">${listHTML()}</div>
     <div class="kamb-foot"><span class="kamb-fl"><span class="ms">timer</span>Arrêt auto</span>
       <div class="kamb-seg">${TIMERS.map(t=>`<button type="button" class="${st.t===t?'on':''}" data-am="timer" data-v="${t}">${t?t+' min':'Non'}</button>`).join('')}</div>
       <span class="kamb-left" id="kamb-left">${leftTxt()}</span></div>`;

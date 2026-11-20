@@ -901,3 +901,81 @@ button.cty-kpi:hover{background:var(--hov)}
 .cty-rcit-r small{display:block;font-size:12px;line-height:1.35;color:#45604f;margin-top:1px}
 .cty-rcit-f{margin-top:8px;font-size:11.5px;color:#5b6b60}
 .cty-kbd2{margin-left:8px;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.2);font:700 11px ui-monospace,monospace}
+
+/* =========================================================
+   v75 (20 nov. 2026) : fenêtres, notifications et Défi du maire en SOMBRE — classe .dk sur #cty
+   (Réglages → « Fenêtres et notifications » : comme le site / claires / sombres ; pnlTheme() dans city-game.js).
+   ========================================================= */
+.cty.dk:not(.thm) .cty-bar,.cty.dk:not(.thm) .cty-side,.cty.dk:not(.thm) .cty-camg,.cty.dk:not(.thm) .cty-tools,.cty.dk:not(.thm) .cty-cam,
+.cty.dk:not(.thm) .cty-tuto,.cty.dk:not(.thm) .cty-bn,.cty.dk:not(.thm) .cty-event{
+  --glass:rgba(22,25,30,.82);--glass-b:rgba(255,255,255,.08);--line:rgba(255,255,255,.1);--hov:rgba(255,255,255,.08);--chip:rgba(255,255,255,.1);
+  --ink:#eef1f0;--soft:#a6b0ab;--teal:#4fd1c5;--acc:rgba(79,209,197,.16);--sh:0 4px 22px rgba(0,0,0,.35)}
+.cty.dk .cty-panel,.cty.dk .cty-toast,.cty.dk .cty-tray,.cty.dk .cty-rcit{
+  --ink:#eef1f0;--soft:#a6b0ab;--line:rgba(255,255,255,.09);--hov:rgba(255,255,255,.07);--chip:rgba(255,255,255,.08);
+  --teal:#4fd1c5;--acc:rgba(79,209,197,.16);--card:rgba(255,255,255,.05);color:var(--ink);color-scheme:dark}
+.cty.dk .cty-panel{background:rgba(22,25,30,.96);border-color:rgba(255,255,255,.08);box-shadow:0 16px 48px rgba(0,0,0,.5)}
+.cty.dk .cty-panel.cty-qzwin{box-shadow:0 22px 60px rgba(0,0,0,.55)}
+.cty.dk .cty-toast{background:rgba(22,25,30,.94);border-color:rgba(255,255,255,.08);box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.cty.dk .cty-toast>.ms{color:#4fd1c5}
+.cty.dk .cty-toast button,.cty.dk .cty-bn button,.cty.dk .cty-event button{background:#14a39c;color:#fff}
+.cty.dk .cty-tray{background:rgba(22,25,30,.92);border-color:rgba(255,255,255,.08)}
+.cty.dk .cty-item{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.08);color:var(--ink)}
+.cty.dk .cty-tip{background:#eef1f0;color:#14171b}
+/* textes */
+.cty.dk .cty-p{color:#c9d1cd}
+.cty.dk .cty-p.small,.cty.dk .cty-pt small{color:#a6b0ab}
+.cty.dk .cty-sec,.cty.dk .cty-qf-l span{color:#8d9893}
+.cty.dk .cty-link{color:#7fd8cc}
+.cty.dk .cty-pic{background:rgba(79,209,197,.14);color:#4fd1c5}
+.cty.dk .cty-px{background:rgba(255,255,255,.08);color:#eef1f0}
+.cty.dk .cty-qz-grip{color:#7d8883}
+/* lignes, boutons, cartes */
+.cty.dk .cty-rows{background:rgba(255,255,255,.06)}
+.cty.dk .cty-row{background:rgba(255,255,255,.035)}
+.cty.dk .cty-row span:nth-child(2){color:#b7c1bc}
+.cty.dk .cty-btn{background:#eef1f0;color:#14171b}
+.cty.dk .cty-btn.ghost{background:rgba(255,255,255,.08);color:#eef1f0}
+.cty.dk .cty-btn.danger{background:rgba(224,79,79,.16);color:#f3a9a0}
+.cty.dk .cty-panel :is(.cty-chips>span,.cty-bl,.cty-spark,.cty-goal,.cty-view,.cty-reward,.cty-choice,.cty-chart,.cty-case,.cty-repair,.cty-gz-une,.cty-letter,.cty-achi,.cty-dist,.cty-rule,.cty-distrow,.cty-twin,.cty-prof,.cty-biocur,.cty-recov,.cty-svrow,.cty-cit,.cty-anz,.cty-gzs,.cty-curve,.cty-quest,.cty-bios button,.cty-skyh button,.cty-anl button,.cty-distrow button,.cty-follow button){
+  background:rgba(255,255,255,.045)!important;border-color:rgba(255,255,255,.1)!important;color:var(--ink)}
+.cty.dk .cty-panel :is(.cty-goal.cur,.cty-quest.cur,.cty-achi.ok){background:rgba(79,209,197,.1)!important;border-color:rgba(79,209,197,.35)!important}
+.cty.dk .cty-panel :is(.cty-tabs,.cty-seg){background:rgba(255,255,255,.06)}
+.cty.dk .cty-panel :is(.cty-tabs button,.cty-seg button){color:#a6b0ab}
+.cty.dk .cty-panel :is(.cty-tabs button.on,.cty-seg button.on){background:rgba(255,255,255,.14)!important;color:#fff!important;box-shadow:none}
+.cty.dk .cty-panel :is(input:not([type=range]):not([type=color]):not([type=checkbox]):not([type=radio]),select,textarea){background:rgba(255,255,255,.05);color:var(--ink);border-color:rgba(255,255,255,.12)}
+.cty.dk .cty-panel option{background:#1d2127;color:#eef1f0}
+.cty.dk .cty-panel :is(.cty-keyrow kbd,.cty-kbd2){background:rgba(255,255,255,.08);color:#eef1f0;border-color:rgba(255,255,255,.14)}
+/* Défi du maire (QCM) */
+.cty.dk .cty-qq{background:rgba(255,255,255,.05);color:var(--ink)}
+.cty.dk .cty-qq small{color:#6fd39a}
+.cty.dk .cty-qa{background:rgba(255,255,255,.035);border-color:rgba(255,255,255,.1);color:var(--ink)}
+.cty.dk .cty-qa b{background:rgba(255,255,255,.08);color:var(--ink)}
+.cty.dk .cty-qa:hover:not(:disabled){background:rgba(79,209,197,.08);border-color:rgba(79,209,197,.45)}
+.cty.dk .cty-qa.ok{background:rgba(47,163,107,.18);border-color:#2fa36b}
+.cty.dk .cty-qa.ok b{background:#2fa36b;color:#fff}
+.cty.dk .cty-qa.ko{background:rgba(224,79,79,.16);border-color:#e04f4f}
+.cty.dk .cty-qa.ko b{background:#e04f4f;color:#fff}
+.cty.dk .cty-qfb.ok{background:rgba(47,163,107,.16);color:#9be3bd}
+.cty.dk .cty-qfb.ko{background:rgba(224,79,79,.15);color:#f3a9a0}
+.cty.dk .cty-qfb small{color:#b7c1bc}
+.cty.dk .cty-qf select{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:var(--ink)}
+.cty.dk .cty-qf small{color:#a6b0ab}
+.cty.dk .cty-qstreak{background:rgba(255,255,255,.05);color:#a6b0ab}
+.cty.dk .cty-qstreak .ms{color:#7d8883}
+.cty.dk .cty-qstreak b{color:#eef1f0}
+.cty.dk .cty-qstreak.hot{background:linear-gradient(90deg,rgba(240,123,29,.2),rgba(240,123,29,.08));color:#f7c08a}
+.cty.dk .cty-qstreak.hot .ms{color:#f59a4a}
+.cty.dk .cty-qstreak.hot b{color:#ffb469}
+.cty.dk .cty-qround{background:rgba(79,209,197,.12);color:#8fe3d8}
+.cty.dk .cty-qround .ms{color:#4fd1c5}
+.cty.dk .cty-qprev{color:#4fd1c5}
+.cty.dk .cty-qnav{background:rgba(255,255,255,.05)}
+.cty.dk .cty-qnav span{color:#8fe3d8}
+.cty.dk .cty-qnav button{background:rgba(255,255,255,.08);color:#eef1f0;box-shadow:none}
+.cty.dk .cty-qfest{background:linear-gradient(90deg,rgba(217,70,239,.16),rgba(234,179,8,.08));color:#f0c2f7}
+.cty.dk .cty-qcrisis{background:rgba(224,79,79,.14)!important;color:#f3b8b0}
+.cty.dk .cty-rcit{background:rgba(22,25,30,.95);color:var(--ink)}
+.cty.dk .cty-qz-fs{background:rgba(255,255,255,.06)}
+.cty.dk .cty-qz-fs .cty-px{background:transparent}
+.cty.dk .cty-qz-pct{color:#c9d1cd}
+.cty.dk .cty-qz-rs{filter:invert(1) brightness(.8)}

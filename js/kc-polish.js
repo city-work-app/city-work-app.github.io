@@ -102,7 +102,8 @@ function notifs(){
   try{const o=JSON.parse(lsGet('kp_fce_open','null'));if(o&&o.key){const f=(G('conceptFolders',[])||[]).find(x=>x.id===o.key);if(f)out.push({id:'fce:'+o.key,ic:'edit_note',cls:'t-violet',t:'Flashcards à terminer',s:'« '+f.name+' » : reprends là où tu t’étais arrêté',go:()=>window.fceOpen&&window.fceOpen(o.key)});}}catch(e){}
   /* révisions du jour */
   let due=0;try{due=G('getDueCount',()=>0)()||0;}catch(e){}
-  if(due)out.push({id:'fc:'+tk+':'+due,ic:'style',cls:'t-green',t:due+' carte'+(due>1?'s':'')+' à revoir',s:'Flashcards · répétition espacée',go:()=>{const f=G('startDueFlashcards',null);if(f)f();}});
+  if(due>30)due=30;   /* v75 : séance ciblée (30 cartes max) */
+  if(due)out.push({id:'fc:'+tk+':'+due,ic:'style',cls:'t-green',t:'Flashcards du jour : '+due+' carte'+(due>1?'s':''),s:'Les plus en retard · environ '+Math.max(2,Math.round(due*.25))+' min',go:()=>{const f=G('startDueFlashcards',null);if(f)f();}});
   /* v72 : plus de « 1995 questions à revoir » (évident quand on révise beaucoup) → une petite révision du jour,
      les 20 questions les plus urgentes, sans les matières terminées (kcDailySRS, kc-v72.js) */
   let srs=[];try{srs=G('kcDailySRS',()=>[])()||[];}catch(e){}

@@ -2097,32 +2097,63 @@ function dgClear(i){if(!dg[i])return;const x=i%N,z=(i/N)|0;
 function spawnCar(c,fleet){
   const L=E.roadList;if(!L.length)return false;
   const car=fleet===E.cars;
-  for(let k=0;k<12;k++){
+  for(let k=0;k<18;k++){
     const i=L[(Math.random()*L.length)|0];
     if(noCar(i)||showBlocked(i)||(car&&k<10&&Math.random()*90>trf[i]+12))continue;   // plus de voitures là où le trafic est fort
-    const opts=[0,1,2,3,4,5,6,7].filter(d=>roadNb(i,d)>=0);
+    if(k<14&&seenXZ(i%N+.5,((i/N)|0)+.5))continue;   /* v75 : on fait naître les voitures hors de l'écran (plus de voiture qui apparaît sous les yeux) */
+    const opts=[0,1,2,3,4,5,6,7].filter(d=>{const j=roadNb(i,d);return j>=0&&!noCar(j)&&!showBlocked(j);});
     if(!opts.length)continue;
     const out=opts[(Math.random()*opts.length)|0],from=OPP(out),t0=Math.random();
     const lane=E._lanes&&E._lanes.get(i*8+from);if(lane&&lane.some(o=>o!==c&&Math.abs(o.t-t0)<.45))continue;   // pas d'apparition sur une autre voiture
-    c.i=i;c.from=from;c.to=out;c.t=t0;c.ov=null;c.ok=0;c.nmv=null;c.nmvX=0;c.bt=0;c.sp=1.1+Math.random()*.8;c.col=CAR_COLS[(Math.random()*CAR_COLS.length)|0];c.fresh=true;c.dest=car?commuteDest():fleet===E.taxis?taxiDest():null;if(c.id==null)c.id=++_carId;return true;
+    c.i=i;c.from=from;c.to=out;c.t=t0;c.ov=null;c.ok=0;c.nmv=null;c.nmvX=0;c.bt=0;c.sp=1.1+Math.random()*.8;
+    c.leave=0;c.out=null;c.dead=false;c.ghost=0;c.by=null;c.sc=seenXZ(i%N+.5,((i/N)|0)+.5)?0:1;c.px=c.pz=null;c.col=CAR_COLS[(Math.random()*CAR_COLS.length)|0];c.fresh=true;c.dest=car?commuteDest():fleet===E.taxis?taxiDest():null;if(c.id==null)c.id=++_carId;return true;
   }
   return false;
 }
+/* v75 : demi-tour dans une case (impasse, rue fermée, voiture bloquée) : on avance jusqu'au milieu sur sa voie, demi-cercle,
+   puis on repart sur l'autre voie — avant, la voiture disparaissait et réapparaissait ailleurs. Longueur du trajet ≈ 1,53 case. */
+const UT_LEN=1.534;
+function uturnPos(cx,cz,hx,hz,t,r,o){
+  const Lx=-hz,Lz=hx,A=.5,C=Math.PI*r,d=t*(A+C+A);
+  if(d<A){const s=d-A;o[0]=cx+hx*s+Lx*r;o[1]=cz+hz*s+Lz*r;o[2]=Math.atan2(hx,hz);}
+  else if(d<A+C){const ph=(d-A)/r,cs=Math.cos(ph),sn=Math.sin(ph);o[0]=cx+r*(Lx*cs+hx*sn);o[1]=cz+r*(Lz*cs+hz*sn);o[2]=Math.atan2(-Lx*sn+hx*cs,-Lz*sn+hz*cs);}
+  else{const s=d-A-C;o[0]=cx-hx*s-Lx*r;o[1]=cz-hz*s-Lz*r;o[2]=Math.atan2(-hx,-hz);}
+}
+/* v75 : la caméra voit-elle ce point ? (pour faire naître / partir les véhicules hors de l'écran) */
+const _frus=new THREE.Frustum(),_frM=new THREE.Matrix4(),_frS=new THREE.Sphere(new THREE.Vector3(),.9);let _frT=-1;
+function seenXZ(x,z){
+  if(!E||!E.camera)return false;
+  if(_frT!==E.t){_frT=E.t;E.camera.updateMatrixWorld();_frM.multiplyMatrices(E.camera.projectionMatrix,E.camera.matrixWorldInverse);_frus.setFromProjectionMatrix(_frM);}
+  _frS.center.set(x,.1,z);return _frus.intersectsSphere(_frS);
+}
+/* la case j est au bord de la carte et la route continue dehors : sortie de la ville */
+function edgeOut(j,d){const x=j%N+DIRS8[d][0],z=((j/N)|0)+DIRS8[d][1];return x<0||z<0||x>=N||z>=N;}
 function carPos(c,o){
   if(onRb(c)){rbPos(c,o);return;}   /* v15 : autour de l'îlot */
+  if(c.from===c.to&&c.from<4){const a=DIRS[c.from];uturnPos(c.i%N+.5,((c.i/N)|0)+.5,-a[0],-a[1],c.t,.17,o);return;}   /* v75 : demi-tour */
   const x=c.i%N+.5,z=((c.i/N)|0)+.5,a=DIRS8[c.from],b=DIRS8[c.to],t=c.t,u=1-t;
   const p0x=x+a[0]*.5,p0z=z+a[1]*.5,p2x=x+b[0]*.5,p2z=z+b[1]*.5;
   const px=u*u*p0x+2*u*t*x+t*t*p2x,pz=u*u*p0z+2*u*t*z+t*t*p2z;
   let tx=2*u*(x-p0x)+2*t*(p2x-x),tz=2*u*(z-p0z)+2*t*(p2z-z);const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
   o[0]=px-tz*.17;o[1]=pz+tx*.17;o[2]=Math.atan2(tx,tz);
 }
+const _fsv=new THREE.Vector3();
 function stepFleet(C,target,dt,fixCol){
-  while(C.list.length<target){const c={};if(!spawnCar(c,C))break;C.list.push(c);}
-  if(C.list.length>target)C.list.length=Math.max(0,target);
-  const o=C.o;let n=0;
+  /* v75 : plus aucune voiture qui disparaît d'un coup. Trop de voitures (nuit, fin de l'heure de pointe) → elles finissent
+     leur trajet et s'en vont quand elles sont hors de l'écran (ou s'effacent doucement au bout de 30 s si toute la ville est
+     visible). Les nouvelles naissent hors de l'écran (spawnCar) ou apparaissent en fondu. */
+  let act=0;for(const c of C.list)if(!c.leave)act++;
+  for(let g=0;act<target&&g<40;g++){const c={};if(!spawnCar(c,C))break;C.list.push(c);act++;}
+  if(act>target){let ex=act-target;for(let pass=0;pass<2&&ex>0;pass++)for(const c of C.list){if(ex<=0)break;if(c.leave||(pass===0&&c.px!=null&&seenXZ(c.px,c.pz)))continue;c.leave=E.t||1e-3;ex--;}}
+  const CAP=C.mesh.instanceMatrix.count;
+  if(C.list.length>CAP){C.list.sort((a,b)=>(b.leave?1:0)-(a.leave?1:0));C.list.splice(0,C.list.length-CAP);}
+  const o=C.o;let n=0,dead=false;
   for(const c of C.list){
     if(c.ov!=null&&!S.ovs[c.ov]&&!spawnCar(c,C))continue;
-    if(c.ov==null&&(!road[c.i]||showBlocked(c.i))&&!spawnCar(c,C))continue;
+    if(c.ov==null&&!road[c.i]&&!spawnCar(c,C))continue;   /* v75 : sur le parcours du marathon, la voiture n'est plus téléportée : elle en sort */
+    if(c.leave&&c.out==null&&dt>0){if(c.px==null||!seenXZ(c.px,c.pz)){c.dead=dead=true;continue;}if(E.t-c.leave>30)c.out=1;}
+    if(c.out!=null&&dt>0){c.out-=dt*1.4;if(c.out<=0){if(c.leave){c.dead=dead=true;continue;}spawnCar(c,C);}}
+    if(c.sc!=null&&c.sc<1&&dt>0)c.sc=Math.min(1,c.sc+dt*1.8);
     if(fixCol)c.col=fixCol;
     let adv=dt*c.sp*(C===E.cars&&c.ov==null?jamK(c.i):1);   // bouchons : on roule au pas sur les routes saturées
     if(C===E.buses&&busWait(c,dt))adv=0;   /* v10 : le bus s'arrête à l'arrêt */
@@ -2131,7 +2162,16 @@ function stepFleet(C,target,dt,fixCol){
     if(adv>0&&E._lanes){const g=gapAhead(c,E._lanes),minG=C===E.buses?.62:.44;adv=Math.min(adv,Math.max(0,g-minG));}   // distance de sécurité (v15 : un peu plus grande)
     if(c.to>=4||c.from>=4)adv/=(c.to>=4?.707:.5)+(c.from>=4?.707:.5);   /* diagonale : plus de chemin dans la case, même vitesse */
     if(onRb(c))adv*=.82/RBP[c.from][c.to].len;   /* v15 : rond-point, chemin plus long et un peu plus lent */
-    if(adv>0){const r_=carRoom(c),k_=onRb(c)?RBP[c.from][c.to].len:1;if(r_<9){adv=Math.min(adv,Math.max(0,r_/k_));if(r_<.02){c.bt=(c.bt||0)+dt;if(c.bt>6){c.ghost=E.t+1;c.bt=0;}}else c.bt=0;}else c.bt=0;}   /* v15 : plus de voitures qui se touchent */
+    else if(c.from===c.to)adv/=UT_LEN*1.2;   /* v75 : demi-tour, au pas */
+    if(c.exit&&c.t>.5&&c.out==null)c.out=1;   /* v75 : elle quitte la ville par le bord de la carte, en fondu */
+    if(c.out!=null)adv*=.6;
+    if(adv>0){const r_=carRoom(c),k_=onRb(c)?RBP[c.from][c.to].len:c.from===c.to?UT_LEN:1;if(r_<9){adv=Math.min(adv,Math.max(0,r_/k_));if(r_<.02){c.bt=(c.bt||0)+dt;
+        /* v75 : bloquée longtemps (embouteillage en boucle) : hors de l'écran elle est replacée ailleurs ; à l'écran elle fait
+           demi-tour si elle est en ligne droite, sinon elle se faufile (comme avant) */
+        if(c.bt>6&&!seenXZ(c.px,c.pz)){spawnCar(c,C);continue;}
+        if(c.bt>9){c.bt=0;if(c.from===OPP(c.to)&&c.to<4&&c.t<.45&&!onRb(c)&&c.ov==null){c.to=c.from;c.t/=UT_LEN;c.nmv=null;c.nmvX=0;}else c.ghost=E.t+1.2;}}else c.bt=0;}else c.bt=0;}   /* v15 : plus de voitures qui se touchent */
+    if(c.ov==null&&c.to<4&&c.from===OPP(c.to)&&c.t>.22&&c.t<.5&&!c.nmvX&&!c.exit&&!onRb(c)){const m_=nextMove(c,C);c.nmvX=1;c.nmv=m_;c.nmvK=c.i*8+c.to;
+      if(!m_){c.to=c.from;c.t/=UT_LEN;c.nmvX=0;c.nmv=null;}}   /* v75 : la rue devant est fermée → demi-tour maintenant (avant : disparition au bout) */
     if(adv>0&&c.ov==null&&c.to<4){const j=roadNb(c.i,c.to);
       if(j>=0&&rx[j]===2&&!SIG[j]&&c.t<.93&&rbBusy(j,OPP(c.to),c))adv=Math.min(adv,Math.max(0,.9-c.t));   // on cède le passage à l'entrée du rond-point
       if(j>=0&&c.t<.93&&boxFull(j,c))adv=Math.min(adv,Math.max(0,.9-c.t));   // on n'entre pas dans un carrefour déjà encombré
@@ -2146,16 +2186,17 @@ function stepFleet(C,target,dt,fixCol){
     let guard=0;
     while(c.t>=1&&guard++<4){
       const mv=(c.nmv&&c.nmvK===c.i*8+c.to)?c.nmv:nextMove(c,C);c.nmv=null;c.nmvX=0;   // v5 : routes + ponts routiers · v15 : direction choisie à l'avance
-      if(!mv){spawnCar(c,C);break;}
-      c.from=OPP(c.to);c.i=mv.j;c.to=mv.to;c.ov=mv.ov;c.ok=mv.ok;c.t-=1;
+      if(!mv){c.t=.99;if(c.out==null)c.out=1;break;}   /* v75 : plus de téléportation : elle s'efface doucement (cas très rare) */
+      c.from=OPP(c.to);c.i=mv.j;c.to=mv.to;c.ov=mv.ov;c.ok=mv.ok;c.t-=1;c.exit=mv.exit||0;
       if(c.dest!=null&&Math.abs(c.i%N-c.dest%N)+Math.abs(((c.i/N)|0)-((c.dest/N)|0))<2)c.dest=null;
     }
     if(c.t>=1)c.t=.99;
     carPos(c,o);c.px=o[0];c.pz=o[1];c.pa=o[2];
-    C.m.makeRotationY(o[2]);C.m.setPosition(o[0],c.ov!=null?ovpY(c):ter[c.i]?.13:mtn[c.i]?mtnH(o[0],o[1])+.012:0,o[1]);   /* route de montagne : suit la pente */C.mesh.setMatrixAt(n,C.m);if(C.lights)C.lights.setMatrixAt(n,C.m);if(C.cone)C.cone.setMatrixAt(n,C.m);
+    {const k_=Math.min(c.sc==null?1:c.sc,c.out==null?1:Math.max(0,c.out));C.m.makeRotationY(o[2]);if(k_<.999){_fsv.set(k_,k_,k_);C.m.scale(_fsv);}}C.m.setPosition(o[0],c.ov!=null?ovpY(c):ter[c.i]?.13:mtn[c.i]?mtnH(o[0],o[1])+.012:0,o[1]);   /* route de montagne : suit la pente */C.mesh.setMatrixAt(n,C.m);if(C.lights)C.lights.setMatrixAt(n,C.m);if(C.cone)C.cone.setMatrixAt(n,C.m);
     if(c.fresh||c.n!==n){C.col.set(fixCol||c.col);C.mesh.setColorAt(n,C.col);c.fresh=false;c.n=n;C.colDirty=true;}
     n++;
   }
+  if(dead)C.list=C.list.filter(c=>!c.dead);
   C.mesh.count=n;C.mesh.instanceMatrix.needsUpdate=true;if(C.lights){C.lights.count=n;C.lights.instanceMatrix.needsUpdate=true;}if(C.cone){C.cone.count=n;C.cone.instanceMatrix.needsUpdate=true;}
   if(C.colDirty&&C.mesh.instanceColor){C.mesh.instanceColor.needsUpdate=true;C.colDirty=false;}
 }
@@ -2351,7 +2392,7 @@ function makeFireFX(){
 const FLAME_C=[[1,.93,.6],[1,.66,.16],[.97,.36,.06],[.5,.1,.03]];
 function flameCol(f,o,k){const s=f*3,a=Math.min(2,s|0),t=s-a,c0=FLAME_C[a],c1=FLAME_C[a+1];for(let j=0;j<3;j++)o[k+j]=c0[j]+(c1[j]-c0[j])*t;}
 function stepFireFX(dt){
-  const F=E.ffx;if(!F)return;
+  const F=E.ffx;if(!F||dt<=0)return;   /* v75 : figé en pause */
   F.scan-=dt;if(F.scan<=0){F.scan=.35;F.src.length=0;for(let i=0;i<NN;i++)if(st[i]===FIRE&&lvl[i])F.src.push(i);}
   const list=F.p,wk=windK(),wx=.16*wk,t=E.t,SP=E.smoke;
   for(const i of F.src){
@@ -2392,9 +2433,10 @@ function stepFireFX(dt){
   }else if(L.intensity)L.intensity=0;
 }
 function stepSmoke(dt){
-  const P=E.smoke,list=P.p,em=P.em,run=SPEEDS[S.speed]?1:.35;
+  const P=E.smoke,list=P.p,em=P.em;
+  if(dt<=0)return;   /* v75 : jeu en pause → la fumée reste figée (rien n'avance, rien ne naît) */
   if(em.length){
-    P.acc+=dt*Math.min(260,em.length*3.2)*run;
+    P.acc+=dt*Math.min(260,em.length*3.2);
     while(P.acc>=1&&list.length<P.M){P.acc-=1;const e=em[(Math.random()*em.length)|0],k=e[3];if(k===0&&!smokeOn(e))continue;   /* v10 : usine à l'arrêt = pas de fumée */
       list.push({x:e[0]+(Math.random()-.5)*.06,y:e[1],z:e[2]+(Math.random()-.5)*.06,vx:.12+Math.random()*.08,vz:.05,vy:k===2?.55:.32+Math.random()*.15,a:0,l:k===1?3.2:k===2?1.6:2.6,s0:k===1?.25:.16,s1:k===1?.9:.6,k});}
     if(P.acc>5)P.acc=5;
@@ -2576,7 +2618,7 @@ function loop(){
   updateSky(dt);
   const run=dt*animK();   // en pause, tout ce qui bouge s'arrête ; sinon tout suit le rythme du temps (v4)
   let pt=performance.now();const PF=E.pf,pk=k=>{if(PF){const t=performance.now();PF[k]=(PF[k]||0)+t-pt;pt=t;}};
-  stepCars(run);pk('cars');stepRotors(run);stepWheels(run);stepBoats(run);stepSmoke(dt);try{stepFireFX(dt);}catch(e){}updateSeason(dt);stepFlakes(dt);pk('fx');
+  stepCars(run);pk('cars');stepRotors(run);stepWheels(run);stepBoats(run);{const fdt=run>0?dt:0;stepSmoke(fdt);try{stepFireFX(fdt);}catch(e){}}   /* v75 : en pause, fumées et flammes s'arrêtent aussi */updateSeason(dt);stepFlakes(dt);pk('fx');
   extFrame(dt,sp);pk('ext');
   stepWater(dt);
   E.mat.fire.color.setScalar(.85+Math.sin(E.t*23)*.1+Math.sin(E.t*7.3)*.08);
@@ -3072,6 +3114,7 @@ function onHudClick(e){
   else if(a==='rename')renameCity();
   else if(a==='set')toggleSetting(el.dataset.k);
   else if(a==='uic')uiPick(el.dataset.c);
+  else if(a==='pnl'){S.set.pnl=+el.dataset.k||0;pnlTheme();save();renderPanel();}
   else if(a==='uimreset'){S.set.uiM={};_uiKey='';extHUD();save();renderPanel();}
   else if(a==='raze')razeCity(el);
   else if(a==='goto')flyTo(+el.dataset.x,+el.dataset.z);
@@ -5249,9 +5292,17 @@ function uiInput(t){
   if(!t._uiCh){t._uiCh=true;t.addEventListener('change',()=>{if(PANEL==='settings')renderPanel();},{once:true});}
   clearTimeout(_uiSave);_uiSave=setTimeout(save,700);
 }
+/* v75 : fenêtres, notifications et Défi du maire en sombre — S.set.pnl : 0 = comme le site (mode sombre de City Work),
+   1 = toujours clair, 2 = toujours sombre. Classe .dk sur #cty (styles à la fin de city.css). */
+function pnlDark(){const v=S&&S.set?S.set.pnl|0:0;return v===2||(v===0&&document.body.classList.contains('dark'));}
+function pnlTheme(){const box=$('cty');if(box)box.classList.toggle('dk',pnlDark());}
+let _pnlObs=null;
+function pnlWatch(){if(_pnlObs||typeof MutationObserver!=='function')return;_pnlObs=new MutationObserver(()=>pnlTheme());_pnlObs.observe(document.body,{attributes:true,attributeFilter:['class']});}
 function panelUiColor(sw){
-  const cur=S.set.uiC||'',pre=UI_COLS.some(([c])=>c===cur),own=cur&&!pre;
-  let h=`<div class="cty-sec">Couleur de l’interface</div><p class="cty-p small">La barre du haut, les boutons de droite, la caméra et la barre d’outils.</p><div class="cty-uic">`
+  const cur=S.set.uiC||'',pre=UI_COLS.some(([c])=>c===cur),own=cur&&!pre,pv=S.set.pnl|0;
+  let h=`<div class="cty-sec">Fenêtres et notifications</div><p class="cty-p small">Le Défi du maire, les fiches, les notifications et les menus.</p>`
+    +`<div class="cty-seg">${[[0,'Comme le site'],[1,'Claires'],[2,'Sombres']].map(([k,n])=>`<button class="${pv===k?'on':''}" data-act="pnl" data-k="${k}">${n}</button>`).join('')}</div>`
+    +`<div class="cty-sec">Couleur de l’interface</div><p class="cty-p small">La barre du haut, les boutons de droite, la caméra et la barre d’outils.</p><div class="cty-uic">`
     +UI_COLS.map(([c,n])=>`<button class="${c?'':'cl'}${c===cur?' on':''}" data-act="uic" data-c="${c}" title="${n}" aria-label="${n}" style="--c:${c||'#fff'}"></button>`).join('')
     +`<label class="cty-uic-pk${own?' on':''}" title="Choisir n’importe quelle couleur"${own?` style="--c:${cur}"`:''}><span class="ms">colorize</span><input type="color" data-uic="1" value="${cur||'#c0392b'}" aria-label="Choisir n’importe quelle couleur"></label></div>`;
   if(!cur)return h+`<p class="cty-p small">Classique : verre clair le jour, sombre la nuit.</p>`;
@@ -5272,7 +5323,7 @@ function extHUD(force){
   const jb=$('cty-jbadge');if(jb)jb.style.display=!VISIT&&S.news.length>(S.newsSeen|0)?'':'none';
   const fb=$('cty-fbadge');if(fb){const n=SOC.pending|0;fb.textContent=n||'';fb.style.display=n?'':'none';}
   const wx=$('cty-wx');if(wx){const w=WX[(S.set.wx&&S.wx&&S.wx.k)||'clear'];const t=`<span class="ms">${w[0]}</span>`;if(wx.innerHTML!==t){wx.innerHTML=t;wx.title=w[1];}}
-  const box=$('cty');if(box&&E){const th=uiTheme();box.classList.toggle('night',!th&&E.night>.62);}   // couleur choisie, sinon verre sombre la nuit
+  const box=$('cty');if(box&&E){const th=uiTheme();box.classList.toggle('night',!th&&E.night>.62);const dk=pnlDark();if(box.classList.contains('dk')!==dk)box.classList.toggle('dk',dk);pnlWatch();}   // couleur choisie, sinon verre sombre la nuit · v75 : fenêtres sombres
   let b='';
   if(VISIT)b+=`<div class="cty-bn visit"><span class="ms">travel_explore</span><span>Tu visites <b>${esc(VISIT.name)}</b>, la ville de ${esc(VISIT.owner)} <span class="cty-live">● en direct</span></span><button data-act="flike">${VISIT.liked?'❤️ Aimée':'🤍 J’aime'}</button><button data-act="gift">🎁 Offrir</button><button data-act="fback">Retour à ma ville</button></div>`;
   else{
@@ -6364,8 +6415,14 @@ function nextMove(c,C){
   if(c.ov!=null){const s=S.ovs[c.ov];if(!s)return null;const k=c.ok+1;if(k<s.n)return{j,to:c.to,ov:c.ov,ok:k};
     if(!road[j])return null;const o=dirsAt(j,(c.to+2)%4);if(!o.length)return null;return{j,to:pickDir(c,j,o),ov:null,ok:0};}
   if(!road[j]){const L=OVE.get(c.i),e=L&&L.find(q=>q.d===c.to);if(!e)return null;return{j,to:c.to,ov:e.s,ok:1};}
-  if(noCar(j)||showBlocked(j))return null;   /* 14 nov. 2026 : aucun véhicule dans les rues piétonnes · v15 : ni sur le parcours du marathon */
-  const o=dirsAt(j,OPP(c.to)).filter(d=>{const k=roadNb(j,d);return k<0||!noCar(k);});if(!o.length)return null;return{j,to:pickDir(c,j,o),ov:null,ok:0};
+  if(noCar(j)||(showBlocked(j)&&!showBlocked(c.i)))return null;   /* 14 nov. 2026 : aucun véhicule dans les rues piétonnes · v15 : ni sur le parcours du marathon (v75 : sauf pour en sortir) */
+  let o=dirsAt(j,OPP(c.to)).filter(d=>{const k=roadNb(j,d);return k<0||(!noCar(k)&&(!showBlocked(k)||showBlocked(j)));});
+  if(showBlocked(j)){const o2=o.filter(d=>{const k=roadNb(j,d);return k>=0&&!showBlocked(k);});if(o2.length)o=o2;}   /* sur le parcours fermé : on prend la première sortie */
+  if(!o.length){   /* v75 : impasse → demi-tour au bout de la rue · bord de la carte → la voiture quitte la ville (avant : elle disparaissait) */
+    if(c.to<4&&edgeOut(j,c.to))return{j,to:c.to,ov:null,ok:0,exit:1};
+    if(c.to<4)return{j,to:OPP(c.to),ov:null,ok:0};
+    return null;}
+  return{j,to:pickDir(c,j,o),ov:null,ok:0};
 }
 
 // ── Saisons plus vivantes : feuilles d'automne, arbres en fleurs, illuminations de Noël, feux d'artifice ──
@@ -6621,7 +6678,7 @@ function showBuild(){
     {const e=path[L-1],x=e%N,z=(e/N)|0;TX.x=x+.5;TX.z=z+.5;TX.k=0;bx(.3,-.12,.44,.12,0,.06,'#f4f6f8');for(let k=0;k<6;k++)bc(.33+(k%2)*.07,-.09+((k/2)|0)*.09,.008,.008,.06,.09,'#4fb0d8');bc(.42,.18,.03,.03,0,.07,'#3fa34d');O.spec.push({x:x+.9,z:z+.5,a:-Math.PI/2,L:humLookC(e*3+77),ph:0});}
     for(const [k,gg] of GB)if(gg.p.length){const ms=new THREE.Mesh(toGeo(gg),E.mat[k]||E.mat.plain);ms.castShadow=true;g.add(ms);}
     [GB,TX.x,TX.z,TX.k]=keep;
-    for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)if(O.block.has(c.i))spawnCar(c,C);}   // les voitures quittent le parcours
+    for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)if(O.block.has(c.i)&&!c.leave)c.leave=E.t||1e-3;}   // v75 : les voitures sur le parcours le quittent en roulant (avant : téléportées)
   else{const s=SV.get(sh.sid);if(!s){S.show=null;return;}const cx=s.x+s.w/2,cz=s.z+s.d/2,P_=[],C=[],cc=new THREE.Color();
     if(sh.k==='match'){for(const[dx,dz]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const x=cx+dx*(s.w/2+.1),z=cz+dz*(s.d/2+.1),pole=new THREE.Mesh(new THREE.BoxGeometry(.05,1.6,.05),new THREE.MeshLambertMaterial({color:'#7d858c'}));pole.position.set(x,.8,z);g.add(pole);
         for(let k=0;k<6;k++){P_.push(x+(k%3-1)*.07,1.62+((k/3)|0)*.07,z);cc.set('#fff6d8');C.push(cc.r,cc.g,cc.b);}}}
@@ -6634,17 +6691,40 @@ function showBuild(){
   E.gD.add(g);E.show=O;
 }
 function showBlocked(j){return !!(E&&E.show&&E.show.block&&E.show.block.has(j));}
+/* v75 : position d'un coureur du marathon à la distance s (en cases depuis le centre de la case de départ).
+   Le parcours est une suite infinie de cases : aller (path[0] → path[L-1]) puis retour, et ainsi de suite.
+   Dans chaque case : courbe de Bézier entre les milieux des bords (comme les voitures) ; si l'on repart d'où l'on vient
+   (bout du parcours, ou ligne de départ entre deux tours) : demi-cercle de rayon = décalage du coureur. */
+const _mro=[0,0,0];
+function mrTile(P_,n){const L=P_.length,Lc=2*(L-1);let m=n%Lc;if(m<0)m+=Lc;return P_[m<=L-1?m:Lc-m];}
+function mrPos(O,s,side,sOff,o){
+  const P_=O.path;
+  if(s<0){const f0=P_[0],d1=P_[1],ux=(d1%N)-(f0%N),uz=((d1/N)|0)-((f0/N)|0);o[0]=f0%N+.5+ux*s-uz*sOff;o[1]=((f0/N)|0)+.5+uz*s+ux*sOff;o[2]=Math.atan2(ux,uz);return;}   // sur la ligne de départ
+  const off=s<.8?lerp(sOff,side,s/.8):side;   // il rejoint sa place dans la course en douceur
+  const n=Math.floor(s+.5),t=s+.5-n,i=mrTile(P_,n),pr=n>0?mrTile(P_,n-1):-1,nx=mrTile(P_,n+1);
+  const cx=i%N+.5,cz=((i/N)|0)+.5,dd=(a,b)=>[(b%N)-(a%N),((b/N)|0)-((a/N)|0)];
+  let di=pr>=0?dd(pr,i):dd(i,nx);const dout=dd(i,nx);
+  if(di[0]===-dout[0]&&di[1]===-dout[1]){uturnPos(cx,cz,di[0],di[1],t,Math.max(.05,off),o);return;}
+  const p0x=cx-di[0]*.5,p0z=cz-di[1]*.5,p2x=cx+dout[0]*.5,p2z=cz+dout[1]*.5,u=1-t;
+  const px=u*u*p0x+2*u*t*cx+t*t*p2x,pz=u*u*p0z+2*u*t*cz+t*t*p2z;let tx=2*u*(cx-p0x)+2*t*(p2x-cx),tz=2*u*(cz-p0z)+2*t*(p2z-cz);const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
+  o[0]=px-tz*off;o[1]=pz+tx*off;o[2]=Math.atan2(tx,tz);}
 function stepShow(dt,run){
   const O=E.show;if(!O)return;if(S.show&&S.show.left>0)S.show.left=Math.max(0,S.show.left-run);
   if(O.k==='marathon'){const P_=O.path,L=P_.length,Lc=2*(L-1),f0=P_[0];if(L<2)return;
     for(const r of O.rs){
       if(r.fin<0){r.s+=run*r.sp;if(r.s>=O.D){r.fin=E.t;r.s=O.D;}}
-      if(r.s<0){const ax=f0%N+.5,az=((f0/N)|0)+.5,d1=P_[1],ux=(d1%N)-(f0%N),uz=((d1/N)|0)-((f0/N)|0);humPut(r.L,ax+ux*r.s+(-uz)*(r.side-.15)*1.6,0,az+uz*r.s+ux*(r.side-.15)*1.6,Math.atan2(ux,uz),.82,r.ph,0);continue;}   // sur la ligne de départ
-      if(r.fin>=0){const k=O.rs.indexOf(r),ax=f0%N+.5,az=((f0/N)|0)+.5,a=k*2.4,rr=.12+(k%5)*.035;humPut(r.L,ax+Math.cos(a)*rr*.6-.0,0,az+Math.sin(a)*rr,a+Math.PI,.82,r.ph,0);continue;}   // arrivés : ils récupèrent près de l'arche
-      const u=r.s%Lc,fw=u<L-1,pos=fw?u:Lc-u,k=Math.min(L-2,Math.floor(pos)),f=pos-k;
-      const a=P_[k],b=P_[k+1],ax=a%N+.5,az=((a/N)|0)+.5,bx_=b%N+.5,bz=((b/N)|0)+.5,tx=(bx_-ax)*(fw?1:-1),tz=(bz-az)*(fw?1:-1);
-      const px=lerp(ax,bx_,f)-tz*r.side,pz=lerp(az,bz,f)+tx*r.side;r.ph+=run*r.sp*HUM_STEP*.75;
-      humPut(r.L,px,0,pz,Math.atan2(tx,tz),.82,r.ph,run>0?1:0);}
+      /* v75 : trajectoire continue — virages arrondis (même courbe que les voitures, décalage latéral qui suit la courbe),
+         demi-tour en arc de cercle au bout du parcours, départ qui rejoint la course sans saut, arrivée en marchant jusqu'à
+         l'aire de récupération (avant : les coureurs se téléportaient d'un côté à l'autre dans chaque virage) */
+      const sOff=(r.side-.15)*1.6;
+      if(r.fin>=0){const k=O.rs.indexOf(r),ax=f0%N+.5,az=((f0/N)|0)+.5,a=k*2.4,rr=.12+(k%5)*.035,tx_=ax+Math.cos(a)*rr*.6,tz_=az+Math.sin(a)*rr;
+        if(r.rx==null){mrPos(O,r.s,r.side,sOff,_mro);r.rx=_mro[0];r.rz=_mro[1];r.ra=_mro[2];}
+        const dx=tx_-r.rx,dz=tz_-r.rz,dl=Math.hypot(dx,dz),st_=Math.min(dl,run*.16);let mv=0;
+        if(dl>.01){r.rx+=dx/dl*st_;r.rz+=dz/dl*st_;r.ra=angLerp(r.ra,Math.atan2(dx,dz),Math.min(1,run*6));r.ph+=st_*HUM_STEP;mv=1;}else r.ra=angLerp(r.ra,a+Math.PI,Math.min(1,run*3));
+        humPut(r.L,r.rx,0,r.rz,r.ra,.82,r.ph,mv&&run>0?.55:0);continue;}   // arrivés : ils marchent jusqu'à l'aire de récupération
+      mrPos(O,r.s,r.side,sOff,_mro);r.rx=_mro[0];r.rz=_mro[1];r.ra=_mro[2];
+      if(r.s>=0)r.ph+=run*r.sp*HUM_STEP*.75;
+      humPut(r.L,_mro[0],0,_mro[1],_mro[2],.82,r.ph,r.s>=0&&run>0?1:0);}
     for(const sp of O.spec){sp.ph+=run*3;humPut(sp.L,sp.x,0,sp.z,sp.a+Math.sin(E.t*.7+sp.ph)*.25,.8,sp.ph,0);}
     return;}
   if(O.k==='match'){O.pts.material.opacity=.55+E.night*.45;if(S.set.snd&&SND.ctx&&!SND.muted&&Math.random()<dt*.25)sndNoise(SND.ctx.currentTime+.01,1.2,.03*(.3+clamp(1-(CAM.dist-6)/40,0,1)),900,'bandpass');return;}
@@ -7075,7 +7155,7 @@ function evSend(k,from,to,opt){
   const V=E.v6;if(!V||V.ev.length>=40||from<0||to<0||from===to)return false;
   if(V.ev.filter(v=>v.k===k).length>=(EVK[k].max||(k==='sbus'?6:3)))return false;
   const path=roadPathBFS(from,to,true)||(EVK[k].beacon?roadPathBFS(from,to):null);if(!path||path.length<3)return false;   /* seuls pompiers et ambulances traversent une rue piétonne s'il n'y a pas d'autre chemin */
-  V.ev.push(Object.assign({k,path,pi:0,t:.5,st:'go',w:0,stay:6,back:true,sp:EVK[k].sp},opt||{}));return true;
+  V.ev.push(Object.assign({k,path,pi:0,t:.5,st:'go',w:0,stay:6,back:true,sp:EVK[k].sp,id:++_carId,big:true},opt||{}));return true;
 }
 function v6FireTruck(i){   // appelé par ignite()
   if(!E||!E.v6||VISIT||!COV.fire[i])return;
@@ -7102,16 +7182,29 @@ function stepEV(dt,run){
     if(v.st==='stay'){v.w-=run;const burning=v.k==='fire'&&v.target!=null&&st[v.target]===FIRE;
       if(v.k==='fire'&&burning&&v.w<v.stay-2.5){st[v.target]=OK;tmr[v.target]=0;touch(v.target);D.icons=true;toastOnce('fireout','local_fire_department','Les pompiers ont éteint l’incendie.',30);}
       if(v.w<=0){if(v.k==='tow'&&RL.acc&&v.target===RL.acc.i)accClear();
-        if(v.chain&&v.chain.length){const nx=v.chain.shift(),p=roadPathBFS(v.path[v.path.length-1],nx,true);if(p&&p.length>=2){v.path=p;v.pi=0;v.t=.5;v.st='go';}else{V.ev.splice(k,1);continue;}}   /* tournée : arrêt suivant */
-        else if(v.home!=null){const p=roadPathBFS(v.path[v.path.length-1],v.home,true)||(EVK[v.k]&&EVK[v.k].beacon?roadPathBFS(v.path[v.path.length-1],v.home):null);v.home=null;if(p&&p.length>=2){v.path=p;v.pi=0;v.t=.5;v.st='ret';}else{V.ev.splice(k,1);continue;}}   /* retour au dépôt */
-        else if(v.back){v.path.reverse();v.pi=0;v.t=.5;v.st='ret';}else{V.ev.splice(k,1);continue;}}}
-    else{v.t+=run*v.sp;while(v.t>=1&&v.pi<v.path.length-1){v.t-=1;v.pi++;}
-      if(v.path.some((j,q)=>q>=v.pi&&q<=v.pi+1&&!road[j])){V.ev.splice(k,1);continue;}   // route démolie en chemin
-      if(v.pi>=v.path.length-1&&v.t>=.5){if(v.st==='go'){v.st='stay';v.w=v.stay;v.t=.5;}else{V.ev.splice(k,1);continue;}}}
-    const P_=v.path,pi_=Math.min(v.pi,P_.length-1),a=P_[pi_];evPos(P_,pi_,v.st==='stay'?.5:Math.min(1,v.t),_evo);   /* v14 : même courbe que les voitures, plus de virage d'un coup */
-    evSmooth(v,_evo,run);const x=v.rx,z=v.rz,ang=v.ra,y=ter[a]?.13:mtn[a]?mtnH(x,z)+.012:0;
+        const h0=evHead(v.path,v.path.length-1),last=v.path[v.path.length-1];
+        if(v.chain&&v.chain.length){const nx=v.chain.shift(),p=roadPathBFS(last,nx,true);if(p&&p.length>=2){v.path=p;v.pi=0;v.t=.5;v.st='go';}else{evGarage(v);continue;}}   /* tournée : arrêt suivant */
+        else if(v.home!=null){const p=roadPathBFS(last,v.home,true)||(EVK[v.k]&&EVK[v.k].beacon?roadPathBFS(last,v.home):null);v.home=null;if(p&&p.length>=2){v.path=p;v.pi=0;v.t=.5;v.st='ret';}else{evGarage(v);continue;}}   /* retour au dépôt */
+        else if(v.back){v.path.reverse();v.pi=0;v.t=.5;v.st='ret';}else{evGarage(v);continue;}
+        /* v75 : demi-tour en arc de cercle (avant : le camion pivotait sur lui-même au milieu de la rue) */
+        const h1=evHead(v.path,0);if(h0&&h1&&h0[0]*h1[0]+h0[1]*h1[1]<-.5&&!(rx[last]===2&&!SIG[last]))v.ut={u:0,cx:last%N+.5,cz:((last/N)|0)+.5,hx:h0[0],hz:h0[1]};}}
+    else if(v.st==='gar'){v.gu+=run*.8;if(v.gu>=1){V.ev.splice(k,1);continue;}}   /* v75 : il rentre au garage / dans le bâtiment */
+    else if(v.ut){v.ut.u+=run*v.sp*.55/(Math.PI*.17);if(v.ut.u>=1)v.ut=null;}
+    else{let adv=run*v.sp;const bc=v.beacon!=null?v.beacon:EVK[v.k].beacon;
+      if(adv>0&&v.px!=null){const r_=carRoom(v);if(r_<9){adv=Math.min(adv,Math.max(0,r_));if(r_<.02){v.bt=(v.bt||0)+run;if(v.bt>(bc?2.5:7)){v.ghost=E.t+1.2;v.bt=0;}}else v.bt=0;}else v.bt=0;}   /* v75 : distance de sécurité comme les voitures */
+      if(!bc&&adv>0&&v.t<.9&&v.pi<v.path.length-1){const j=v.path[v.pi+1];if(SIG[j]){const hd=evHead(v.path,v.pi+1);if(hd&&sigState(j,(hd[0]?1:0))!==0)adv=Math.min(adv,Math.max(0,.86-v.t));}}   /* feu rouge (les urgences passent) */
+      v.t+=adv;while(v.t>=1&&v.pi<v.path.length-1){v.t-=1;v.pi++;}
+      if(v.path.some((j,q)=>q>=v.pi&&q<=v.pi+1&&!road[j])){evGarage(v);continue;}   // route démolie en chemin
+      if(v.pi>=v.path.length-1&&v.t>=.5){if(v.st==='go'){v.st='stay';v.w=v.stay;v.t=.5;}else{evGarage(v);continue;}}}
+    const P_=v.path,pi_=Math.min(v.pi,P_.length-1),a=P_[pi_];
+    if(v.st==='gar'){const G_=v.gar;_evo[0]=G_.x+G_.dx*G_.d*v.gu;_evo[1]=G_.z+G_.dz*G_.d*v.gu;_evo[2]=angLerp(G_.a,Math.atan2(G_.dx,G_.dz),Math.min(1,v.gu*2.2));}
+    else if(v.ut){const U=v.ut;uturnPos(U.cx,U.cz,U.hx,U.hz,(.5+Math.PI*.17*U.u)/UT_LEN,.17,_evo);}
+    else evPos(P_,pi_,v.st==='stay'?.5:Math.min(1,v.t),_evo);   /* v14 : même courbe que les voitures, plus de virage d'un coup */
+    if(v.st==='gar'||v.ut){v.rx=_evo[0];v.rz=_evo[1];v.ra=v.ra==null?_evo[2]:angLerp(v.ra,_evo[2],Math.min(1,run*12));}else evSmooth(v,_evo,run);
+    const x=v.rx,z=v.rz,ang=v.ra,y=ter[a]?.13:mtn[a]?mtnH(x,z)+.012:0;v.px=x;v.pz=z;v.pa=ang;
     if(v.k==='plow')roadSnowClear(a);
-    if(cnt[v.k]>=12)continue;_e6.set(0,ang,0);_q6.setFromEuler(_e6);_p6.set(x,y,z);_s6.setScalar(1);_m6.compose(_p6,_q6,_s6);EM.M[v.k].setMatrixAt(cnt[v.k]++,_m6);
+    const ksc=v.st==='gar'?clamp(1-(v.gu-.45)/.55,0,1):1;
+    if(cnt[v.k]>=12||ksc<=0)continue;_e6.set(0,ang,0);_q6.setFromEuler(_e6);_p6.set(x,y,z);_s6.setScalar(ksc);_m6.compose(_p6,_q6,_s6);EM.M[v.k].setMatrixAt(cnt[v.k]++,_m6);
     if((v.beacon!=null?v.beacon:EVK[v.k].beacon)&&v.st!=='ret'&&nb<16){const on=((E.t*6+k)|0)%2;_p6.set(x,y+(v.k==='fire'?.13:v.k==='move'?.18:.12),z);_m6.compose(_p6,_q6,_s6);EM.bm.setMatrixAt(nb,_m6);EM.bm.setColorAt(nb,EVK[v.k].amber?(on?_amb6:_amb6b):on?_red6:_blue6);nb++;}
     if(v.k==='fire'&&v.st==='stay'&&v.target!=null&&st[v.target]===FIRE){const tx=v.target%N+.5,tz=((v.target/N)|0)+.5,th=Math.max(.3,(TOP[v.target]||.6)*.8);
       for(let q=0;q<40&&ns<EM.n;q++){const u=((E.t*1.6+q/40)%1),sp=(q%5-2)*.03;EM.pos[ns*3]=lerp(x,tx,u)+sp;EM.pos[ns*3+1]=y+.13+(th-.13)*u+Math.sin(u*Math.PI)*.35;EM.pos[ns*3+2]=lerp(z,tz,u)+sp;ns++;}}}
@@ -7120,11 +7213,29 @@ function stepEV(dt,run){
   EM.spray.visible=ns>0;EM.spray.geometry.setDrawRange(0,ns);if(ns)EM.spray.geometry.attributes.position.needsUpdate=true;
 }
 const _evo=[0,0,0];
+/* v75 : direction (x, z) du trajet à la case pi */
+function evHead(P_,pi){const n=P_.length;if(n<2)return null;const a=pi>0?P_[pi-1]:P_[0],b=pi>0?P_[pi]:P_[1];const dx=(b%N)-(a%N),dz=((b/N)|0)-((a/N)|0),l=Math.hypot(dx,dz)||1;return[dx/l,dz/l];}
+/* v75 : fin de tournée — le véhicule tourne vers le bâtiment voisin (dépôt, caserne, hôpital, maison…) et y entre au lieu de
+   disparaître au milieu de la rue */
+function evGarage(v){
+  const last=v.path[Math.min(v.pi,v.path.length-1)],x=last%N,z=(last/N)|0;let best=null;
+  for(let d=0;d<4;d++){const X=x+DIRS[d][0],Z=z+DIRS[d][1];if(X<0||Z<0||X>=N||Z>=N)continue;const j=Z*N+X;const sc_=svcAt[j]?3:(zone[j]&&lvl[j])?2:(!road[j]&&!ter[j])?1:0;if(sc_&&(!best||sc_>best.s))best={s:sc_,d};}
+  const px=v.rx!=null?v.rx:x+.5,pz=v.rz!=null?v.rz:z+.5;
+  if(!best){v.gar={x:px,z:pz,dx:0,dz:0,d:0,a:v.ra||0};}
+  else{const D=DIRS[best.d];v.gar={x:px,z:pz,dx:D[0],dz:D[1],d:Math.max(.2,(x+.5+D[0]*.62-px)*D[0]+(z+.5+D[1]*.62-pz)*D[1]),a:v.ra||0};}
+  v.st='gar';v.gu=0;v.ut=null;
+}
+function rbAt(R,i,t,o){const d=t*R.len,P_=R.pts,C_=R.cum;let k=1;while(k<C_.length-1&&C_[k]<d)k++;
+  const s=C_[k]-C_[k-1]||1,u=clamp((d-C_[k-1])/s,0,1),ax=P_[k-1][0],az=P_[k-1][1],bx_=P_[k][0],bz=P_[k][1];
+  o[0]=i%N+.5+lerp(ax,bx_,u);o[1]=((i/N)|0)+.5+lerp(az,bz,u);o[2]=Math.atan2(bx_-ax,bz-az);}
+const dIdx=(dx,dz)=>dz<0?0:dx>0?1:dz>0?2:3;
 // lissage : un demi-tour ou un nouveau trajet ne fait plus sauter le véhicule d'un côté à l'autre
 function evSmooth(v,o,run){if(v.rx==null||run<=0&&v.rx==null){v.rx=o[0];v.rz=o[1];v.ra=o[2];return;}const jd=Math.hypot(o[0]-v.rx,o[1]-v.rz);
   if(jd>1.5){v.rx=o[0];v.rz=o[1];v.ra=o[2];return;}if(jd>run*v.sp*1.6+.004){const k=Math.min(1,run*4);v.rx+=(o[0]-v.rx)*k;v.rz+=(o[1]-v.rz)*k;}else{v.rx=o[0];v.rz=o[1];}v.ra=angLerp(v.ra,o[2],Math.min(1,run*7));}
 function evPos(P_,pi,t,o){const n=P_.length,i=P_[pi],x=i%N+.5,z=((i/N)|0)+.5,dd=(a,b)=>[(b%N)-(a%N),((b/N)|0)-((a/N)|0)];
   let di=pi>0?dd(P_[pi-1],i):null,dout=pi<n-1?dd(i,P_[pi+1]):null;if(!di)di=dout||[0,1];if(!dout)dout=di;if(di[0]===-dout[0]&&di[1]===-dout[1])dout=di;
+  /* v75 : rond-point → le camion tourne autour de l'îlot comme les voitures (avant : il roulait tout droit à travers) */
+  if(rx[i]===2&&!SIG[i]&&Math.abs(di[0])+Math.abs(di[1])===1&&Math.abs(dout[0])+Math.abs(dout[1])===1){rbAt(RBP[(dIdx(di[0],di[1])+2)&3][dIdx(dout[0],dout[1])],i,t,o);return;}
   const p0x=x-di[0]*.5,p0z=z-di[1]*.5,p2x=x+dout[0]*.5,p2z=z+dout[1]*.5,u=1-t,px=u*u*p0x+2*u*t*x+t*t*p2x,pz=u*u*p0z+2*u*t*z+t*t*p2z;
   let tx=2*u*(x-p0x)+2*t*(p2x-x),tz=2*u*(z-p0z)+2*t*(p2z-z);const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;o[0]=px-tz*.17;o[1]=pz+tx*.17;o[2]=Math.atan2(tx,tz);}
 const _red6=new THREE.Color('#ff2a2a'),_blue6=new THREE.Color('#2a6bff'),_amb6=new THREE.Color('#ffb020'),_amb6b=new THREE.Color('#ff7a00');
@@ -7163,7 +7274,7 @@ function rlFrame(dt,run){
   if(E.t-RL.parkT>1){RL.parkT=E.t;updateParked();}
   stepTrains(run);roadWeather(dt);   /* v13 : plus de piétons qui font des allers-retours sur les passages : les promeneurs traversent au feu */
   if(E.accG&&E.accG.visible){E.accG.userData.hz.visible=((E.t*3)|0)%2===0;
-    if(Math.random()<dt*2&&E.smoke.p.length<E.smoke.M)E.smoke.p.push({x:E.accG.position.x+(Math.random()-.5)*.1,y:.08,z:E.accG.position.z,vx:.05,vz:.02,vy:.18,a:0,l:2.2,s0:.08,s1:.35,k:0});}
+    if(run>0&&Math.random()<dt*2&&E.smoke.p.length<E.smoke.M)E.smoke.p.push({x:E.accG.position.x+(Math.random()-.5)*.1,y:.08,z:E.accG.position.z,vx:.05,vz:.02,vy:.18,a:0,l:2.2,s0:.08,s1:.35,k:0});}
 }
 // ── Accident : deux voitures accrochées, triangle, feux de détresse ; la dépanneuse dégage la route ──
 function accStart(i){
@@ -8048,7 +8159,7 @@ function humMat(){
   m.customProgramCacheKey=()=>'hum2';return m;
 }
 function humInit(){
-  const H={cap:200,V:12,meshes:[],n:new Array(12).fill(0),nu:0,rain:false,m:new THREE.Matrix4(),q:new THREE.Quaternion(),e:new THREE.Euler(),p:new THREE.Vector3(),s:new THREE.Vector3(),c:new THREE.Color()},mat=humMat();
+  const H={cap:300,V:12,meshes:[],n:new Array(12).fill(0),nu:0,rain:false,m:new THREE.Matrix4(),q:new THREE.Quaternion(),e:new THREE.Euler(),p:new THREE.Vector3(),s:new THREE.Vector3(),c:new THREE.Color()},mat=humMat();
   for(let v=0;v<H.V;v++){const g=humGeo(v);
     for(let k=0;k<5;k++)g.setAttribute('iC'+k,new THREE.InstancedBufferAttribute(new Float32Array(H.cap*3),3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute('iAn',new THREE.InstancedBufferAttribute(new Float32Array(H.cap*2),2).setUsage(THREE.DynamicDrawUsage));
@@ -8459,7 +8570,9 @@ function mvConf(f1,t1,f2,t2){if(f1>3||t1>3||f2>3||t2>3||f1===f2)return false;con
 function boxConflict(j,f1,t1,me){const A=E._cg&&E._cg.get(j);if(!A)return false;for(const o of A){if(o===me||o.i!==j||o.ov!=null||o.t>.82)continue;if(mvConf(f1,t1,o.from,o.to))return true;}return false;}
 function boxFull(j,me){if(armCnt(j)<3&&rx[j]!==2)return false;const A=E._cg&&E._cg.get(j);if(!A)return false;let n=0;for(const o of A){if(o===me||o.i!==j||o.ov!=null)continue;n++;if(o.bt>.3||o.by!=null)return true;}return n>=3;}
 function carGrid(){const cg=new Map(),add=c=>{if(c.px==null)return;const k=Math.floor(c.pz)*N+Math.floor(c.px);let a=cg.get(k);if(!a)cg.set(k,a=[]);a.push(c);};
-  for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)add(c);for(const c of V15.pk)add(c);E._cg=cg;}
+  for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)add(c);for(const c of V15.pk)add(c);
+  if(E.v6&&E.v6.ev)for(const v of E.v6.ev)if(v.st!=='gar')add(v);   /* v75 : camions, bus scolaires, ambulances… gênent aussi les voitures (plus de superpositions) */
+  E._cg=cg;}
 function carRoom(c){
   if(c.px==null||!E._cg)return 9;const gh=c.ghost&&E.t<c.ghost,hx=Math.sin(c.pa),hz=Math.cos(c.pa),x=c.px,z=c.pz,ti=Math.floor(x),tj=Math.floor(z),myL=c.big?.15:.1;let best=9,by=null;
   for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){const A=E._cg.get((tj+dz)*N+ti+dx);if(!A)continue;
@@ -8562,11 +8675,11 @@ function pedRoute(path,dh,dd){   // dh : côté du départ (de la 1re case vers 
   const exitC=(k,s)=>{const d=dirTo(path[k],path[k+1]);return s?(d+1)%4:d;},entC=(k,s)=>{const d=dirTo(path[k-1],path[k]);return s?(d+2)%4:(d+3)%4;};
   // DP sur le côté du trottoir à chaque passage de case
   let cur=[],starts=[dh,(dh+1)%4];
-  if(n===1){let best=null;for(const a of starts)for(const b of[dd,(dd+1)%4]){const r=inTile(path[0],a,b);if(!best||r[0]<best.c)best={c:r[0],seg:[[path[0],r]]};}return best&&best.seg;}
+  if(n===1){let best=null;for(const a of starts)for(const b of[dd,(dd+1)%4]){const r=inTile(path[0],a,b);if(!best||r[0]<best.c)best={c:r[0],seg:[[path[0],r]]};}if(best)best.seg.c=best.c;return best&&best.seg;}
   for(let s=0;s<2;s++){let b=null;for(const a of starts){const r=inTile(path[0],a,exitC(0,s));if(!b||r[0]<b.c)b={c:r[0],seg:[[path[0],r]]};}cur[s]=b;}
   for(let k=1;k<n-1;k++){const nx=[];for(let s=0;s<2;s++){let b=null;for(let p=0;p<2;p++){if(!cur[p])continue;const r=inTile(path[k],entC(k,p),exitC(k,s));const c=cur[p].c+r[0];if(!b||c<b.c)b={c,seg:cur[p].seg.concat([[path[k],r]])};}nx[s]=b;}cur=nx;}
   let best=null;for(let p=0;p<2;p++){if(!cur[p])continue;for(const b of[dd,(dd+1)%4]){const r=inTile(path[n-1],entC(n-1,p),b);const c=cur[p].c+r[0];if(!best||c<best.c)best={c,seg:cur[p].seg.concat([[path[n-1],r]])};}}
-  return best&&best.seg;}
+  if(best)best.seg.c=best.c;return best&&best.seg;}
 // coin c de la case i (décalé pour les ronds-points et les passages devant un rond-point)
 function cornerPt(i,c){const x=i%N+.5,z=((i/N)|0)+.5,q=rx[i]===2?.44:SWK;return[x+CPX[c][0]*q,z+CPX[c][1]*q];}
 function routePts(seg,start,end){   // liste de points [x, z, traversée] ; traversée = {key, i, arm, sig, ax, az, bx, bz}
@@ -8587,7 +8700,12 @@ function routePts(seg,start,end){   // liste de points [x, z, traversée] ; trav
       push(P_[0],P_[1]);}}
   for(const p of end)push(p[0],p[1]);
   // supprime les points en double
-  const O=[W[0]];for(let k=1;k<W.length;k++){const a=O[O.length-1],b=W[k];if(Math.hypot(a.x-b.x,a.z-b.z)<.015){if(b.cr&&!a.cr)a.cr=b.cr;continue;}O.push(b);}return O;}
+  const O=[W[0]];for(let k=1;k<W.length;k++){const a=O[O.length-1],b=W[k];if(Math.hypot(a.x-b.x,a.z-b.z)<.015){if(b.cr&&!a.cr)a.cr=b.cr;continue;}O.push(b);}return despike(O);}
+/* v75 : supprime les petits allers-retours (le coin du trottoir juste avant un passage décalé) qui faisaient pivoter les
+   piétons sur eux-mêmes */
+function despike(O){for(let pass=0;pass<2;pass++)for(let k=1;k<O.length-1;k++){const a=O[k-1],b=O[k],c=O[k+1];if(b.cr)continue;
+  const ux=b.x-a.x,uz=b.z-a.z,vx=c.x-b.x,vz=c.z-b.z,lu=Math.hypot(ux,uz),lv=Math.hypot(vx,vz);if(lu<1e-4||lv<1e-4)continue;
+  if((ux*vx+uz*vz)/(lu*lv)<-.45&&Math.min(lu,lv)<.13){O.splice(k,1);k--;}}return O;}
 // accès d'un terrain : porte → devant la porte → portillon → trottoir (côté du terrain), et la case de route correspondante
 function lotAccess(lot){
   const D=V15.doors.get(lot),x=lot%N,z=(lot/N)|0,k=D?D.k:lotDir(lot),o=[[0,1],[1,0],[0,-1],[-1,0]][k];let r=-1;
@@ -8601,8 +8719,17 @@ function lotAccess(lot){
 function svcAccess(s){const F=svcFront(s);if(!F)return null;const r=F.ri,dh=dirTo(r,F.bi),ux=DIRS[dh][0],uz=DIRS[dh][1],rx_=r%N+.5,rz=((r/N)|0)+.5;
   const park=BT[s.t]&&(BT[s.t].cat==='parcs');return{r,dh,door:-1,park,s,pts:[[rx_+ux*.78,rz+uz*.78],[rx_+ux*SWK,rz+uz*SWK]]};}
 function pedTrip(A,B){   // A, B : accès (départ, arrivée) → points du trajet
-  const path=pedBFS(A.r,B.r);if(!path||path.length>70)return null;const seg=pedRoute(path,A.dh,B.dh);if(!seg)return null;
+  const path=pedBFS(A.r,B.r);if(!path||path.length>70)return null;let seg=pedRoute(path,A.dh,B.dh);if(!seg)return null;
+  if(seg.c>=40){   /* v75 : le trajet obligeait à traverser hors passage piéton → détour par le passage le plus proche */
+    const X=crossNear(A.r,B.r);if(X>=0){const p1=pedBFS(A.r,X),p2=pedBFS(X,B.r);if(p1&&p2&&p1.length+p2.length<80){const s2=pedRoute(p1.concat(p2.slice(1)),A.dh,B.dh);if(s2&&s2.c<seg.c)seg=s2;}}}
   return routePts(seg,A.pts,B.pts.slice().reverse());}
+function crossOK(i){return pedRoad(i)&&(rx[i]===2||SIG[i]||armCnt(i)>=3||zebraMid(i));}
+/* case avec passage piéton la plus proche du trajet (somme des distances depuis le départ et vers l'arrivée) */
+function crossNear(a,b){
+  const bfs=s0=>{const d=new Int16Array(NN).fill(-1),q=[s0];d[s0]=0;for(let h=0;h<q.length;h++){const i=q[h];if(d[i]>=16)continue;const x=i%N;for(const j of[x>0?i-1:-1,x<N-1?i+1:-1,i-N,i+N])if(j>=0&&j<NN&&d[j]<0&&pedRoad(j)){d[j]=d[i]+1;q.push(j);}}return[d,q];};
+  const [da,qa]=bfs(a),[db]=bfs(b);let best=-1,bd=99;
+  for(const i of qa){if(db[i]<0||!crossOK(i))continue;const v=da[i]+db[i];if(v<bd){bd=v;best=i;}}
+  return best;}
 function walkDest2(){
   if(Math.random()<.35){const L=[...SV.values()].filter(s=>{const c=BT[s.t]&&BT[s.t].cat;return c==='parcs'||c==='loisirs'||c==='services'||c==='monuments';});if(L.length){const a=svcAccess(rpick(L));if(a)return a;}}
   for(let k=0;k<30;k++){const i=(Math.random()*NN)|0;if((zone[i]===ZC||zone[i]===ZO)&&lvl[i]&&st[i]===OK){const a=lotAccess(i);if(a)return a;}}
@@ -8613,29 +8740,40 @@ function walkNew(L,h,we,vet){
   if(evening&&!jog&&Math.random()<.45){   // retour du travail : du bureau ou du magasin vers la maison
     for(let k=0;k<20&&!A;k++){const i=(Math.random()*NN)|0;if((zone[i]===ZC||zone[i]===ZO)&&lvl[i]&&st[i]===OK)A=lotAccess(i);}B=lotAccess(rpick(L));back=false;}
   else{A=lotAccess(rpick(L));
-    if(jog){const RL=E.roadList||[];for(let k=0;k<10&&!B;k++){const r=RL[(Math.random()*RL.length)|0];if(r!=null&&pedRoad(r)&&(!A||r!==A.r)){const d=[0,1,2,3].find(q=>!armAt(r,q));if(d!=null)B={r,dh:d,door:-1,turn:true,pts:[[r%N+.5+DIRS[d][0]*SWK,((r/N)|0)+.5+DIRS[d][1]*SWK]]};}}}
+    if(jog){   /* v75 : le joggeur fait des tours de parc, sinon une boucle par 2 carrefours (avant : demi-tour sur place au milieu du trottoir) */
+      const parks=[...SV.values()].filter(s=>BT[s.t]&&BT[s.t].cat==='parcs');if(parks.length&&Math.random()<.75){const pa=svcAccess(rpick(parks));if(pa)B=Object.assign({},pa,{jogLaps:2});}
+      if(!B){const RL=E.roadList||[],X_=RL.filter(r=>pedRoad(r)&&armCnt(r)>=3&&(!A||Math.abs(r%N-A.r%N)+Math.abs(((r/N)|0)-((A.r/N)|0))>=3));
+        const wp=()=>{const r=rpick(X_);if(r==null)return null;const c=(Math.random()*4)|0;return{r,dh:c,door:-1,turn:true,pts:[cornerPt(r,c)]};};
+        if(X_.length>=2){B=wp();const B2=wp();if(B&&B2&&B2.r!==B.r)B.loop=[B2];}}}
     else B=walkDest2();}
   if(!A||!B||(A.r===B.r&&!B.turn))return null;
   const pts=pedTrip(A,B);if(!pts||pts.length<3)return null;
-  const seed=(Math.random()*1e9)|0,w={pts,k:0,u:0,A,B,back,ph:Math.random()*6,kind:jog?'jog':fam?'fam':'walk',leg:'out',st:'walk',wait:0,in:0};
+  const seed=(Math.random()*1e9)|0,w={pts,k:0,u:0,A,B,back,ph:Math.random()*6,kind:jog?'jog':fam?'fam':'walk',leg:'out',st:'walk',wait:0,in:0,loop:B.loop?B.loop.slice():null};
   w.L=jog?humLook(seed,{v:5,kid:false}):humLook(seed);w.sp=jog?.4+Math.random()*.1:fam?.11:.15+Math.random()*.07;
   if(fam){w.L2=humLook(seed+1,{kid:false});w.L3=humLook(seed+2,{kid:true});w.sc=HSTROL[(seed>>>3)%HSTROL.length];}
   w.dog=!jog&&!fam&&Math.random()<(vet?.35:.22);w.dc=DOG_C[(Math.random()*5)|0];
   if(A.door>=0){doorOpen(A.door,1.3);w.st='leave';w.wait=.5;}   // la porte s'ouvre, puis il sort
   return w;}
-function parkStroll(s,from){const R=[],n=2+((Math.random()*2)|0);for(let k=0;k<n;k++)R.push({x:s.x+.25+Math.random()*(s.w-.5),z:s.z+.25+Math.random()*(s.d-.5),cr:null});return[{x:from.x,z:from.z,cr:null}].concat(R,[{x:from.x,z:from.z,cr:null}]);}
+function parkStroll(s,from,laps){
+  if(laps){   /* v75 : tours de parc pour les joggeurs (rectangle arrondi, dans le sens du départ) */
+    const m=.22,x0=s.x+m,x1=s.x+s.w-m,z0=s.z+m,z1=s.z+s.d-m,C_=[[x0,z0],[x1,z0],[x1,z1],[x0,z1]];let k0=0,bd=9;C_.forEach((c,k)=>{const d=Math.hypot(c[0]-from.x,c[1]-from.z);if(d<bd){bd=d;k0=k;}});
+    const R=[{x:from.x,z:from.z,cr:null}];for(let l=0;l<laps;l++)for(let k=0;k<4;k++){const c=C_[(k0+k)%4];R.push({x:c[0],z:c[1],cr:null});}R.push({x:C_[k0][0],z:C_[k0][1],cr:null},{x:from.x,z:from.z,cr:null});return R;}
+  const R=[],n=2+((Math.random()*2)|0);for(let k=0;k<n;k++)R.push({x:s.x+.25+Math.random()*(s.w-.5),z:s.z+.25+Math.random()*(s.d-.5),cr:null});return despike([{x:from.x,z:from.z,cr:null}].concat(R,[{x:from.x,z:from.z,cr:null}]));}
 function carNear(x,z,r){const G_=E._cg;if(!G_)return false;const ti=Math.floor(x),tj=Math.floor(z);
   for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){const A=G_.get((tj+dz)*N+ti+dx);if(!A)continue;for(const c of A){if(c.ov!=null)continue;const ox=x-c.px,oz=z-c.pz,d=Math.hypot(ox,oz);if(d<.2)return true;if(d<r&&(ox*Math.sin(c.pa)+oz*Math.cos(c.pa))>0&&!(c.bt>0))return true;}}return false;}
 function walkStep(F,run,m,q,e,p,sc,col){
   if(!E.strol)E.strol=strollerMesh();let nd=0,ns=0;const S_=E.strol,PX_=V15.pedX;PX_.clear();
   for(const w of F.walk){
-    const spd=run*w.sp*(w.kind==='walk'?w.L.sp:1);let moving=run>0;
+    const spd=run*w.sp*(w.kind==='walk'?w.L.sp:1);let moving=run>0,still=false;
     if(w.st==='leave'){w.wait-=run;if(w.wait>0)continue;w.st='walk';}   // derrière la porte qui s'ouvre
-    if(w.st==='enter'){w.wait-=run;if(w.wait>0)continue;   // il est entré
-      if(w.leg==='out'&&w.back){w.st='inside';w.in=w.B.turn?0:w.B.park?0:14+Math.random()*36;}else{w.done=true;continue;}}
+    if(w.st==='enter'){w.wait-=run;
+      if(w.wait>0)still=true;   /* v75 : il reste visible devant la porte qui s'ouvre (avant : il disparaissait d'un coup) */
+      else if(w.leg==='out'&&w.back){w.st='inside';w.in=w.B.turn?0:w.B.park?0:14+Math.random()*36;}else{w.done=true;continue;}}
+    if(w.st==='inside'&&w.loop&&w.loop.length){const nb=w.loop.shift(),tr=pedTrip(w.B,nb);if(tr){w.pts=tr;w.k=0;w.u=0;w.B=nb;w.st='walk';w.leg='out';}}   /* v75 : joggeur, carrefour suivant (sans disparaître) */
     if(w.st==='inside'){w.in-=run;if(w.in>0)continue;const bk=pedTrip(w.B,w.A);if(!bk){w.done=true;continue;}
       w.pts=bk;w.k=0;w.u=0;w.leg='home';w.st='walk';if(w.B.door>=0){doorOpen(w.B.door,1.3);w.st='leave';w.wait=.5;continue;}}
-    const P_=w.pts,a=P_[w.k],b=P_[w.k+1];if(!b){w.done=true;continue;}
+    const P_=w.pts;
+    if(!still){const a=P_[w.k],b=P_[w.k+1];if(!b){w.done=true;continue;}
     if(a.cr&&w.u<=.001){   // au bord du passage piéton : on regarde avant de traverser
       const cr=a.cr,mx=(a.x+b.x)/2,mz=(a.z+b.z)/2,go=cr.sig?sigState(cr.i,cr.arm&1)===2:!carNear(mx,mz,.62);
       w.wait=(w.wait||0)+run;if(!go&&w.wait<9)moving=false;else w.wait=0;if(moving)PX_.set(cr.key,1);}
@@ -8644,12 +8782,11 @@ function walkStep(F,run,m,q,e,p,sc,col){
       while(w.u>=1&&w.k<P_.length-1){const ex=(w.u-1)*L_;w.k++;w.u=0;if(w.k>=P_.length-1)break;const a2=P_[w.k],b2=P_[w.k+1];if(a2.cr)break;L_=Math.hypot(b2.x-a2.x,b2.z-a2.z)||.01;w.u=ex/L_;}
       if(w.k>=P_.length-1){   // arrivé au bout du trajet
         if(w.leg==='out'){
-          if(w.B.park&&!w.strolled){w.strolled=true;w.pts=parkStroll(w.B.s,P_[P_.length-1]);w.k=0;w.u=0;continue;}   // promenade dans le parc
-          if(w.B.door>=0)doorOpen(w.B.door,1.2);w.st='enter';w.wait=w.B.door>=0?.3:0;}
-        else{if(w.A.door>=0){doorOpen(w.A.door,1.2);w.st='enter';w.wait=.3;}else w.done=true;}
-        continue;}}
-    const a3=P_[w.k],b3=P_[w.k+1]||a3,x=lerp(a3.x,b3.x,clamp(w.u,0,1)),z=lerp(a3.z,b3.z,clamp(w.u,0,1)),ti=Math.floor(z)*N+Math.floor(x),y=ter[ti]&&road[ti]?.13:0;
-    humFollow(w,x,z,run);const mv=moving&&run>0,ra=w.ra,fx=Math.sin(ra),fz=Math.cos(ra),bx_=-fz,bz=fx;
+          if(w.B.park&&!w.strolled){w.strolled=true;w.pts=parkStroll(w.B.s,P_[P_.length-1],w.B.jogLaps);w.k=0;w.u=0;}   // promenade dans le parc (v75 : tours pour les joggeurs)
+          else{if(w.B.door>=0)doorOpen(w.B.door,1.2);w.st='enter';w.wait=w.B.door>=0?.3:0;still=true;}}
+        else{if(w.A.door>=0){doorOpen(w.A.door,1.2);w.st='enter';w.wait=.3;still=true;}else{w.done=true;continue;}}}}}
+    const PP=w.pts,kk=Math.min(w.k,PP.length-1),a3=PP[kk],b3=PP[kk+1]||a3,x=lerp(a3.x,b3.x,clamp(w.u,0,1)),z=lerp(a3.z,b3.z,clamp(w.u,0,1)),ti=Math.floor(z)*N+Math.floor(x),y=ter[ti]&&road[ti]?.13:0;
+    humFollow(w,x,z,run);const mv=moving&&!still&&run>0,ra=w.ra,fx=Math.sin(ra),fz=Math.cos(ra),bx_=-fz,bz=fx;
     if(w.kind==='jog')humPut(w.L,w.rx,y,w.rz,ra,.8,w.ph*.8,mv?1:0);else humPut(w.L,w.rx,y,w.rz,ra,.8,w.ph,mv?.55:0);
     if(w.kind==='fam'){humPut(w.L2,w.rx+bx_*.055-fx*.03,y,w.rz+bz*.055-fz*.03,ra,.8,w.ph+1.3,mv?.55:0);humPut(w.L3,w.rx+bx_*.025-fx*.1,y,w.rz+bz*.025-fz*.1,ra,.8,w.ph*1.3+2,mv?.7:0);
       if(ns<60){e.set(0,ra,0);q.setFromEuler(e);p.set(w.rx+fx*.075,y,w.rz+fz*.075);sc.setScalar(1);m.compose(p,q,sc);S_.setMatrixAt(ns,m);col.set(w.sc);S_.setColorAt(ns,col);ns++;}}

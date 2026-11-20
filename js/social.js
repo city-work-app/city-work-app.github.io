@@ -16,7 +16,7 @@ const SOCIAL_METRICS=[
   {id:'accuracy',name:'Précision',icon:'my_location'},
   {id:'streak',name:'Série',icon:'local_fire_department'}
 ];
-const SOCIAL_VIS={private:{name:'Privé',icon:'lock',desc:'Seulement les amis à qui tu l’envoies'},friends:{name:'Amis',icon:'group',desc:'Tous tes amis le voient'},public:{name:'Public',icon:'public',desc:'Visible sur ton profil par tout le monde'}};
+const SOCIAL_VIS={private:{name:'Privé',icon:'lock',desc:'Seulement les amis à qui tu l’envoies'},friends:{name:'Amis',icon:'group',desc:'Tous tes amis le voient'},public:{name:'Public',icon:'public',desc:'Tout le monde, dans le Drive commun'}};
 
 let _sb=null,_sbSession=null,_sbProfile=null,_sbInit=null,_sbAfterFor=null,_socialDemo=false;
 const _soc={scope:'all',metric:'xp',lb:null,champs:null,friends:null,courses:null,inbox:null,mine:null,ctab:'amis',loading:false,err:null};
@@ -553,6 +553,7 @@ function _socialRenderCourses(){
     <section class="soc-card sc-wrap">
       <div class="sc-head">
         <h2 class="sc-title">Cours partagés</h2>
+        <button class="btn btn-sm btn-g" onclick="kcDriveOpen()"><span class="ms" style="font-size:16px">cloud</span> Drive commun</button>
         <button class="btn btn-sm btn-g" onclick="socialOpenShare()"><span class="ms" style="font-size:16px">share</span> Partager un cours</button>
       </div>
       <div class="soc-tabs">
@@ -726,13 +727,13 @@ function _socialCoursePayload(courseId){
   return {v:1,course:{name:c.name},subject:{name:f?f.name:'',color:f?f.color:null},questions:qs,fiche,flashcards:fcs};
 }
 let _shareSel=null;
-function socialOpenShare(courseId,toFriend){
+function socialOpenShare(courseId,toFriend,vis){
   if(!socialIsLogged()&&!_socialDemo){
     if(socialConfigured())socialOpenAuth('signup');
     else{showScreen('social');showNotif('Active d’abord les comptes pour partager tes cours.','err');}
     return;
   }
-  _shareSel={courseId:courseId||(typeof curC!=='undefined'&&document.body.dataset.screen==='course'?curC:null),vis:'friends',to:new Set(toFriend?[toFriend]:[])};
+  _shareSel={courseId:courseId||(typeof curC!=='undefined'&&document.body.dataset.screen==='course'?curC:null),vis:SOCIAL_VIS[vis]?vis:'friends',to:new Set(toFriend?[toFriend]:[])};
   _socialRenderShare();
   openModal('modal-soc-share');
   if(!_soc.friends)_rpc('list_friends').then(fr=>{_soc.friends=fr;_socialRenderShare();}).catch(()=>{});
@@ -873,20 +874,21 @@ async function socialDeleteInbox(id){
 
 // ── Aperçu d'un cours partagé + import ──
 let _socCourse=null;
-async function socialOpenCourse(id,inboxId){
+async function socialOpenCourse(id,inboxId,pub){   /* v75 : pub = cours du Drive commun (lisible sans être ami ni connecté) */
   const body=document.getElementById('modal-soc-course-body');if(!body)return;
   body.innerHTML='<div class="lb-loading"><div class="house-spinner"></div></div>';
   openModal('modal-soc-course');
   if(inboxId)_rpc('mark_inbox_seen',{p_ids:[inboxId]}).then(()=>{const x=(_soc.inbox||[]).find(i=>i.id===inboxId);if(x)x.seen=true;_socialUpdateBadges();}).catch(()=>{});
   try{
-    const c=await _rpc('get_shared_course',{p_id:id});_socCourse=c;
+    if(pub&&typeof socialInit==='function')await socialInit();
+    const c=await _rpc(pub?'get_public_course':'get_shared_course',{p_id:id});c._pub=!!pub;_socCourse=c;
     const p=c.payload||{},qs=p.questions||[];
     const already=courses.some(x=>x.sharedFrom===c.id)||subFolders.some(x=>x.sharedFrom===c.id)||folders.some(x=>x.sharedFrom===c.id);
     body.innerHTML=`
       <div class="scm-head">
         <div class="sc-ic big"><span class="ms">${p.kind==='subject'?'school':p.kind==='folder'?'folder':'menu_book'}</span></div>
         <div style="min-width:0"><div class="mdttl" style="margin:0">${_socEsc(c.title)}</div>
-          <div class="sc-from">${gamAvatarSVG(c.owner&&c.owner.avatar,22)}Partagé par ${_socEsc(_socName(c.owner))}${c.subject?' · '+_socEsc(c.subject):''}</div></div>
+          <div class="sc-from">${gamAvatarSVG(c.owner&&c.owner.avatar,22)}Partagé par ${_socEsc(_socName(c.owner))}${c.subject?' · '+_socEsc(c.subject):''}${pub?` · <span class="ms" style="font-size:14px;vertical-align:-2px">download</span> ${c.import_count|0}`:''}</div></div>
       </div>
       <div class="scm-stats">
         ${Array.isArray(p.courses)?`<span><b>${p.courses.length}</b> cours</span>`:''}<span><b>${qs.length}</b> questions</span>
@@ -973,6 +975,8 @@ function _socialImportSubject(c,p){
 function socialImportCourse(){
   const c=_socCourse;if(!c)return;
   const p=c.payload||{};
+  /* v75 : import depuis le Drive commun → compteur d'imports (une fois par compte) + pastilles du drive */
+  if(c._pub){if(socialIsLogged())_rpc('note_public_import',{p_id:c.id}).catch(()=>{});setTimeout(()=>{if(typeof kcDriveRefresh==='function')kcDriveRefresh();},50);}
   if(p.kind==='subject'&&Array.isArray(p.courses))return _socialImportSubject(c,p);
   const subject=(p.subject&&p.subject.name)||c.subject||'Cours partagés';
   let folder=folders.find(f=>f.name.toLowerCase()===subject.toLowerCase()&&f.type!=='annales');

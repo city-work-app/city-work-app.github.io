@@ -417,7 +417,7 @@ function renderHome(){
   } else if(timerEl) timerEl.style.display='none';
 
   // SRS — questions urgentes du jour
-  const srsQs=getSRSDueQuestions();
+  const srsQs=typeof kcDailySRS==='function'?kcDailySRS(20):getSRSDueQuestions().slice(0,20);   /* v75 : révision du jour ciblée (20 max) */
   const srsEl=document.getElementById('srs-section');
   if(srsEl){
     if(srsQs.length>0){
@@ -1732,7 +1732,8 @@ function startSurvivalById(fid){
   launchS(endless,`Mode Survie · ${f?f.name:'Matière'}`,false,false,false,true,false);
 }
 function launchSRS(){
-  const qs=getSRSDueQuestions();
+  if(typeof kcLaunchDailySRS==='function')return kcLaunchDailySRS();   /* v75 : 20 questions les plus urgentes, pas 1995 */
+  const qs=getSRSDueQuestions().slice(0,20);
   if(!qs.length){showNotif('Aucune question à réviser pour aujourd\'hui !','ok');return;}
   rBack='home';launchS(shuffle(qs),'Révision SRS',false,false,false,false,false);
 }
@@ -4503,8 +4504,10 @@ function startAllFlashcardsHub(){
   startFCSession(pool,'all-flashcards');
 }
 function startDueFlashcards(){
-  const pool=typeof getDueCards==='function'?getDueCards():[];
+  let pool=typeof getDueCards==='function'?getDueCards():[];
   if(!pool.length){showNotif('Aucune carte à revoir aujourd\'hui.','ok');return;}
+  /* v75 : séance ciblée — les 30 cartes les plus en retard (avant : toutes, parfois des centaines) */
+  if(pool.length>30){const sd=typeof fcSpacedData!=='undefined'?fcSpacedData:{};pool=pool.slice().sort((a,b)=>String((sd[a.id]||{}).due||'').localeCompare(String((sd[b.id]||{}).due||''))).slice(0,30);}
   startFCSession(pool,'all-flashcards');
 }
 

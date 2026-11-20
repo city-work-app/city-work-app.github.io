@@ -328,7 +328,7 @@ function buildItem(type){
 function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt);
   r=Math.round((t-r)*p+r);g=Math.round((t-g)*p+g);b=Math.round((t-b)*p+b);return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);}
 function buildChar(ch){
-  ch=ch||{};const c=ch.color||'#ef7d6d',dk=shade(c,-.28),lt=shade(c,.45),pink='#f7b6c8';
+  ch=ch||{};const c=ch.color||'#ef7d6d',dk=shade(c,-.28),dk2=shade(c,-.45),lt=shade(c,.45),pink='#f7b6c8',sp=ch.species,mood=ch.mood;
   const root=new THREE.Group(),g=new THREE.Group();root.add(g);
   const body=mat(c,{roughness:.6}),robot=ch.species==='robot',frog=ch.species==='grenouille';
   if(robot){add(g,new THREE.BoxGeometry(.66,.62,.56),body,0,.42,0);}
@@ -337,9 +337,14 @@ function buildChar(ch){
   S(g,.1,dk,-.14,.06,.06,1,.5,1.2);S(g,.1,dk,.14,.06,.06,1,.5,1.2);
   const ey=frog?.72:.48,ex=frog?.15:.12,ez=frog?.18:.33;
   if(frog){S(g,.13,body,-.15,.68,.08);S(g,.13,body,.15,.68,.08);}
+  /* v75 : yeux blancs sur masque noir (panda, raton), expressions (yeux fermés, cœurs, étoiles) */
+  const eyeC=sp==='panda'||sp==='raton'?'#fff':mood==='amour'?'#ff4d6d':mood==='etoiles'?'#ffd166':'#222',closed=mood==='joie'||mood==='dodo';
+  if(sp==='panda')[-1,1].forEach(s=>S(g,.085,'#222',s*.12,.48,.29,1,1.25,.45));
+  if(sp==='raton')S(g,.2,'#222',0,.49,.24,1.45,.42,.6);
   [-1,1].forEach(s=>{
     if(robot){B(g,.11,.11,.03,'#1f2937',s*ex,ey-.055,.29);add(g,gBox(.055,.055,.02),glow('#5eead4',.8),s*ex,ey,.305);}
-    else{S(g,.05,'#222',s*ex,ey,ez,1,1.2,.6);S(g,.018,'#fff',s*ex+.015,ey+.025,ez+.03);}
+    else if(closed||(mood==='clin'&&s<0)){S(g,.05,eyeC==='#fff'?'#fff':'#222',s*ex,ey,ez,1.05,.32,.5);}
+    else{const big=sp==='alien'?1.45:1;S(g,.05*big,eyeC,s*ex,ey,ez,1,1.2,.6);S(g,.018,eyeC==='#222'?'#fff':'#222',s*ex+.015,ey+.025,ez+.03);}
     S(g,.045,'#ff7a8a',s*.21,.38,.28,1,.6,.4).material=mat('#ff7a8a',{transparent:true,opacity:.6});
   });
   switch(ch.species){
@@ -350,6 +355,29 @@ function buildChar(ch){
     case 'robot':C(g,.015,.015,.22,dk,0,.73,0,6);S(g,.05,glow('#ffd166',.6),0,.98,0);break;
     case 'dragon':[-1,1].forEach(s=>{const h=add(g,gCone(.05,.2,8),mat('#fff3d6'),s*.15,.8,0);h.rotation.z=-s*.3;const w=add(g,gCone(.16,.3,3),mat(dk),s*.38,.45,-.12);w.rotation.z=s*1.2;});break;
     case 'licorne':{const h=add(g,gCone(.05,.32,10),mat('#ffd166',{metalness:.3,roughness:.4}),0,.9,.12);h.rotation.x=.25;S(g,.1,mat('#b79ce8'),0,.7,-.22,1.2,.7,1);break;}
+    /* v75 : nouveaux animaux (formes simples, mêmes réglages que l'avatar 2D) */
+    case 'renard':[-1,1].forEach(s=>{const e=add(g,gCone(.1,.3,4),body,s*.2,.8,0);e.rotation.z=-s*.22;});S(g,.17,'#fffaf2',0,.33,.22,1.25,.8,.6);S(g,.035,'#222',0,.42,.36);break;
+    case 'panda':[-1,1].forEach(s=>S(g,.1,'#222',s*.24,.7,0));S(g,.035,'#222',0,.41,.36);break;
+    case 'koala':[-1,1].forEach(s=>{S(g,.16,body,s*.33,.66,-.02,1,1,.45);S(g,.1,mat(lt),s*.33,.66,.03,1,1,.4);});S(g,.06,'#3b3b44',0,.4,.35,1,1.25,.7);break;
+    case 'chien':[-1,1].forEach(s=>{const e=S(g,.1,dk,s*.33,.5,0,.55,1.4,.8);e.rotation.z=s*.25;});S(g,.12,mat(lt),0,.36,.3,1.1,.75,.7);S(g,.04,'#222',0,.41,.4);break;
+    case 'pingouin':S(g,.3,'#ffffff',0,.38,.1,1.02,.95,.9);{const b_=add(g,gCone(.05,.12,8),mat('#ffa62b'),0,.4,.42);b_.rotation.x=Math.PI/2;}[-1,1].forEach(s=>{const f=S(g,.08,dk,s*.36,.35,0,.4,1.3,.8);f.rotation.z=s*.35;});break;
+    case 'hamster':[-1,1].forEach(s=>{S(g,.07,body,s*.2,.72,0);S(g,.04,mat(pink),s*.2,.72,.03,1,1,.5);S(g,.1,mat(lt),s*.2,.34,.24);});S(g,.025,'#e8737f',0,.41,.36);break;
+    case 'cochon':[-1,1].forEach(s=>{const e=add(g,gCone(.08,.14,4),mat(dk),s*.2,.76,0);e.rotation.z=-s*.3;});{const sn=C(g,.08,.08,.06,dk,0,.37,.33,16);sn.rotation.x=Math.PI/2;}break;
+    case 'poussin':[-1,0,1].forEach(s=>{const t=add(g,gCone(.025,.14,6),mat(dk),s*.04,.84,0);t.rotation.z=-s*.4;});{const b_=add(g,gCone(.045,.1,8),mat('#ffa62b'),0,.4,.4);b_.rotation.x=Math.PI/2;}[-1,1].forEach(s=>{const f=S(g,.08,dk,s*.36,.38,0,.4,1.1,.8);f.rotation.z=s*.4;});break;
+    case 'mouton':[[-.2,.68,.05],[-.08,.76,.08],[.08,.76,.08],[.2,.68,.05],[0,.72,-.12],[-.16,.62,-.16],[.16,.62,-.16]].forEach(([x,y,z])=>S(g,.12,'#fbf7ef',x,y,z));[-1,1].forEach(s=>S(g,.07,dk,s*.36,.52,0,1.3,.5,.6));break;
+    case 'hibou':[-1,1].forEach(s=>{const t=add(g,gCone(.07,.18,4),mat(dk),s*.2,.78,0);t.rotation.z=-s*.25;S(g,.11,mat(lt),s*.12,.48,.27,1,1,.4);const f=S(g,.09,dk,s*.36,.36,0,.45,1.3,.8);f.rotation.z=s*.2;});{const b_=add(g,gCone(.04,.1,8),mat('#f2b33d'),0,.4,.4);b_.rotation.x=Math.PI/2;}break;
+    case 'tigre':[-1,1].forEach(s=>{S(g,.09,body,s*.24,.7,0);S(g,.045,mat(lt),s*.24,.7,.05,1,1,.5);});[-.08,0,.08].forEach(x=>B(g,.022,.1,.02,'#222',x,.62,.3));S(g,.13,'#fffaf2',0,.35,.28,1.15,.75,.6);S(g,.03,'#e8737f',0,.41,.37);break;
+    case 'vache':[-1,1].forEach(s=>{const h=add(g,gCone(.035,.16,8),mat('#f3ead8'),s*.2,.8,0);h.rotation.z=-s*.6;const e=S(g,.08,body,s*.36,.62,0,1.4,.6,.6);e.rotation.z=s*.3;});[[.22,.55,.2],[-.25,.3,.18],[.1,.2,-.28]].forEach(([x,y,z])=>S(g,.08,'#222',x,y,z,1,.8,.3));S(g,.14,mat(pink),0,.35,.3,1.25,.8,.55);break;
+    case 'raton':[-1,1].forEach(s=>{const e=add(g,gCone(.09,.16,4),mat(dk),s*.2,.76,0);e.rotation.z=-s*.25;});S(g,.1,'#fffaf2',0,.36,.3,1.1,.75,.6);S(g,.032,'#222',0,.41,.38);break;
+    case 'axolotl':[-1,1].forEach(s=>[-.35,0,.35].forEach(a=>{const f=S(g,.1,mat('#f58fb5'),s*.42,.55+a*.25,0,1,.3,.3);f.rotation.z=s*a;}));break;
+    case 'herisson':for(let k=0;k<26;k++){const a=(k/26)*Math.PI*2,u=.25+((k*7)%5)/10,y=.4+Math.sin(u*Math.PI)*.32,r=.36*Math.cos((u-.5)*Math.PI*.9);const x=Math.cos(a)*r*.9,z=-Math.abs(Math.sin(a))*r-.02;if(z>-.08)continue;const sp_=add(g,gCone(.05,.18,5),mat(dk2),x,y,z);sp_.lookAt(x*3,y*1.4,z*3);sp_.rotateX(Math.PI/2);}S(g,.1,mat(lt),0,.36,.3,1.1,.75,.6);S(g,.03,'#222',0,.41,.38);break;
+    case 'requin':{const f=add(g,gCone(.12,.3,4),mat(dk),0,.85,-.05);f.scale.set(.35,1,1);}S(g,.3,'#f4f7fa',0,.32,.1,1.02,.8,.9);[-1,1].forEach(s=>{const fn=S(g,.1,dk,s*.36,.3,0,.4,1.2,.8);fn.rotation.z=s*.7;});break;
+    case 'abeille':[.3,.16].forEach(y=>{const t=add(g,gTor(.34-(y<.2?.06:0),.045),mat('#222'),0,y,0);t.rotation.x=Math.PI/2;});[-1,1].forEach(s=>{C(g,.012,.012,.22,'#222',s*.1,.72,0,6);S(g,.035,'#222',s*.12,.95,0);S(g,.16,mat('#dff3ff',{transparent:true,opacity:.75}),s*.36,.62,-.15,1,.5,.25);});break;
+    case 'elephant':[-1,1].forEach(s=>{S(g,.22,dk,s*.38,.5,-.04,.3,1,1);S(g,.13,mat(pink),s*.4,.5,0,.2,1,1);});{const t=C(g,.05,.07,.26,body,0,.18,.38,10);t.rotation.x=.2;}break;
+    case 'lion':S(g,.46,dk2,0,.46,-.1,1,1,.5);[-1,1].forEach(s=>S(g,.07,body,s*.2,.74,.02));S(g,.13,'#fffaf2',0,.35,.28,1.15,.75,.6);S(g,.03,'#7a4a3a',0,.41,.37);break;
+    case 'dino':[[0,.8,-.02,.08],[0,.72,-.24,.07],[0,.52,-.36,.06]].forEach(([x,y,z,r])=>{const k=add(g,gCone(r,.18,4),mat(dk),x,y,z);k.rotation.x=-.5;});break;
+    case 'fantome':break;
+    case 'alien':[-1,1].forEach(s=>{const a=C(g,.012,.012,.26,dk,s*.13,.7,0,6);a.rotation.z=-s*.4;S(g,.045,glow('#9dfc8b',.5),s*.22,.96,0);});break;
     default:{const l=S(g,.08,mat('#7cc576'),-.06,.8,0,1,.35,.6);l.rotation.z=.6;const l2=S(g,.08,mat('#62b05c'),.06,.82,0,1,.35,.6);l2.rotation.z=-.6;}
   }
   const hy=robot?.74:.7;
@@ -363,11 +391,43 @@ function buildChar(ch){
     case 'casque':{const t=add(g,gTor(.36,.03,Math.PI),mat('#333'),0,.45,0);t.rotation.z=0;[-1,1].forEach(s=>S(g,.09,'#e63946',s*.37,.45,0,.6,1,1));break;}
     case 'hautdeforme':C(g,.35,.35,.03,'#222',0,hy-.04,0,24);C(g,.21,.21,.35,'#2b2b2b',0,hy-.02,0,20);C(g,.215,.215,.06,'#c1121f',0,hy,0,20);break;
     case 'couronne':{C(g,.2,.2,.1,mat('#ffd166',{metalness:.4,roughness:.35}),0,hy-.03,0,10);for(let i=0;i<5;i++){const a=i/5*Math.PI*2;const k=add(g,gCone(.04,.1,4),mat('#ffd166',{metalness:.4,roughness:.35}),Math.cos(a)*.18,hy+.12,Math.sin(a)*.18);k.castShadow=true;}break;}
+    /* v75 : nouveaux chapeaux */
+    case 'noeud':[-1,1].forEach(s=>{const k=add(g,gCone(.07,.13,4),mat('#ff5c8a'),.16+s*.07,hy+.02,.06);k.rotation.z=s*Math.PI/2;});S(g,.035,'#e03e6f',.16,hy+.02,.06);break;
+    case 'fleurs':for(let i=0;i<9;i++){const a=i/9*Math.PI*2;S(g,.05,['#ff6b9a','#ffd166','#ffffff','#c39bff','#ff9f68'][i%5],Math.cos(a)*.27,hy-.07,Math.sin(a)*.27);}break;
+    case 'bob':C(g,.38,.42,.04,'#f4a261',0,hy-.06,0,24);S(g,.25,'#f6b37a',0,hy-.02,0,1,.55,1);break;
+    case 'diplome':C(g,.22,.22,.1,'#26323f',0,hy-.04,0,16);B(g,.52,.03,.52,'#2f3d4d',0,hy+.06,0);C(g,.008,.008,.18,'#ffd166',.24,hy-.08,.24,6);S(g,.025,'#ffd166',.24,hy-.09,.24);break;
+    case 'noel':{const k=add(g,gCone(.24,.42,16),mat('#d62839'),0,hy+.18,0);k.rotation.z=-.25;const t=add(g,gTor(.25,.05),mat('#ffffff'),0,hy-.02,0);t.rotation.x=Math.PI/2;S(g,.06,'#ffffff',.1,hy+.38,0);break;}
+    case 'fete':add(g,gCone(.14,.36,16),mat('#7c5cff'),0,hy+.16,0);S(g,.045,'#ff5c8a',0,hy+.36,0);break;
+    case 'chantier':S(g,.29,'#ffc107',0,hy-.04,0,1,.6,1);C(g,.34,.34,.03,'#f0ad00',0,hy-.08,0,24);break;
+    case 'sorcier':C(g,.42,.42,.03,'#3a2a6a',0,hy-.05,0,24);{const k=add(g,gCone(.22,.55,16),mat('#4b3a8c'),0,hy+.24,0);k.rotation.z=.15;}C(g,.215,.22,.05,'#ffd166',0,hy-.03,0,20);break;
+    case 'pirate':S(g,.3,'#222',0,hy,0,1.3,.45,.85);S(g,.04,'#ffffff',0,hy+.03,.25);break;
+    case 'viking':S(g,.28,'#8d99ae',0,hy-.04,0,1,.65,1);[-1,1].forEach(s=>{const h=add(g,gCone(.05,.22,10),mat('#f3ead8'),s*.3,hy+.06,0);h.rotation.z=-s*1;});break;
+    case 'cowboy':C(g,.48,.48,.03,'#8b5a2b',0,hy-.05,0,24);C(g,.2,.24,.2,'#a0693a',0,hy-.03,0,18);C(g,.245,.245,.04,'#5e3b1c',0,hy-.02,0,18);break;
+    case 'aureole':{const t=add(g,gTor(.2,.025),glow('#ffd166',.9),0,hy+.2,0);t.rotation.x=Math.PI/2;break;}
   }
   if(ch.face==='lunettes'||ch.face==='soleil'){const fm=ch.face==='soleil'?mat('#1a1a1a'):mat('#3a2f2a');
     [-1,1].forEach(s=>{const r=add(g,gTor(.065,.012),fm,s*ex,ey,ez+.04);if(ch.face==='soleil'){add(g,new THREE.CircleGeometry(.065,16),mat('#111'),s*ex,ey,ez+.045);}r.rotation.y=0;});
     B(g,.1,.015,.015,ch.face==='soleil'?'#1a1a1a':'#3a2f2a',0,ey-.007,ez+.04);}
   if(ch.face==='moustache'){[-1,1].forEach(s=>{const m=S(g,.07,'#5a3b2e',s*.06,.38,.36,1,.4,.4);m.rotation.z=s*.3;});}
+  /* v75 : nouveaux visages et tenues */
+  if(ch.face==='coeur'){[-1,1].forEach(s=>add(g,gTor(.07,.016),mat('#ff4d6d'),s*ex,ey,ez+.04));B(g,.1,.015,.015,'#d6335a',0,ey-.007,ez+.04);}
+  if(ch.face==='monocle')add(g,gTor(.065,.01),mat('#c9a227',{metalness:.5,roughness:.3}),ex,ey,ez+.04);
+  if(ch.face==='masque')B(g,.3,.12,.04,'#cfe9ff',0,.31,.35);
+  if(ch.face==='barbe')S(g,.2,'#6b4532',0,.27,.25,1.2,.8,.6);
+  if(ch.face==='rousseur')[-1,1].forEach(s=>[[0,0],[.03,.02],[.015,-.02]].forEach(([dx,dy])=>S(g,.01,'#b5653f',s*(.2+dx),.4+dy,.31)));
+  if(ch.face==='pansement'){const b_=B(g,.12,.035,.012,'#f2c7a5',.19,.4,.31);b_.rotation.z=-.4;}
+  if(ch.face==='cache'){S(g,.06,'#222',-ex,ey,ez+.03,1,1,.35);const st=add(g,gTor(.37,.008),mat('#222'),0,ey+.04,0);st.rotation.x=Math.PI/2-.25;}
+  switch(ch.outfit){
+    case 'papillon':[-1,1].forEach(s=>{const k=add(g,gCone(.05,.09,4),mat('#d62839'),s*.05,.2,.34);k.rotation.z=s*Math.PI/2;});S(g,.022,'#a51d2c',0,.2,.35);break;
+    case 'echarpe':{const t=add(g,gTor(.31,.05),mat('#e63946'),0,.24,.03);t.rotation.x=Math.PI/2-.15;B(g,.08,.2,.04,'#c92c39',.12,.04,.3);break;}
+    case 'stetho':{const t=add(g,gTor(.3,.012,Math.PI),mat('#4a5568'),0,.26,.05);t.rotation.x=Math.PI/2;t.rotation.z=Math.PI;S(g,.035,'#cbd5e0',.12,.12,.33,1,1,.4);break;}
+    case 'blouse':S(g,.24,'#ffffff',0,.22,.17,1.2,.85,.55);break;
+    case 'cravate':B(g,.05,.18,.02,'#2a6fdb',0,.06,.36);S(g,.03,'#1f56ad',0,.25,.35);break;
+    case 'collier':for(let i=0;i<9;i++){const a=Math.PI*(.1+i*.1);S(g,.035,['#ff6b9a','#ffd166','#6ee7b7','#7cc4ff','#c39bff'][i%5],Math.cos(a)*.3,.24-Math.sin(a)*.04,Math.sin(a)*.3);}break;
+    case 'medaille':{const m=C(g,.06,.06,.015,mat('#ffd166',{metalness:.5,roughness:.3}),0,.14,.35,16);m.rotation.x=Math.PI/2;B(g,.03,.14,.01,'#2a6fdb',-.03,.16,.33);B(g,.03,.14,.01,'#e63946',.03,.16,.33);break;}
+    case 'sacados':B(g,.3,.3,.14,'#2a6fdb',0,.28,-.38);break;
+    case 'cape':S(g,.36,'#d62839',0,.34,-.13,1.12,1,.5);break;
+  }
   root.userData.inner=g;root.scale.setScalar(1.15);
   return root;
 }

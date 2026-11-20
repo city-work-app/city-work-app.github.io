@@ -413,9 +413,11 @@ window.renderMatieresHub = function () {
   if (todo.length || !favs.length) html += `<div class="mh-sec">${favs.length || done.length ? '<span class="ms">school</span>À réviser' : '<span class="ms">school</span>Mes matières'} <em>${todo.length}</em><span class="mh-tip">Glisse <span class="ms">drag_indicator</span> pour changer l'ordre · <span class="ms">star</span> favori · <span class="ms">check_circle</span> terminée</span></div><div class="mh-group" data-sec="todo">${todo.map(f => row(f, 'todo')).join('') || '<div class="mh-empty">Tout est terminé, bravo !</div>'}</div>`;
   if (done.length) html += `<button class="mh-sec mh-sec-btn${openDone ? ' open' : ''}" onclick="mhToggleDoneList(this)" aria-expanded="${openDone}"><span class="ms">task_alt</span>Terminées <em>${done.length}</em><span class="ms mh-chev">expand_more</span></button><div class="mh-group mh-done-group" data-sec="done"${openDone ? '' : ' hidden'}>${done.map(f => row(f, 'done')).join('')}</div>`;
   el.innerHTML = html
-  + `<button class="btn btn-g mh-new" onclick="openModal('modal-nf')">
+  + `<div class="mh-new-row"><button class="btn btn-g mh-new" onclick="openModal('modal-nf')">
        <span class="ms" style="font-size:16px">add</span> Nouvelle matière
-     </button>`;
+     </button><button class="btn btn-g mh-new" onclick="kcDriveOpen()">
+       <span class="ms" style="font-size:16px">cloud</span> Drive commun
+     </button></div>`;
   _mhInitDrag(el);
 };
 

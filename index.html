@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -71,7 +71,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="desktop.css?v=19">
 <link rel="stylesheet" href="gamification.css?v=4">
 <link rel="stylesheet" href="social.css?v=1">
-<link rel="stylesheet" href="city.css?v=25">
+<link rel="stylesheet" href="city.css?v=26">
 <link rel="stylesheet" href="annale-import.css?v=1">
 <link rel="stylesheet" href="cours-annales.css?v=4">
 <link rel="stylesheet" href="home-v2.css?v=1">
@@ -79,7 +79,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="cobalt.css?v=7">
 <link rel="stylesheet" href="cobalt-plus.css?v=4">
 <link rel="stylesheet" href="atelier-ia.css?v=1">
-<link rel="stylesheet" href="cobalt-more.css?v=8">
+<link rel="stylesheet" href="cobalt-more.css?v=9">
 <!-- Styles déplacés vers styles7.css — voir section "Composants base" -->
 </head>
 <body data-screen="home">
@@ -542,6 +542,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
     <div class="ettl">Aucune matière</div>
     <p style="font-size:14px;line-height:1.7;margin-top:4px">Crée ta première matière, ajoute des cours et importe tes QCM.</p>
     <button class="btn btn-p" onclick="openModal('modal-nf')" style="margin-top:18px"><span class="ms" style="font-size:16px">add</span> Créer ma première matière</button>
+    <button class="btn btn-g" onclick="kcDriveOpen()" style="margin-top:8px"><span class="ms" style="font-size:16px">cloud</span> Prendre des cours dans le Drive commun</button>
   </div>
   <div id="fg" class="fg" hidden></div>
   <div id="partiel-home-card" hidden>
@@ -662,6 +663,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       <p class="hub-kicker">Réviser</p>
       <h1 class="hub-title">Mes matières</h1>
     </div>
+    <button class="btn btn-sm btn-g" onclick="kcDriveOpen()" title="Les cours publics de tous les étudiants"><span class="ms" style="font-size:15px">cloud</span> Drive commun</button>
     <button class="btn btn-sm btn-g" onclick="openModal('modal-nf')"><span class="ms" style="font-size:15px">add</span> Nouvelle</button>
   </div>
   <div id="matieres-hub-list" class="matieres-hub-list">
@@ -1822,6 +1824,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
     <div class="fg2"><label class="fl">Nom</label><input class="fi" id="nf-name" placeholder="ex : Neurologie" onkeydown="if(event.key==='Enter')saveFolder()"></div>
     <div class="fg2"><label class="fl">Couleur</label><div class="cpick" id="nf-cp"></div></div>
     <div class="fr" style="margin-top:16px"><button class="btn btn-p" onclick="saveFolder()">Créer</button><button class="btn btn-g" onclick="closeModal('modal-nf')">Annuler</button></div>
+    <button type="button" class="kdr-tease" onclick="kcDriveOpen()"><span class="ms">cloud</span><span><b>Drive commun</b><small>Récupère une matière ou un cours déjà prêt, partagé par d’autres étudiants</small></span><span class="ms">chevron_right</span></button>
   </div>
 </div>
 <div class="mdbg" id="modal-nc" onclick="closeBg(event,'modal-nc')">
@@ -1847,6 +1850,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       <div id="nc-bulk-preview" style="font-size:11px;color:var(--on-sv);margin-top:8px;padding:6px 8px;background:var(--surf-low);border-radius:8px"></div>
     </div>
     <div class="fr" style="margin-top:16px"><button class="btn btn-p" onclick="saveCourse()">Créer</button><button class="btn btn-g" onclick="closeModal('modal-nc')">Annuler</button></div>
+    <button type="button" class="kdr-tease" onclick="kcDriveOpen()"><span class="ms">cloud</span><span><b>Drive commun</b><small>Des cours déjà prêts (questions, fiches, flashcards) partagés par tous les étudiants</small></span><span class="ms">chevron_right</span></button>
   </div>
 </div>
 <div class="mdbg" id="modal-nsf" onclick="closeBg(event,'modal-nsf')">
@@ -2968,7 +2972,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <!-- 16 nov. 2026 : les scripts sont chargés par KBoot (js/kstore.js) une fois la grande mémoire (IndexedDB) lue. Ordre = ordre de la liste. -->
 <script>KBoot([
   "js/data.js?v=12",
-  "js/content.js?v=63",
+  "js/content.js?v=64",
   "js/quiz.js?v=11",
   "js/ui.js?v=30",
   "js/premium.js?v=9",
@@ -2982,18 +2986,18 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/friends.js?v=4",
   "js/audio.js?v=2",
   "js/datepicker.js?v=1",
-  "js/app.js?v=6",
+  "js/app.js?v=7",
   "js/spotify.js?v=6",
   "js/pdf-import.js?v=5",
   "js/annale-import.js?v=2",
   "js/cours-annales.js?v=8",
   "js/home-v2.js?v=1",
   "js/config.js?v=3",
-  "js/gamification.js?v=6",
+  "js/gamification.js?v=7",
   "js/agenda.js?v=2",
-  "js/social.js?v=6",
-  "js/city.js?v=37",
-  "js/home-cobalt.js?v=9",
+  "js/social.js?v=7",
+  "js/city.js?v=38",
+  "js/home-cobalt.js?v=10",
   "js/quiz-cobalt.js?v=2",
   "js/flashcards-cobalt.js?v=6",
   "js/ai-gemini.js?v=3",
@@ -3006,10 +3010,11 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/kc-home-plus.js?v=5",
   "js/kc-layout.js?v=8",
   "js/kc-stats.js?v=3",
-  "js/kc-polish.js?v=3",
+  "js/kc-polish.js?v=4",
   "js/kc-shortcuts.js?v=3",
   "js/kc-v72.js?v=2",
-  "js/kc-ambiance.js?v=2"
+  "js/kc-ambiance.js?v=3",
+  "js/kc-drive.js?v=1"
 ]);</script>
 
 <!-- ══════════ MODAL: RECHERCHE GLOBALE ══════════ -->

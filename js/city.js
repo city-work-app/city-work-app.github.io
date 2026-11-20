@@ -12,7 +12,7 @@ function _cityLoad(){
   if(!_cityLoading){
     _cityLoading=new Promise((res,rej)=>{
       if(window.KineCityReady)return res(window.KineCityReady);
-      const s=document.createElement('script');s.src='js/city-game.js?v=39';
+      const s=document.createElement('script');s.src='js/city-game.js?v=40';
       s.onload=()=>window.KineCityReady?res(window.KineCityReady):rej(new Error('city-game.js chargé mais vide'));
       s.onerror=()=>rej(new Error('fichier js/city-game.js introuvable'));
       document.head.appendChild(s);
