@@ -145,15 +145,16 @@ function errOf(e){
   if(/list_public_courses|get_public_course|schema cache|Could not find the function|PGRST202|404/i.test(m))return ['Le Drive commun n’est pas encore activé sur le serveur.','Il sera disponible dès la mise à jour du serveur (fichier <code>supabase/drive.sql</code>).'];
   return [m,''];
 }
+const netErr=e=>/Pas de connexion|Failed to fetch|NetworkError|Load failed|nocfg|not_authenticated/i.test((e&&e.message)||String(e));
 async function load(append){
   const my=++D.seq;D.loading=true;if(!append){D.off=0;D.list=null;}D.err='';render();
   try{
     await ready();
     let r;
     if(D.v3!==false){try{r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off,p_cat:D.cat,p_school:D.school?mySchool():''});D.v3=true;D.v2=true;}
-      catch(e){if(/p_school|p_cat|Could not find the function|PGRST202|schema cache|404/i.test((e&&e.message)||String(e))){D.v3=false;}else throw e;}}
+      catch(e){if(netErr(e))throw e;console.warn('[drive] v3',e);D.v3=false;}}   /* v85 : toute erreur du serveur → ancienne fonction (ex. drive3.sql pas encore lancé ou à corriger) */
     if(D.v3===false&&D.v2!==false){try{r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off,p_cat:D.cat});D.v2=true;}
-      catch(e){if(/p_cat|Could not find the function|PGRST202|schema cache|404/i.test((e&&e.message)||String(e))){D.v2=false;}else throw e;}}
+      catch(e){if(netErr(e))throw e;console.warn('[drive] v2',e);D.v2=false;}}
     if(D.v2===false)r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off});
     if(my!==D.seq)return;
     const arr=Array.isArray(r)?r:[];D.list=append&&D.list?D.list.concat(arr):arr;D.more=arr.length>=60;D.off+=arr.length;
