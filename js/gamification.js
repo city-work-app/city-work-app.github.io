@@ -556,7 +556,7 @@ function gamNormChar(ch){
   if(ch.hat&&!GAM_HATS.some(h=>h.id===ch.hat))ch.hat=null;
   if(ch.face&&!GAM_FACES.some(h=>h.id===ch.face))ch.face=null;
   if(ch.outfit&&!GAM_OUTFITS.some(h=>h.id===ch.outfit))ch.outfit=null;
-  if(ch.mood&&!GAM_MOODS.some(h=>h.id===ch.mood))ch.mood=null;
+  if(ch.mood&&!GAM_MOODS.some(h=>h.id===ch.mood)&&ch.mood!=='_triste')ch.mood=null;   /* v85 : _triste = réaction du quiz (non choisissable) */
   if(ch.outfit===undefined)ch.outfit=null;if(ch.mood===undefined)ch.mood=null;
   return ch;
 }
@@ -650,11 +650,13 @@ function gamAvatarSVG(ch,size){
   else if(mood==='etoiles')eyes=star(ex1)+star(ex2);
   else if(mood==='dodo')eyes=arc(ex1,false)+arc(ex2,false)+`<text x="70" y="36" font-family="sans-serif" font-weight="800" font-size="11" fill="#6c7bd8">z</text><text x="77" y="27" font-family="sans-serif" font-weight="800" font-size="8" fill="#6c7bd8">z</text>`;
   else if(mood==='surpris')eyes=dot(ex1)+dot(ex2)+`<path d="M${ex1-5} ${ey-9} Q${ex1} ${ey-12} ${ex1+5} ${ey-9} M${ex2-5} ${ey-9} Q${ex2} ${ey-12} ${ex2+5} ${ey-9}" stroke="${ink}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  else if(mood==='_triste')eyes=dot(ex1)+dot(ex2)+`<path d="M${ex1-6} ${ey-8} L${ex1+4} ${ey-11} M${ex2+6} ${ey-8} L${ex2-4} ${ey-11}" stroke="${ink}" stroke-width="2" stroke-linecap="round"/><path d="M${ex2+3} ${ey+6} Q${ex2+6} ${ey+11} ${ex2+3} ${ey+13} Q${ex2} ${ey+11} ${ex2+3} ${ey+6} Z" fill="#7cc4ff"/>`;
   else eyes=dot(ex1)+dot(ex2);
   const cheeks=`<ellipse cx="31" cy="66" rx="5" ry="3" fill="#ff7a8a" opacity="${mood==='amour'||mood==='joie'?.7:.45}"/><ellipse cx="69" cy="66" rx="5" ry="3" fill="#ff7a8a" opacity="${mood==='amour'||mood==='joie'?.7:.45}"/>`;
   const my=mouthY;let mouth='';
   if(mood==='surpris')mouth=`<ellipse cx="50" cy="${my+1}" rx="3.6" ry="4.4" fill="#5a2a2a"/>`;
   else if(mood==='langue')mouth=`<path d="M44 ${my} Q50 ${my+5} 56 ${my}" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M47 ${my+2} Q47 ${my+9} 50.5 ${my+9} Q54 ${my+9} 54 ${my+2} Z" fill="#ff7a8a"/>`;
+  else if(mood==='_triste')mouth=`<path d="M44 ${my+4} Q50 ${my-2} 56 ${my+4}" stroke="${ink}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
   else if(mood==='dodo')mouth=`<ellipse cx="50" cy="${my+1}" rx="2.4" ry="1.8" fill="#5a2a2a"/>`;
   else if(mouthKind==='none')mouth='';
   else if(mouthKind==='teeth')mouth=`<path d="M38 ${my} Q50 ${my+8} 62 ${my} Z" fill="#5a2a2a"/><path d="M40 ${my+.6} L42.5 ${my+3.5} L45 ${my+1.4} L47.5 ${my+4.2} L50 ${my+1.6} L52.5 ${my+4.2} L55 ${my+1.4} L57.5 ${my+3.5} L60 ${my+.6} Z" fill="#fff"/>`;
@@ -982,7 +984,7 @@ function _houseLoad(){
   if(!_houseLoading){
     _houseLoading=new Promise((res,rej)=>{
       if(window.KineHouseReady)return res(window.KineHouseReady);
-      const s=document.createElement('script');s.src='js/house.js?v=7';
+      const s=document.createElement('script');s.src='js/house.js?v=8';
       s.onload=()=>window.KineHouseReady?res(window.KineHouseReady):rej(new Error('house.js chargé mais vide'));
       s.onerror=()=>rej(new Error('fichier js/house.js introuvable'));
       document.head.appendChild(s);

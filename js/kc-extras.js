@@ -15,7 +15,17 @@ const LS=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:v;}catch(e
 const SS=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
 
 /* ───────── 1. Phrases ───────── */
-const PROFS={kine:{n:'Kiné',ic:'accessibility_new'},med:{n:'Médecine',ic:'stethoscope'},dent:{n:'Dentaire',ic:'dentistry'},veto:{n:'Vétérinaire',ic:'pets'}};
+/* v85 (21 nov. 2026) : toutes les filières (santé + droit, prépa, éco, lettres, sciences, info, lycée…).
+   Registre partagé window.KCF (kc-onboard.js s'en sert pour adapter les textes, le Drive, la ville…). */
+const PROFS={
+  kine:{n:'Kiné',ic:'accessibility_new',g:'sante'},med:{n:'Médecine',ic:'stethoscope',g:'sante'},dent:{n:'Dentaire',ic:'dentistry',g:'sante'},
+  veto:{n:'Vétérinaire',ic:'pets',g:'sante'},inf:{n:'Infirmier',ic:'vaccines',g:'sante'},pharma:{n:'Pharmacie',ic:'medication',g:'sante'},
+  sf:{n:'Sage-femme',ic:'pregnant_woman',g:'sante'},psy:{n:'Psychologie',ic:'psychology',g:'sante'},
+  droit:{n:'Droit',ic:'gavel',g:'autre'},prepa:{n:'Prépa / ingénieur',ic:'engineering',g:'autre'},eco:{n:'Éco / commerce',ic:'trending_up',g:'autre'},
+  lettres:{n:'Lettres / langues',ic:'translate',g:'autre'},sciences:{n:'Sciences',ic:'science',g:'autre'},info:{n:'Informatique',ic:'computer',g:'autre'},
+  lycee:{n:'Lycée / bac',ic:'school',g:'autre'},autre:{n:'Autre',ic:'auto_stories',g:'autre'}
+};
+window.KC_PROFS=PROFS;
 /* Citations de personnes connues (16 nov. 2026, à la demande de l'utilisateur) : [texte, auteur, source facultative] */
 const Q={
 kine:[
@@ -70,6 +80,87 @@ veto:[
 ['Dans la vie, rien n’est à craindre, tout est à comprendre.','Marie Curie'],
 ['Écoutez votre patient : il vous donne le diagnostic.','William Osler']
 ],
+inf:[
+['Guérir parfois, soulager souvent, consoler toujours.','Ambroise Paré','attribué'],
+['J’attribue mon succès à ceci : je n’ai jamais donné ni accepté d’excuse.','Florence Nightingale'],
+['Les gens oublieront ce que vous avez dit, ce que vous avez fait, mais jamais ce que vous leur avez fait ressentir.','Maya Angelou','attribué'],
+['Dans les maladies, avoir deux choses en vue : être utile, ou du moins ne pas nuire.','Hippocrate','Épidémies'],
+['Écoutez votre patient : il vous donne le diagnostic.','William Osler'],
+['Le bon médecin soigne la maladie ; le grand médecin soigne le patient qui a la maladie.','William Osler']
+],
+pharma:[
+['Tout est poison, rien n’est sans poison : seule la dose fait qu’une chose n’est pas un poison.','Paracelse'],
+['Parfois, on trouve ce que l’on ne cherchait pas.','Alexander Fleming'],
+['Dans les champs de l’observation, le hasard ne favorise que les esprits préparés.','Louis Pasteur'],
+['C’est ce que nous pensons déjà connaître qui nous empêche souvent d’apprendre.','Claude Bernard'],
+['Dans la vie, rien n’est à craindre, tout est à comprendre.','Marie Curie'],
+['Dans les maladies, avoir deux choses en vue : être utile, ou du moins ne pas nuire.','Hippocrate','Épidémies']
+],
+psy:[
+['Tout peut être enlevé à l’homme, sauf une chose : la dernière des libertés humaines, choisir son attitude face aux circonstances.','Viktor Frankl','Découvrir un sens à sa vie'],
+['Le curieux paradoxe, c’est que lorsque je m’accepte tel que je suis, alors je peux changer.','Carl Rogers'],
+['Celui qui regarde à l’extérieur rêve ; celui qui regarde à l’intérieur s’éveille.','Carl Gustav Jung'],
+['Connais-toi toi-même.','Socrate','inscription de Delphes'],
+['Ce n’est pas le stress qui nous tue, c’est notre réaction au stress.','Hans Selye'],
+['Dans la vie, rien n’est à craindre, tout est à comprendre.','Marie Curie']
+],
+droit:[
+['Il faut que, par la disposition des choses, le pouvoir arrête le pouvoir.','Montesquieu','De l’esprit des lois'],
+['Les lois inutiles affaiblissent les lois nécessaires.','Montesquieu'],
+['Les lois sont faites pour les hommes, et non les hommes pour les lois.','Jean-Étienne-Marie Portalis','Discours préliminaire du Code civil'],
+['Nous sommes esclaves des lois pour pouvoir être libres.','Cicéron','Pro Cluentio'],
+['La justice sans la force est impuissante ; la force sans la justice est tyrannique.','Blaise Pascal','Pensées'],
+['L’obéissance à la loi qu’on s’est prescrite est liberté.','Jean-Jacques Rousseau','Du contrat social'],
+['L’injustice, où qu’elle se trouve, est une menace pour la justice partout ailleurs.','Martin Luther King','Lettre de la prison de Birmingham'],
+['Ne vous résignez jamais.','Gisèle Halimi']
+],
+prepa:[
+['C’est par la logique qu’on démontre, c’est par l’intuition qu’on invente.','Henri Poincaré'],
+['Donnez-moi un point d’appui et je soulèverai le monde.','Archimède'],
+['Diviser chacune des difficultés en autant de parcelles qu’il se pourrait pour mieux les résoudre.','René Descartes','Discours de la méthode'],
+['Ce que je ne peux pas créer, je ne le comprends pas.','Richard Feynman'],
+['La simplicité est la sophistication suprême.','Léonard de Vinci','attribué'],
+['Si j’ai vu plus loin, c’est en me tenant sur les épaules de géants.','Isaac Newton']
+],
+eco:[
+['Ce n’est pas de la bienveillance du boucher, du brasseur ou du boulanger que nous attendons notre dîner, mais du soin qu’ils apportent à leurs intérêts.','Adam Smith','La Richesse des nations'],
+['À long terme, nous serons tous morts.','John Maynard Keynes'],
+['Le prix, c’est ce que vous payez ; la valeur, c’est ce que vous obtenez.','Warren Buffett'],
+['Investir dans le savoir rapporte les meilleurs intérêts.','Benjamin Franklin'],
+['La meilleure façon de prédire l’avenir, c’est de le créer.','Peter Drucker','attribué'],
+['Restez affamés, restez fous.','Steve Jobs','discours de Stanford, 2005']
+],
+lettres:[
+['Les limites de mon langage signifient les limites de mon propre monde.','Ludwig Wittgenstein','Tractatus'],
+['Celui qui ne connaît pas les langues étrangères ne connaît rien de sa propre langue.','Goethe'],
+['Je n’ai jamais eu de chagrin qu’une heure de lecture ne m’ait ôté.','Montesquieu'],
+['Lisez pour vivre.','Gustave Flaubert','lettre, 1857'],
+['Si vous parlez à un homme dans une langue qu’il comprend, vous parlez à sa tête. Si vous lui parlez dans sa langue, vous parlez à son cœur.','Nelson Mandela'],
+['Fonder des bibliothèques, c’est encore construire des greniers publics.','Marguerite Yourcenar','Mémoires d’Hadrien']
+],
+sciences:[
+['Si j’ai vu plus loin, c’est en me tenant sur les épaules de géants.','Isaac Newton'],
+['Rien ne se perd, rien ne se crée, tout se transforme.','Antoine Lavoisier','d’après le Traité élémentaire de chimie'],
+['Dans les champs de l’observation, le hasard ne favorise que les esprits préparés.','Louis Pasteur'],
+['Dans la vie, rien n’est à craindre, tout est à comprendre.','Marie Curie'],
+['La science et la vie de tous les jours ne peuvent pas et ne doivent pas être séparées.','Rosalind Franklin','lettre à son père'],
+['L’important est de ne jamais cesser de se poser des questions.','Albert Einstein']
+],
+info:[
+['La phrase la plus dangereuse du langage est : « On a toujours fait comme ça. »','Grace Hopper'],
+['La meilleure façon de prédire l’avenir, c’est de l’inventer.','Alan Kay'],
+['L’optimisation prématurée est la source de tous les maux.','Donald Knuth'],
+['N’importe quel idiot peut écrire du code qu’un ordinateur comprend. Les bons programmeurs écrivent du code que les humains comprennent.','Martin Fowler'],
+['La machine analytique tisse des motifs algébriques comme le métier Jacquard tisse des fleurs et des feuilles.','Ada Lovelace'],
+['Parler ne coûte rien. Montre-moi le code.','Linus Torvalds']
+],
+lycee:[
+['Un enfant, un professeur, un livre et un stylo peuvent changer le monde.','Malala Yousafzai','discours à l’ONU, 2013'],
+['L’éducation est l’arme la plus puissante qu’on puisse utiliser pour changer le monde.','Nelson Mandela'],
+['Rien ne sert de courir ; il faut partir à point.','Jean de La Fontaine','Le Lièvre et la Tortue'],
+['Un voyage de mille lieues commence toujours par un premier pas.','Lao Tseu'],
+['Ce n’est pas parce que les choses sont difficiles que nous n’osons pas, c’est parce que nous n’osons pas qu’elles sont difficiles.','Sénèque','Lettres à Lucilius']
+],
 learn:[
 ['L’éducation est l’arme la plus puissante qu’on puisse utiliser pour changer le monde.','Nelson Mandela'],
 ['Le génie, c’est un pour cent d’inspiration et quatre-vingt-dix-neuf pour cent de transpiration.','Thomas Edison'],
@@ -110,7 +201,8 @@ function getProf(){
 let qShift=0;
 function pickQuote(){
   const prof=getProf();
-  const pool=(prof?Q[prof]:Q.kine).map(x=>[x,prof||'kine']).concat(Q.learn.map(x=>[x,'learn']));
+  const own=prof==='sf'?Q.med:prof==='autre'?[]:(prof?Q[prof]:Q.kine)||[];
+  const pool=own.map(x=>[x,prof||'kine']).concat(Q.learn.map(x=>[x,'learn']));
   const slot=Math.floor(Date.now()/SLOT)+qShift;
   const i=((slot*7919)%pool.length+pool.length)%pool.length;
   return {q:pool[i][0],cat:pool[i][1],prof};
@@ -118,7 +210,7 @@ function pickQuote(){
 function renderQuote(){
   const el=$('kh-quote');if(!el)return;
   const r=pickQuote(),[text,who,src]=r.q;
-  const tag=r.cat==='learn'?'Apprendre':PROFS[r.cat].n;
+  const tag=r.cat==='learn'?'Apprendre':(PROFS[r.cat]||PROFS.kine).n;
   el.innerHTML=`<span class="kh-quote-mark" aria-hidden="true">“</span>
     <blockquote class="kh-quote-t">${esc(text)}</blockquote>
     <div class="kh-quote-m"><span class="kh-quote-who">${esc(who)}</span>${src?`<span class="kh-quote-src">${esc(src)}</span>`:''}
@@ -131,6 +223,7 @@ window.kcSetProf=function(p){
   if(!PROFS[p])return;
   SS('kp_prof',p);
   renderQuote();renderProfCard();
+  try{document.dispatchEvent(new CustomEvent('kc-prof',{detail:p}));}catch(e){}
   const m=$('kc-prof-modal');if(m)m.remove();
   if(typeof showNotif==='function')showNotif('Filière : '+PROFS[p].n,'ok');
 };

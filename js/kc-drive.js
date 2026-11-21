@@ -13,14 +13,30 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const D={q:'',subj:'',sort:'recent',list:null,subjects:null,off:0,more:false,err:'',loading:false,seq:0,cat:(()=>{try{return localStorage.getItem('kdr_cat')||'';}catch(e){return '';}})(),v2:null,peek:{},open:null};
+const D={school:false,v3:null,q:'',subj:'',sort:'recent',list:null,subjects:null,off:0,more:false,err:'',loading:false,seq:0,cat:(()=>{try{return localStorage.getItem('kdr_cat')||'';}catch(e){return '';}})(),v2:null,peek:{},open:null};
 /* v84 (21 nov. 2026) : rubriques (Kiné, Véto, Médecine, Dentaire, Autres) + aperçu des questions directement dans la carte.
    Serveur à jour (supabase/drive2.sql) → rubrique et 3 premières questions renvoyées par list_public_courses(p_cat) ;
    sinon, ancienne fonction et rubrique devinée d'après le titre et la matière. */
-const CATS=[['','Tout','apps'],['kine','Kiné','accessibility_new'],['veto','Véto','pets'],['med','Médecine','stethoscope'],['dent','Dentaire','dentistry'],['other','Autres','category']];
+/* v85 : toutes les filières (KC_PROFS de kc-extras.js), la mienne en premier ; « Mon école » (payload.school, drive3.sql) */
+const CATS=[['','Tout','apps']];
+function buildCats(){
+  const P=window.KC_PROFS||{kine:{n:'Kiné',ic:'accessibility_new'},veto:{n:'Véto',ic:'pets'},med:{n:'Médecine',ic:'stethoscope'},dent:{n:'Dentaire',ic:'dentistry'}};
+  let me='';try{me=(localStorage.getItem('kp_prof')||'').replace(/"/g,'');}catch(e){}
+  const keys=Object.keys(P).filter(k=>k!=='autre');keys.sort((a,b)=>(b===me)-(a===me));
+  CATS.length=0;CATS.push(['','Tout','apps']);keys.forEach(k=>CATS.push([k,k==='veto'?'Véto':P[k].n,P[k].ic]));CATS.push(['other','Autres','category']);
+}
+buildCats();document.addEventListener('kc-prof',buildCats);
+const mySchool=()=>{try{return (localStorage.getItem('kp_school')||'').trim();}catch(e){return '';}};
+const sk=s=>typeof kcSchoolKey==='function'?kcSchoolKey(s):String(s||'').toLowerCase();
 function catOf(c){
   if(c.cat&&CATS.some(x=>x[0]===c.cat))return c.cat;
   const t=((c.title||'')+' '+(c.subject||'')).toLowerCase();
+  if(/\bdroit\b|juridi|contrat|p[ée]nal|constitution|obligations|jurisprud/.test(t))return 'droit';
+  if(/informati|algorithm|python|java\b|programm|r[ée]seau|base de donn/.test(t))return 'info';
+  if(/[ée]conomi|gestion|marketing|comptab|finance|management/.test(t))return 'eco';
+  if(/infirmi|ifsi/.test(t))return 'inf';
+  if(/pharmac(?!o)/.test(t))return 'pharma';
+  if(/psycho/.test(t))return 'psy';
   if(/v[ée]t[ée]?r|canin|f[ée]lin|bovin|[ée]quin|porcin|chien|chat\b|animal|zoo/.test(t))return 'veto';
   if(/dent|odonto|parodont|endodont|orthodont|prothèse dentaire/.test(t))return 'dent';
   if(/kin[ée]|fisio|physio|r[ée][ée]duc|massage|ppg|amq|biom[ée]ca|\bmk\b|ost[ée]o|electroth|électroth|ergonom/.test(t))return 'kine';
@@ -60,7 +76,7 @@ function cardHTML(c,mine){
   return `<div class="kdr-card${op?' open':''}" role="button" tabindex="0" data-kdr="open" data-id="${esc(c.id)}">
     <span class="kdr-ic k-${kind}"><span class="ms">${ic}</span></span>
     <span class="kdr-tx"><b>${esc(c.title)}</b>
-      <span class="kdr-tags">${ct&&ct[0]!=='other'?`<span class="kdr-cat c-${ct[0]}"><span class="ms">${ct[2]}</span>${ct[1]}</span>`:''}${c.subject?`<span class="kdr-sub">${esc(c.subject)}</span>`:''}</span>
+      <span class="kdr-tags">${ct&&ct[0]!=='other'?`<span class="kdr-cat c-${ct[0]}"><span class="ms">${ct[2]}</span>${ct[1]}</span>`:''}${c.subject?`<span class="kdr-sub">${esc(c.subject)}</span>`:''}${c.school?`<span class="kdr-sub kdr-sch"><span class="ms">apartment</span>${esc(c.school)}${c.year?' · '+esc(c.year):''}</span>`:''}</span>
       <small>${stats}</small>
       <span class="kdr-by">${av(c.owner)}<span>${esc(name(c.owner))}</span><em>${ago(c.updated_at)}</em></span></span>
     <span class="kdr-side">${mine?'<span class="kdr-have"><span class="ms">check_circle</span>Déjà chez toi</span>':''}
@@ -91,7 +107,8 @@ function bodyHTML(){
   if(D.err)list=`<div class="kdr-empty"><span class="ms">cloud_off</span><b>${esc(D.err)}</b>${D.errHint?`<small>${D.errHint}</small>`:''}</div>`;
   else if(!D.list)list='<div class="kdr-empty"><div class="house-spinner"></div></div>';
   else if(!D.list.length)list=`<div class="kdr-empty"><span class="ms">travel_explore</span><b>${D.q||D.subj?'Aucun cours ne correspond.':'Le drive est encore vide.'}</b><small>${D.q||D.subj?'Essaie un autre mot ou une autre matière.':'Sois le premier : partage un cours en « Public » et tous les étudiants pourront le récupérer.'}</small></div>`;
-  else{const L=D.cat&&!D.v2?D.list.filter(c=>catOf(c)===D.cat):D.list;
+  else{let L=D.cat&&!D.v2?D.list.filter(c=>catOf(c)===D.cat):D.list;
+    if(D.school&&!D.v3){const k=sk(mySchool());L=L.filter(c=>c.school&&sk(c.school)===k);}
     list=L.length?`<div class="kdr-grid">${L.map(c=>cardHTML(c,mine.has(c.id))).join('')}</div>`:`<div class="kdr-empty"><span class="ms">travel_explore</span><b>Rien dans cette rubrique pour l’instant.</b><small>Partage tes cours en « Public » pour la remplir !</small></div>`;}
   if(D.list&&D.list.length&&!D.err)list+=(D.more?`<button type="button" class="btn btn-g kdr-more" data-kdr="more"${D.loading?' disabled':''}>${D.loading?'Chargement…':'Voir plus de cours'}</button>`:'');
   const subs=D.subjects||[];
@@ -104,7 +121,7 @@ function bodyHTML(){
       <label class="kdr-search"><span class="ms">search</span><input type="search" id="kdr-q" placeholder="Chercher un cours, une matière…" value="${esc(D.q)}" autocomplete="off" spellcheck="false"></label>
       <div class="kdr-sort" role="group" aria-label="Trier">${SORTS.map(([k,n,ic])=>`<button type="button" class="${D.sort===k?'on':''}" data-kdr="sort" data-k="${k}"><span class="ms">${ic}</span>${n}</button>`).join('')}</div>
     </div>
-    <div class="kdr-cats" role="tablist" aria-label="Rubriques">${CATS.map(([k,n,ic])=>{const cnt=D.list&&!D.v2?(k?D.list.filter(c=>catOf(c)===k).length:D.list.length):null;return `<button type="button" role="tab" class="kdr-catb${D.cat===k?' on':''}${k?' c-'+k:''}" data-kdr="cat" data-k="${k}" aria-selected="${D.cat===k}"><span class="ms">${ic}</span>${n}${cnt!=null&&D.list.length?`<em>${cnt}</em>`:''}</button>`;}).join('')}</div>
+    <div class="kdr-cats" role="tablist" aria-label="Rubriques"><button type="button" class="kdr-catb kdr-school${D.school?' on':''}" data-kdr="school" title="${mySchool()?'Seulement les cours de '+esc(mySchool()):'Indique ton école'}"><span class="ms">apartment</span>${mySchool()?'Mon école':'Mon école ?'}</button>${CATS.map(([k,n,ic])=>{const cnt=D.list&&!D.v2?(k?D.list.filter(c=>catOf(c)===k).length:D.list.length):null;return `<button type="button" role="tab" class="kdr-catb${D.cat===k?' on':''}${k?' c-'+k:''}" data-kdr="cat" data-k="${k}" aria-selected="${D.cat===k}"><span class="ms">${ic}</span>${n}${cnt!=null&&D.list.length?`<em>${cnt}</em>`:''}</button>`;}).join('')}</div>
     ${subs.length?`<div class="kdr-chips"><button type="button" class="${D.subj?'':'on'}" data-kdr="subj" data-k="">Toutes</button>${subs.map(s=>`<button type="button" class="${D.subj===s.subject?'on':''}" data-kdr="subj" data-k="${esc(s.subject)}">${esc(s.subject)}<em>${s.n}</em></button>`).join('')}</div>`:''}
     <div class="kdr-list">${list}</div>
     <div class="kdr-foot"><span class="ms">volunteer_activism</span><span>Tu as un bon cours ? Partage-le en <b>Public</b> pour aider tout le monde.</span>
@@ -133,7 +150,9 @@ async function load(append){
   try{
     await ready();
     let r;
-    if(D.v2!==false){try{r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off,p_cat:D.cat});D.v2=true;}
+    if(D.v3!==false){try{r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off,p_cat:D.cat,p_school:D.school?mySchool():''});D.v3=true;D.v2=true;}
+      catch(e){if(/p_school|p_cat|Could not find the function|PGRST202|schema cache|404/i.test((e&&e.message)||String(e))){D.v3=false;}else throw e;}}
+    if(D.v3===false&&D.v2!==false){try{r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off,p_cat:D.cat});D.v2=true;}
       catch(e){if(/p_cat|Could not find the function|PGRST202|schema cache|404/i.test((e&&e.message)||String(e))){D.v2=false;}else throw e;}}
     if(D.v2===false)r=await _rpc('list_public_courses',{p_query:D.q,p_subject:D.subj,p_sort:D.sort,p_offset:D.off});
     if(my!==D.seq)return;
@@ -165,6 +184,9 @@ document.addEventListener('click',e=>{
   else if(a==='subj'){D.subj=b.dataset.k;load(false);}
   else if(a==='more'){if(!D.loading)load(true);}
   else if(a==='share')window.kcDriveShare();
+  else if(a==='school'){
+    if(!mySchool()){if(typeof kcPrompt==='function')kcPrompt('Ton école ou ta fac','',{icon:'apartment'}).then(v=>{if(v&&v.trim()){try{localStorage.setItem('kp_school',v.trim());}catch(_){}D.school=true;load(false);}});return;}
+    D.school=!D.school;load(false);}
   else if(a==='cat'){D.cat=b.dataset.k;try{localStorage.setItem('kdr_cat',D.cat);}catch(_){}if(D.v2)load(false);else render();}
   else if(a==='peek'){e.stopPropagation();peek(b.dataset.id);}
   else if(a==='open'){if(typeof socialOpenCourse==='function')socialOpenCourse(b.dataset.id,null,true);}

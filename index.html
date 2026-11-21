@@ -71,7 +71,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="desktop.css?v=19">
 <link rel="stylesheet" href="gamification.css?v=4">
 <link rel="stylesheet" href="social.css?v=2">
-<link rel="stylesheet" href="city.css?v=27">
+<link rel="stylesheet" href="city.css?v=28">
 <link rel="stylesheet" href="annale-import.css?v=1">
 <link rel="stylesheet" href="cours-annales.css?v=4">
 <link rel="stylesheet" href="home-v2.css?v=1">
@@ -80,6 +80,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="cobalt-plus.css?v=4">
 <link rel="stylesheet" href="atelier-ia.css?v=1">
 <link rel="stylesheet" href="cobalt-more.css?v=10">
+<link rel="stylesheet" href="kc-v85.css?v=1">
 <!-- Styles déplacés vers styles7.css — voir section "Composants base" -->
 </head>
 <body data-screen="home">
@@ -212,6 +213,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       </button>
     </div>
 <button class="ib" data-tb="pomo" onclick="Pomodoro.show()" data-tooltip="Pomodoro" aria-label="Pomodoro"><span class="ms">timer</span></button>
+<button class="ib" id="kc-mus-btn" data-tb="mus" onclick="kcMusicOpen(event)" data-tooltip="Musique" aria-label="Musique"><span class="ms">queue_music</span></button>
 <button class="ib" id="kc-amb-btn" data-tb="amb" onclick="kcAmbOpen(event)" data-tooltip="Sons d’ambiance" aria-label="Sons d’ambiance"><span class="ms">graphic_eq</span></button>
 <button class="ib" id="dark-toggle" data-tb="theme" onclick="toggleThemePicker(event)" data-tooltip="Thème" aria-label="Thème">
   <svg id="theme-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -3002,30 +3004,38 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/cours-annales.js?v=8",
   "js/home-v2.js?v=1",
   "js/config.js?v=3",
-  "js/gamification.js?v=7",
+  "js/gamification.js?v=8",
   "js/agenda.js?v=2",
-  "js/social.js?v=8",
-  "js/city.js?v=39",
-  "js/home-cobalt.js?v=10",
+  "js/social.js?v=9",
+  "js/city.js?v=40",
+  "js/home-cobalt.js?v=11",
   "js/quiz-cobalt.js?v=2",
   "js/flashcards-cobalt.js?v=6",
   "js/ai-gemini.js?v=3",
-  "js/fc-editor.js?v=6",
-  "js/ultra-ai.js?v=4",
+  "js/fc-editor.js?v=7",
+  "js/ultra-ai.js?v=5",
   "js/cobalt-plus.js?v=1",
   "js/ux-cobalt.js?v=6",
-  "js/kc-extras.js?v=3",
-  "js/atelier-ia.js?v=2",
-  "js/kc-home-plus.js?v=5",
-  "js/kc-layout.js?v=9",
+  "js/kc-extras.js?v=4",
+  "js/atelier-ia.js?v=3",
+  "js/kc-home-plus.js?v=6",
+  "js/kc-layout.js?v=10",
   "js/kc-stats.js?v=4",
-  "js/kc-polish.js?v=4",
+  "js/kc-polish.js?v=5",
   "js/kc-shortcuts.js?v=4",
   "js/kc-v72.js?v=2",
   "js/kc-ambiance.js?v=4",
   "js/kc-colors.js?v=1",
   "js/kc-import.js?v=2",
-  "js/kc-drive.js?v=2"
+  "js/kc-drive.js?v=3",
+  "js/kc-onboard.js?v=1",
+  "js/kc-plan.js?v=1",
+  "js/kc-buddy.js?v=1",
+  "js/kc-imgedit.js?v=1",
+  "js/kc-music.js?v=1",
+  "js/kc-voice.js?v=1",
+  "js/kc-look.js?v=1",
+  "js/kc-rooms.js?v=1"
 ]);</script>
 
 <!-- ══════════ MODAL: RECHERCHE GLOBALE ══════════ -->

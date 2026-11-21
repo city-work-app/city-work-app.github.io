@@ -54,9 +54,9 @@ function load(key){
   else if(key==='__none__'){items=(G('concepts',[])||[]).filter(c=>!c.folderId);E.title='Sans dossier';E.desc='';}
   else if(key){const f=folders().find(x=>x.id===key);items=(G('concepts',[])||[]).filter(c=>c.folderId===key);E.title=f?f.name:'';E.desc=f&&f.desc||'';}
   else{E.title='';E.desc='';}
-  E.rows=items.map(c=>({k:lk(),id:c.id,term:c.term||'',def:c.definition||'',termHtml:c.termHtml||'',defHtml:c.defHtml||'',imageQ:c.imageQ||c.image||null,imageA:c.imageA||null}));
+  E.rows=items.map(c=>({k:lk(),id:c.id,term:c.term||'',def:c.definition||'',termHtml:c.termHtml||'',defHtml:c.defHtml||'',imageQ:c.imageQ||c.image||null,imageA:c.imageA||null,imageQEdit:c.imageQEdit||null,imageAEdit:c.imageAEdit||null}));
 }
-const blank=()=>({k:lk(),id:null,term:'',def:'',termHtml:'',defHtml:'',imageQ:null,imageA:null});
+const blank=()=>({k:lk(),id:null,term:'',def:'',termHtml:'',defHtml:'',imageQ:null,imageA:null,imageQEdit:null,imageAEdit:null});
 const isEmpty=r=>!r.term.trim()&&!r.def.trim()&&!r.imageQ&&!r.imageA;
 
 /* ───────── Enregistrement automatique ───────── */
@@ -87,6 +87,8 @@ function commit(){
       if(r.defHtml)c.defHtml=r.defHtml;else delete c.defHtml;
       if(r.imageQ)c.imageQ=r.imageQ;else delete c.imageQ;
       if(r.imageA)c.imageA=r.imageA;else delete c.imageA;
+      if(r.imageQ&&r.imageQEdit)c.imageQEdit=r.imageQEdit;else delete c.imageQEdit;   /* v85 : annotations modifiables (kc-imgedit.js) */
+      if(r.imageA&&r.imageAEdit)c.imageAEdit=r.imageAEdit;else delete c.imageAEdit;
       if(c.image&&!r.imageQ)delete c.image;
     }else if(!empty){
       const c=E.kind==='course'
@@ -94,6 +96,7 @@ function commit(){
         :{id:nid(),term:r.term,questionId:null,state:'toExplain',definition:r.def,keywords:[],masteryLevel:0,nextReview:null,lastReview:null,createdAt:now,folderId:fid};
       if(r.termHtml)c.termHtml=r.termHtml;if(r.defHtml)c.defHtml=r.defHtml;
       if(r.imageQ)c.imageQ=r.imageQ;if(r.imageA)c.imageA=r.imageA;
+      if(r.imageQ&&r.imageQEdit)c.imageQEdit=r.imageQEdit;if(r.imageA&&r.imageAEdit)c.imageAEdit=r.imageAEdit;
       list.push(c);r.id=c.id;
     }
   });
@@ -195,7 +198,7 @@ window.fceStudy=function(){
 
 /* ───────── Rendu ───────── */
 function cardHTML(r,i){
-  const img=(s,src)=>src?`<div class="fce-img has" data-s="${s}" title="Voir l’image en grand"><img src="${src}" alt=""><button class="fce-img-x" data-act="rmimg" data-s="${s}" tabindex="-1" title="Retirer l’image"><span class="ms">close</span></button></div>`
+  const img=(s,src)=>src?`<div class="fce-img has" data-s="${s}" title="Cliquer pour surligner, annoter ou modifier la photo"><img src="${src}" alt=""><button class="fce-img-x" data-act="rmimg" data-s="${s}" tabindex="-1" title="Retirer l’image"><span class="ms">close</span></button></div>`
     :`<button class="fce-img" data-s="${s}" tabindex="-1" title="Ajouter une image (ou colle-la avec Ctrl+V)"><span class="ms">add_photo_alternate</span><span>Image</span></button>`;
   const ed=(f,html,txt,ph)=>`<div class="fce-ed" contenteditable="true" spellcheck="true" data-f="${f}" data-ph="${ph}" role="textbox" aria-multiline="true" aria-label="${ph}">${html?fcxSafeHtml(html):esc(txt).replace(/\n/g,'<br>')}</div>`;
   return `<div class="fce-card" data-k="${r.k}">
@@ -295,9 +298,9 @@ function bind(){
     const r=rowOf(b);if(!r)return;
     const act=b.dataset.act;
     if(act==='del'){delRow(r);return;}
-    if(act==='swap'){[r.term,r.def]=[r.def,r.term];[r.termHtml,r.defHtml]=[r.defHtml,r.termHtml];[r.imageQ,r.imageA]=[r.imageA,r.imageQ];rerenderRow(r);schedule();return;}
+    if(act==='swap'){[r.term,r.def]=[r.def,r.term];[r.termHtml,r.defHtml]=[r.defHtml,r.termHtml];[r.imageQ,r.imageA]=[r.imageA,r.imageQ];[r.imageQEdit,r.imageAEdit]=[r.imageAEdit,r.imageQEdit];rerenderRow(r);schedule();return;}
     if(act==='ai'){aiRow(r,b);return;}
-    if(act==='rmimg'){e.stopPropagation();r[b.dataset.s==='q'?'imageQ':'imageA']=null;rerenderRow(r);schedule();return;}
+    if(act==='rmimg'){e.stopPropagation();r[b.dataset.s==='q'?'imageQ':'imageA']=null;r[b.dataset.s==='q'?'imageQEdit':'imageAEdit']=null;rerenderRow(r);schedule();return;}
     if(b.classList.contains('has')){zoomImg(r,b.dataset.s);return;}
     if(b.classList.contains('fce-img')){imgTarget={r,s:b.dataset.s};$('fce-file').click();}
   });
@@ -356,6 +359,16 @@ function placeFmt(){}
 /* Photo d'une carte en grand ; « Changer » et « Retirer » sont dans cette vue. */
 function zoomImg(r,side){
   const src=r[side==='q'?'imageQ':'imageA'];if(!src)return;
+  /* v85 : clic sur la photo = éditeur (surligner des zones ou des mots, dessiner, cacher une légende, recadrer, tourner…) */
+  if(typeof window.kcImgEdit==='function'){
+    const K=side==='q'?'imageQ':'imageA';
+    window.kcImgEdit(src,{edit:r[K+'Edit'],onSave:(url,meta)=>{r[K]=url;r[K+'Edit']=meta;rerenderRow(r);schedule();},
+      actions:[
+        {ic:'add_photo_alternate',label:'Changer',run:()=>{imgTarget={r,s:side};$('fce-file').click();}},
+        {ic:'delete',label:'Retirer',run:()=>{r[K]=null;r[K+'Edit']=null;rerenderRow(r);schedule();}}
+      ]});
+    return;
+  }
   /* v72 : visionneuse commune (kc-v72.js) : clic à côté de l'image = fermer, zoom à la molette / double-clic.
      Avant, l'image occupait toute la zone (object-fit) : cliquer « à côté » zoomait au lieu de fermer. */
   if(typeof window.kcImgView==='function'){
@@ -415,14 +428,14 @@ window.fceAddRow=function(focus,r){
 };
 window.fceSwapAll=function(){
   if(!E.rows.length)return;
-  E.rows.forEach(r=>{[r.term,r.def]=[r.def,r.term];[r.termHtml,r.defHtml]=[r.defHtml,r.termHtml];[r.imageQ,r.imageA]=[r.imageA,r.imageQ];});
+  E.rows.forEach(r=>{[r.term,r.def]=[r.def,r.term];[r.termHtml,r.defHtml]=[r.defHtml,r.termHtml];[r.imageQ,r.imageA]=[r.imageA,r.imageQ];[r.imageQEdit,r.imageAEdit]=[r.imageAEdit,r.imageQEdit];});
   render();schedule();showNotif('Termes et définitions inversés','ok');
 };
 async function setImg(r,s,file){
   if(!file||!file.type.startsWith('image/')){showNotif('Choisis une image','err');return;}
   try{
     const url=await shrink(file,1000);
-    r[s==='q'?'imageQ':'imageA']=url;rerenderRow(r);schedule();
+    r[s==='q'?'imageQ':'imageA']=url;r[s==='q'?'imageQEdit':'imageAEdit']=null;rerenderRow(r);schedule();
   }catch(e){showNotif('Image illisible','err');}
 }
 function shrink(file,max){

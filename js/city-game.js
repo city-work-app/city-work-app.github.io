@@ -1424,13 +1424,14 @@ const SVB={
     cyl(-.55,-.6,0,.45,.15,.15,10,'#e1e6ea','#c9d0d6');cyl(-.15,-.6,0,.38,.13,.13,10,'#e1e6ea','#c9d0d6');
     return .8;},
   kine(r){   // cabinet du métier choisi (v4) : kiné (croix turquoise), véto (patte + chien), médecin (croix bleue), dentiste (dent)
-    const P=(S&&S.prof)||'kine',band={kine:'#0e8c87',veto:'#3f9b4f',med:'#2f6fd6',dent:'#2aa7d6'}[P]||'#0e8c87';
+    const P=(S&&S.prof)||'kine',band={kine:'#0e8c87',veto:'#3f9b4f',med:'#2f6fd6',dent:'#2aa7d6',inf:'#2f6fd6',pharma:'#16a34a',sf:'#db2777',psy:'#7c3aed',droit:'#7a2e2e',prepa:'#475569',eco:'#0f766e',lettres:'#b45309',sciences:'#0891b2',info:'#4338ca',lycee:'#ca8a04'}[P]||'#0e8c87';
     if(kmOn())km('a-c',{fit:.72,z:-.14,r:KM_ROT.a,wall:'#f6f8f8',top:'#e1e6e6',lit:true});   /* v7 : vrai bâtiment 3D */
     else{bc(0,-.05,.34,.28,0,FH*2,'#f6f8f8',FRs(),'#e1e6e6');
     bx(-.35,-.34,.35,.24,FH*2,FH*2+.04,band);}
     if(P==='kine'){bx(-.03,.23,.03,.25,.41,.57,'#14b8a6','basic');bx(-.08,.23,.08,.25,.46,.52,'#14b8a6','basic');}
     else{bx(-.11,.226,.11,.232,.39,.6,band);const w='#ffffff';
-      if(P==='med'){bx(-.025,.232,.025,.25,.42,.57,w,'basic');bx(-.075,.232,.075,.25,.47,.52,w,'basic');}
+      if(P==='med'||P==='inf'||P==='pharma'){bx(-.025,.232,.025,.25,.42,.57,w,'basic');bx(-.075,.232,.075,.25,.47,.52,w,'basic');}
+      else if(P!=='dent'&&P!=='veto'){bx(-.07,.232,.07,.25,.43,.56,w,'basic');bx(-.05,.233,.05,.252,.455,.535,band,'basic');}   /* v85 : plaque pour les autres métiers */
       else if(P==='veto'){bx(-.045,.232,.045,.25,.42,.48,w,'basic');bx(-.085,.232,-.055,.25,.5,.54,w,'basic');bx(-.035,.232,-.005,.25,.53,.575,w,'basic');bx(.005,.232,.035,.25,.53,.575,w,'basic');bx(.055,.232,.085,.25,.5,.54,w,'basic');}
       else{bx(-.06,.232,.06,.25,.49,.575,w,'basic');bx(-.055,.232,-.012,.25,.415,.49,w,'basic');bx(.012,.232,.055,.25,.415,.49,w,'basic');}}
     wedge(-.16,.23,.16,.36,.25,.29,.26,band);bc(0,.235,.06,.006,0,.2,'#41545e');
@@ -2652,7 +2653,7 @@ function applyCam(){
   E.camera.lookAt(CAM.x,0,CAM.z);E.camera.updateMatrixWorld();
   E.scene.fog.near=CAM.dist*1.1+25;E.scene.fog.far=CAM.dist*2.6+120;
 }
-function clampCam(){CAM.x=clamp(CAM.x,-4,N+4);CAM.z=clamp(CAM.z,-4,N+4);CAM.dist=clamp(CAM.dist,5,100);CAM.pitch=clamp(CAM.pitch,E&&E.skyLook?.08:.3,1.45);}
+function clampCam(){CAM.x=clamp(CAM.x,-4,N+4);CAM.z=clamp(CAM.z,-4,N+4);CAM.dist=clamp(CAM.dist,WK.on?2.4:5,WK.on?16:100);CAM.pitch=clamp(CAM.pitch,E&&E.skyLook?.08:.3,1.45);}
 function setRay(sx,sy){const r=E.renderer.domElement.getBoundingClientRect();E.ndc.set(((sx-r.left)/r.width)*2-1,-((sy-r.top)/r.height)*2+1);E.ray.setFromCamera(E.ndc,E.camera);}
 const _gp=new THREE.Vector3();
 function groundAt(sx,sy){setRay(sx,sy);const p=E.ray.ray.intersectPlane(E.plane,_gp);return p?{x:p.x,z:p.z}:null;}
@@ -2769,6 +2770,13 @@ function onKey(e){
   if(!E||!E.running||document.body.dataset.screen!=='city'||/input|textarea|select/i.test((e.target&&e.target.tagName)||''))return;
   const k=e.key,st_=CAM.dist*.06,fx=-Math.sin(CAM.yaw),fz=-Math.cos(CAM.yaw),rx=Math.cos(CAM.yaw),rz=-Math.sin(CAM.yaw);
   let used=true;
+  if(WK.on&&!e.ctrlKey&&!e.metaKey){   /* v85 : promenade */
+    if(k==='Escape'){if(PANEL)closePanel();else walkStop();e.preventDefault();return;}
+    if(k==='Enter'){walkEnter();e.preventDefault();return;}
+    if(k==='Shift'){KEYS.add('shift');return;}
+    if(CAM_KEYS[k.toLowerCase()]){KEYS.add(k.toLowerCase());e.preventDefault();return;}
+  }
+  if((k==='j'||k==='J')&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!VISIT){WK.on?walkStop():walkStart();e.preventDefault();return;}
   // Ctrl/Cmd+Z d'abord (avant, « z » faisait avancer la caméra et l'annulation ne marchait jamais au clavier) ;
   // les autres raccourcis avec Ctrl/Cmd/Alt restent au navigateur (Cmd+R, Cmd+D…)
   if((e.ctrlKey||e.metaKey)&&k.toLowerCase()==='z'){undo();refreshToolbar();}
@@ -3053,7 +3061,7 @@ function panelKeys(){
     +`</div><div class="cty-sec">Caméra</div><div class="cty-keys">`
     +K(['Z','Q','S','D'],'Avancer, gauche, reculer, droite (ou les flèches)')+K(['E'],'Tourner vers la gauche')+K(['A'],'Tourner vers la droite')+K(['+','−'],'Zoomer / dézoomer (ou la molette)')+K(['H'],'Revenir au centre de la ville')+(FS_OK?K(['F'],'Plein écran'):'')+K(['U'],'Mode photo (cacher l’interface)')
     +`</div><div class="cty-sec">Temps et fenêtres</div><div class="cty-keys">`
-    +K(['Espace'],'Pause / reprendre')+K(['P'],'Pause aussi')+K(['X'],'Vitesse suivante (×1, ×2, ×4)')+K(['Tab'],'Défi du maire (QCM), ou M')+K(['G'],'Budget')+K(['O'],'Objectifs')+K(['V'],'Vues (électricité, eau, bonheur…)')+K(['Ctrl','S'],'Sauvegarde rapide')
+    +K(['Espace'],'Pause / reprendre')+K(['P'],'Pause aussi')+K(['X'],'Vitesse suivante (×1, ×2, ×4)')+K(['J'],'Promenade avec ton personnage')+K(['Tab'],'Défi du maire (QCM), ou M')+K(['G'],'Budget')+K(['O'],'Objectifs')+K(['V'],'Vues (électricité, eau, bonheur…)')+K(['Ctrl','S'],'Sauvegarde rapide')
     +`</div>`;
 }
 const VIEWS=[[null,'Normale','landscape'],['power','Électricité','bolt'],['water','Eau','water_drop'],['lv','Valeur foncière','diamond'],['pol','Pollution','cloud'],
@@ -3105,6 +3113,7 @@ function buildHUD(root){
     <button class="cty-quiz" data-act="panel" data-p="quiz" title="Défi du maire : des QCM de tes cours contre des primes (touche Tab)"><span class="ms">quiz</span><span class="lbl">Défi</span><i class="cty-badge" id="cty-qbadge"></i></button>
     <button data-act="panel" data-p="exam" title="Examen blanc du maire : 20 QCM chronométrés, une note sur 20 et une prime"><span class="ms">assignment</span><span class="lbl">Examen</span></button>
     <button class="cty-patb" data-act="panel" data-p="patient" title="Cabinet : des habitants viennent consulter avec un cas clinique"><span class="ms">personal_injury</span><span class="lbl">Patients</span><i class="cty-badge" id="cty-pbadge"></i></button>
+    <button class="cty-walkb" data-act="walk" title="Promène ton personnage dans ta ville (touche J)"><span class="ms">directions_walk</span><span class="lbl">Balade</span></button>
     <button data-act="panel" data-p="views" title="Vues d’information"><span class="ms">layers</span><span class="lbl">Vues</span></button>
     <button data-act="panel" data-p="budget" title="Budget, impôts et commerce"><span class="ms">account_balance</span><span class="lbl">Budget</span></button>
     <button data-act="panel" data-p="policies" title="Arrêtés municipaux"><span class="ms">gavel</span><span class="lbl">Arrêtés</span></button>
@@ -3538,6 +3547,8 @@ function panelHelp(){
       <li><b>Réviser pour réparer</b> : un bâtiment marqué d’une clé à molette est lié à une question que tu as oubliée. Touche-le et réponds juste pour le remettre à neuf.</li>
       <li><b>Crise sanitaire</b> : si une épidémie se déclare, 5 bonnes réponses d’affilée au Défi du maire l’arrêtent.</li>
       <li><b>Festival des partiels</b> : quand un examen de ton agenda approche, les primes du Défi sont doublées sur ses matières.</li>
+      <li><b>Mode révision</b> : la semaine avant un examen, toute la ville révise (bibliothèque illuminée, étudiants dans les rues) et les primes du Défi sont doublées sur toutes tes questions.</li>
+      <li><b>Promenade</b> (touche J) : promène ton personnage dans les rues, entre dans ton cabinet, ta maison ou la bibliothèque.</li>
       <li><b>Transports</b> : rails et arrêts de tram, lignes de métro entre deux stations. Ils réduisent les bouchons (vue Circulation).</li>
       <li><b>Décor et Outils</b> : fleurs, bancs, fontaines, collines, lacs… le tampon pour copier un quartier, les quartiers nommés avec leurs règles, les ronds-points et les feux.</li>
       <li><b>Amis</b> : visite la ville de tes amis, classement, jumelage et duel du maire.</li>
@@ -4379,6 +4390,142 @@ function extRebuild(){
   E.railList=[];for(let i=0;i<NN;i++)if(rail[i]&&road[i])E.railList.push(i);
   rebuildMetroLines();distLabels(true);
 }
+// =========================================================
+// v85 (21 nov. 2026) : PROMENADE — ton personnage (celui de « Mon personnage », modèle 3D de house.js) marche dans ta ville.
+// Bouton « Promenade » (barre de droite) ou touche J. Z Q S D / flèches = marcher (Maj = courir), A / E = tourner la vue,
+// Entrée = entrer (cabinet → patients, Ma maison → écran Maison, bibliothèque / faculté → Défi du maire, mairie → budget,
+// maison du patient en attente → consultation), Échap = arrêter. Sur téléphone : manette à l'écran.
+// On marche sur les routes, trottoirs, parcs et terrains libres ; pas dans les bâtiments, l'eau ni le relief.
+// Des habitants croisés disent un mot (bulle au-dessus du personnage).
+// =========================================================
+var WK={on:false,g:null,x:0,z:0,a:0,dir:0,ph:0,v:0,jx:0,jy:0,near:null,nearT:0,bubT:0,loading:false};
+function wkWalkable(x,z){
+  const ix=Math.floor(x),iz=Math.floor(z);if(ix<0||iz<0||ix>=N||iz>=N||!inArea(ix,iz))return false;
+  const i=iz*N+ix;
+  if(road[i])return true;
+  if(ter[i]||mtn[i]||hill[i])return false;
+  if(svcAt[i]){const s=SV.get(svcAt[i]),b=s&&BT[s.t];return !!(b&&b.cat==='parcs');}
+  return !(zone[i]&&lvl[i]);
+}
+function wkStartPt(){
+  let sx=CAM.x,sz=CAM.z;
+  for(const v of SV.values())if(v.t==='mahouse'){sx=v.x+v.w/2;sz=v.z+v.d/2;break;}
+  let best=null,bd=1e9;
+  for(let dz=-24;dz<=24;dz++)for(let dx=-24;dx<=24;dx++){const x=Math.floor(sx)+dx,z=Math.floor(sz)+dz;if(x<0||z<0||x>=N||z>=N)continue;const i=z*N+x;
+    if(!road[i]||!inArea(x,z))continue;const d=dx*dx+dz*dz;if(d<bd){bd=d;best=[x+.5,z+.5];}}
+  return best;
+}
+function wkFallbackChar(){
+  const g=new THREE.Group(),col=new THREE.Color((gam&&gam.char&&gam.char.color)||'#ef7d6d');
+  const m=new THREE.MeshStandardMaterial({color:col,roughness:.6});
+  const b=new THREE.Mesh(new THREE.SphereGeometry(.5,20,16),m);b.position.y=.55;b.scale.set(1,.95,1);g.add(b);
+  const eye=new THREE.MeshBasicMaterial({color:'#222'});for(const sx of[-.17,.17]){const e=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),eye);e.position.set(sx,.68,.44);g.add(e);}
+  return g;
+}
+function wkFit(obj){   /* met le personnage à la bonne taille (≈ 0,27 case de haut), les pieds au sol */
+  const box=new THREE.Box3().setFromObject(obj),h=Math.max(.001,box.max.y-box.min.y),k=.27/h;
+  const w=new THREE.Group();obj.position.y-=box.min.y;w.add(obj);w.scale.setScalar(k);return w;
+}
+function walkStart(){
+  if(VISIT||WK.on||WK.loading||!E)return;
+  const p=wkStartPt();if(!p){tip('Construis d’abord une route pour te promener','info',2600);return;}
+  WK.loading=true;closePanel();
+  const go=obj=>{
+    WK.loading=false;if(!E)return;
+    WK.g=wkFit(obj);WK.g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.frustumCulled=false;}});
+    E.gD.add(WK.g);WK.on=true;WK.x=p[0];WK.z=p[1];WK.a=WK.dir=CAM.yaw+Math.PI;WK.ph=0;WK.v=0;WK.jx=WK.jy=0;WK.bubT=E.t+4;
+    WK.prev={x:CAM.x,z:CAM.z,dist:CAM.dist,pitch:CAM.pitch};
+    CAM.x=WK.x;CAM.z=WK.z;CAM.dist=4.2;CAM.pitch=.5;E.tw=null;clampCam();applyCam();
+    wkUI(true);toast('Promenade : Z Q S D ou les flèches pour marcher, Entrée pour entrer, Échap pour arrêter','directions_walk');
+  };
+  if(typeof _houseLoad==='function')_houseLoad().then(mod=>{let o=null;try{if(mod&&mod.buildChar)o=mod.buildChar(gam.char||{});}catch(e){o=null;}go(o||wkFallbackChar());}).catch(()=>go(wkFallbackChar()));
+  else go(wkFallbackChar());
+}
+function walkStop(){
+  if(!WK.on)return;WK.on=false;
+  if(WK.g&&WK.g.parent)WK.g.parent.remove(WK.g);WK.g=null;
+  if(WK.prev){CAM.dist=Math.max(14,WK.prev.dist);CAM.pitch=WK.prev.pitch;}clampCam();applyCam();
+  wkUI(false);KEYS.clear();
+}
+function wkUI(on){
+  let b=$('cty-walk');
+  if(!on){if(b)b.remove();const j=$('cty-joy');if(j)j.remove();const u=$('cty-wbub');if(u)u.remove();return;}
+  const root=$('cty-stage')&&$('cty-stage').parentNode||document.body;
+  if(!b){b=document.createElement('div');b.id='cty-walk';b.className='cty-walk';root.appendChild(b);}
+  b.innerHTML=`<span class="ms">directions_walk</span><span class="cty-walk-t"><b>Promenade</b><small id="cty-walk-near">Z Q S D ou flèches · Maj pour courir · A / E pour tourner</small></span>
+    <button class="cty-walk-go" id="cty-walk-go" data-wk="enter" hidden><span class="ms">login</span><span id="cty-walk-gol">Entrer</span></button>
+    <button class="cty-walk-x" data-wk="stop" title="Arrêter la promenade (Échap)"><span class="ms">close</span></button>`;
+  b.onclick=e=>{const t=e.target.closest('[data-wk]');if(!t)return;if(t.dataset.wk==='stop')walkStop();else walkEnter();};
+  if(matchMedia('(pointer:coarse)').matches&&!$('cty-joy')){
+    const j=document.createElement('div');j.id='cty-joy';j.className='cty-joy';j.innerHTML='<i></i>';root.appendChild(j);
+    let id=null;const kn=j.firstChild;
+    const mv=e=>{const r=j.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=(e.clientX-cx)/(r.width/2),dy=(e.clientY-cy)/(r.height/2);const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l;}WK.jx=dx;WK.jy=dy;kn.style.transform=`translate(${dx*30}px,${dy*30}px)`;};
+    j.addEventListener('pointerdown',e=>{id=e.pointerId;j.setPointerCapture(id);mv(e);e.stopPropagation();});
+    j.addEventListener('pointermove',e=>{if(e.pointerId===id)mv(e);});
+    const up=e=>{if(e.pointerId!==id)return;id=null;WK.jx=WK.jy=0;kn.style.transform='';};j.addEventListener('pointerup',up);j.addEventListener('pointercancel',up);
+  }
+}
+const WK_LINES=['Bonjour !','Belle journée pour réviser !','Tu as vu la nouvelle bibliothèque ?','Bon courage pour tes partiels !','Salut, tu vas à la fac ?','J’adore ce quartier.','Il paraît que le maire révise beaucoup…','Encore un QCM et je fais une pause !','Tu connais un bon café par ici ?','Quelle jolie ville !'];
+function wkNear(){
+  const P=P_(),ix=Math.floor(WK.x),iz=Math.floor(WK.z);let best=null,bd=1.7;
+  for(let dz=-2;dz<=2;dz++)for(let dx=-2;dx<=2;dx++){const x=ix+dx,z=iz+dz;if(x<0||z<0||x>=N||z>=N)continue;const i=z*N+x,d=Math.hypot(x+.5-WK.x,z+.5-WK.z);if(d>=bd)continue;
+    if(S.pat&&S.pat.i===i){best={k:'pat',i,l:`Rendre visite à ${S.pat.first}`};bd=d;continue;}
+    const id=svcAt[i];if(!id)continue;const s=SV.get(id);if(!s)continue;
+    const L={kine:`Entrer dans ton ${P.bld.toLowerCase()}`,mahouse:'Entrer chez toi',biblio:'Réviser à la bibliothèque',fac:'Réviser à la '+(BT.fac.name||'faculté').toLowerCase(),mairie:'Entrer à la mairie',reeduc:'Entrer : '+(BT.reeduc.name||'centre')}[s.t];
+    if(L){best={k:s.t,i,l:L,s};bd=d;}}
+  return best;
+}
+function walkEnter(){
+  const n=WK.near;if(!n)return;
+  if(n.k==='pat'||n.k==='kine'||n.k==='reeduc'){toast(n.k==='pat'?`Tu frappes chez ${esc(S.pat.first)}`:'Tu entres dans ton cabinet',P_().patIc);openPanel('patient');}
+  else if(n.k==='mahouse'){walkStop();if(typeof showScreen==='function')showScreen('house');}
+  else if(n.k==='biblio'||n.k==='fac')openPanel('quiz');
+  else if(n.k==='mairie')openPanel('budget');
+}
+function wkBubble(text){
+  let u=$('cty-wbub');const root=$('cty-stage');if(!root)return;
+  if(!u){u=document.createElement('div');u.id='cty-wbub';u.className='cty-wbub';root.parentNode.appendChild(u);}
+  u.textContent=text;u.classList.remove('in');void u.offsetWidth;u.classList.add('in');WK.bubShow=E.t+3.2;
+}
+function wkBubblePos(){
+  const u=$('cty-wbub');if(!u||!WK.g)return;
+  if(E.t>(WK.bubShow||0)){u.classList.remove('in');return;}
+  const v=new THREE.Vector3(WK.x,.62,WK.z).project(E.camera),r=E.renderer.domElement.getBoundingClientRect(),pr=u.parentNode.getBoundingClientRect();
+  u.style.left=((v.x*.5+.5)*r.width+r.left-pr.left)+'px';u.style.top=((-v.y*.5+.5)*r.height+r.top-pr.top)+'px';
+}
+function walkFrame(dt){
+  if(!WK.on||!WK.g)return;
+  if(document.body.dataset.screen!=='city'){walkStop();return;}
+  const typing=/input|textarea|select/i.test((document.activeElement&&document.activeElement.tagName)||'');
+  const h=k=>!typing&&KEYS.has(k)?1:0;
+  let f=Math.max(h('z'),h('w'),h('arrowup'))-Math.max(h('s'),h('arrowdown'))-WK.jy,r=Math.max(h('d'),h('arrowright'))-Math.max(h('q'),h('arrowleft'))+WK.jx;
+  const l=Math.hypot(f,r);if(l>1){f/=l;r/=l;}
+  CAM.yaw+=(h('e')-h('a'))*dt*1.7;
+  const fx=-Math.sin(CAM.yaw),fz=-Math.cos(CAM.yaw),rx=Math.cos(CAM.yaw),rz=-Math.sin(CAM.yaw);
+  const mx=fx*f+rx*r,mz=fz*f+rz*r,mov=Math.hypot(mx,mz)>.05;
+  const sp=(KEYS.has('shift')?2.1:1.15)*Math.min(1,Math.hypot(mx,mz));
+  WK.v+=((mov?sp:0)-WK.v)*Math.min(1,dt*9);
+  if(mov)WK.dir=Math.atan2(mx,mz);
+  const st_=WK.v*dt;
+  if(st_>0){const nx=WK.x+Math.sin(WK.dir)*st_,nz=WK.z+Math.cos(WK.dir)*st_,pad=.12;
+    const ok=(x,z)=>wkWalkable(x+Math.sign(Math.sin(WK.dir))*pad,z)&&wkWalkable(x,z+Math.sign(Math.cos(WK.dir))*pad)&&wkWalkable(x,z);
+    if(ok(nx,nz)){WK.x=nx;WK.z=nz;}else if(ok(nx,WK.z))WK.x=nx;else if(ok(WK.x,nz))WK.z=nz;else WK.v*=.3;}
+  WK.a=angLerp(WK.a,WK.dir,Math.min(1,dt*11));
+  WK.ph+=st_*20;
+  const walkAmt=Math.min(1,WK.v/1.15);
+  WK.g.position.set(WK.x,.012+Math.abs(Math.sin(WK.ph))*.03*walkAmt,WK.z);
+  WK.g.rotation.set(0,WK.a,Math.sin(WK.ph)*.07*walkAmt);
+  CAM.x+=(WK.x-CAM.x)*Math.min(1,dt*7);CAM.z+=(WK.z-CAM.z)*Math.min(1,dt*7);clampCam();applyCam();
+  if(E.t-WK.nearT>.25){WK.nearT=E.t;WK.near=wkNear();const g=$('cty-walk-go'),gl=$('cty-walk-gol'),nt=$('cty-walk-near');
+    if(g){g.hidden=!WK.near;if(gl&&WK.near)gl.textContent=WK.near.l;}
+    if(nt)nt.textContent=WK.near?'Entrée pour entrer · Échap pour arrêter':'Z Q S D ou flèches · Maj pour courir · A / E pour tourner';}
+  /* habitants croisés : un mot de temps en temps quand on marche dans un quartier habité */
+  if(walkAmt>.3&&E.t>WK.bubT&&ST.pop>10){WK.bubT=E.t+9+Math.random()*9;
+    const P=P_(),hasCab=[...SV.values()].some(s=>s.t==='kine'),pool=WK_LINES.concat([hasCab?P.thYes:P.thNo]);
+    if(S.rev)pool.push('Toute la ville révise cette semaine !','La bibliothèque est ouverte toute la nuit !');
+    wkBubble('Un habitant : « '+rpick(pool)+' »');}
+  wkBubblePos();
+}
 function extFrame(dt,sp){
   humBegin();   /* v12 : habitants animés (tous les systèmes y déposent leurs personnes pendant l'image) */
   myHouseFrame();   /* 13 nov. 2026 : Ma maison */
@@ -4395,7 +4542,7 @@ function extFrame(dt,sp){
   if(E.t-(E.wxT||0)>2){E.wxT=E.t;if(!VISIT)wxDay();}
   stepWeather(dt);stepFollow(dt);stepCrisisFx(dt);stepTornado(dt);v15Frame(dt,run);
   if(E.t-(E.lblT||0)>.15){E.lblT=E.t;distLabels(false);}
-  sndFrame(dt);humEnd();
+  walkFrame(dt);sndFrame(dt);humEnd();
 }
 
 // =========================================================
@@ -4473,7 +4620,10 @@ function patientSpawn(fu){   // fu = patient qui revient (consultation de suivi,
   // suivi : un cas compatible avec le patient (même espèce, enfant ou adulte…), en priorité un cas raté avant
   const fit=x=>{const c=PC[x];if(!c||!fu)return !!c;if(vet)return (c.sp||'chien')===(fu.pet?fu.pet.sp:'chien');return !!(c.baby||c.kid)===!!fu.baby&&(!c.f||fu.f)&&(!c.m||!fu.f)&&x!==fu.k;};
   if(fu){const miss=(Array.isArray(S.patMiss)?S.patMiss:[]).filter(fit);pool=miss.length?miss:pool.filter(fit);if(!pool.length)pool=PC.map((_,k)=>k).filter(fit);if(!pool.length)return;}
-  const k=rpick(pool),c=PC[k],age=c.age[0]+((Math.random()*(c.age[1]-c.age[0]+1))|0);
+  const k=rpick(pool);let c=PC[k];
+  /* v85 : hors santé, les clients posent souvent une question des cours de l'étudiant (vraie révision) */
+  const cc=(!PROF_SANTE.has(S.prof||'kine')&&((fu&&fu.own)||(!fu&&Math.random()<.6)))?ownCase():null;if(cc)c=cc;
+  const age=c.age[0]+((Math.random()*(c.age[1]-c.age[0]+1))|0);
   let name,first,f,pet=null,owner='';
   if(vet){const A=ANI[c.sp]||ANI.chien;f=c.sex?c.sex==='f':Math.random()<.5;first=rpick(f?A.F:A.M);
     owner=`${rpick(Math.random()<.5?FIRST_F:FIRST_M)} ${rpick(LAST)}`;
@@ -4481,14 +4631,23 @@ function patientSpawn(fu){   // fu = patient qui revient (consultation de suivi,
   else{f=c.f||(!c.baby&&!c.m&&Math.random()<.5);first=rpick(f?FIRST_F:FIRST_M);const last=rpick(LAST);
     name=c.baby?`${first} ${last}, ${age} mois`:`${first} ${last}, ${age} ans`;}
   if(fu){name=fu.name;first=fu.first;f=fu.f;pet=fu.pet;owner=fu.owner;}
-  S.pat={k,name,first,f,i:fu?fu.i:rpick(L),day:S.day,order:shuffled(4),baby:fu?!!fu.baby:!!(c.baby||c.kid),prof:S.prof||'kine',pet,owner,fu:!!fu};
+  /* v85 : suivi sur plusieurs séances (2 ou 3) : état hp 0-100 qui monte ou baisse selon tes réponses */
+  const ser=fu&&fu.ser?fu.ser:fu?{n:2,tot:2,hp:60,hist:[1]}:{n:1,tot:Math.random()<.35?2:3,hp:50,hist:[]};
+  S.pat={k,name,first,f,i:fu?fu.i:rpick(L),day:S.day,order:shuffled(c.a.length),baby:fu?!!fu.baby:!!(c.baby||c.kid),prof:S.prof||'kine',pet,owner,fu:!!fu,ser,cc};
   S.patSeen.push(k);if(S.patSeen.length>18)S.patSeen.shift();
   D.icons=true;
   const x=S.pat.i%N,z=(S.pat.i/N)|0;
-  if(fu)toast(`<b>${esc(first)} revient</b> pour une consultation de suivi${vet?` (chez ${esc(owner)})`:''} · prime ×1,75`,P.patIc,{label:'Soigner',fn:()=>{flyTo(x+.5,z+.5);openPanel('patient');}});
+  if(fu)toast(`<b>${esc(first)} revient</b> : séance ${ser.n}/${ser.tot}${vet?` (chez ${esc(owner)})`:''}`,P.patIc,{label:'Soigner',fn:()=>{flyTo(x+.5,z+.5);openPanel('patient');}});
   else toast(vet?`<b>Un animal t’attend</b> : ${esc(name)} (chez ${esc(owner)})`:`<b>Un patient t’attend</b> : ${esc(name)}${S.pat.baby?' (amené par ses parents)':''}`,P.patIc,{label:'Soigner',fn:()=>{flyTo(x+.5,z+.5);openPanel('patient');}});
   sndPlay('ding');
 }
+function ownCase(){
+  const base=quizBase();if(!base.length)return null;
+  const q=base[(Math.random()*base.length)|0],ci=q.correct|0,co=courseMap().get(String(q.courseId));
+  const wrong=q.answers.map((_,j)=>j).filter(j=>j!==ci&&String(q.answers[j]||'').trim()).sort(()=>Math.random()-.5).slice(0,3);
+  return {own:true,qid:q.id,age:[18,45],p:`a une question sur « ${String(co&&co.name||'ton cours').slice(0,60)} ».`,q:String(q.question),a:[q.answers[ci]].concat(wrong.map(j=>q.answers[j])).map(String),ex:String(q.expl||'')};
+}
+function serState(hp){return hp>=75?['Va beaucoup mieux','#16a34a']:hp>=50?['S’améliore','#65a30d']:hp>=30?['Stable, encore fragile','#d97706']:['Ne va pas bien','#dc2626'];}
 function patientDay(){
   if(VISIT)return;
   if(S.pat)return;   // le patient attend sans limite : rien n'est perdu
@@ -4499,42 +4658,61 @@ function patientDay(){
 }
 let PATRES=null;   // résultat affiché après la réponse
 function patientAnswer(j){
-  const p=S.pat;if(!p)return;const c=patCases()[p.k];if(!c)return;const P=P_(),vet=!!p.pet;
-  const ok=j===0,home=p.i,inCab=COV.health[home]>0,reward=ok?Math.round((p.fu?700:400)*(inCab?1.5:1)):0;
+  const p=S.pat;if(!p)return;const c=p.cc||patCases()[p.k];if(!c)return;const P=P_(),vet=!!p.pet;
+  const ok=j===0,home=p.i,inCab=COV.health[home]>0;
+  if(p.cc&&p.cc.qid!=null){_quietGrant=true;try{if(typeof recordAnswer==='function'){recordAnswer(p.cc.qid,ok,5);if(typeof saveAll==='function')saveAll();}}catch(e){console.warn('[city] recordAnswer',e);}syncGrants();_quietGrant=false;}
+  /* v85 : suivi sur plusieurs séances */
+  const ser=Object.assign({n:1,tot:1,hp:50,hist:[]},p.ser||{});ser.hist=(ser.hist||[]).concat([ok?1:0]);ser.hp=clamp(ser.hp+(ok?28:-22),0,100);
+  const last=ser.n>=ser.tot||ser.hp<=0,healed=last&&ser.hp>=60;
+  const reward=(ok?Math.round(300*(inCab?1.5:1)):0)+(healed?Math.round(600*(inCab?1.5:1)):0);
   S.stat.patTot=(S.stat.patTot|0)+1;
-  if(ok){S.stat.patOk=(S.stat.patOk|0)+1;S.money+=reward;floatMoney(reward);
-    S.lmods.push({k:'hap',v:6,x:home%N+.5,z:((home/N)|0)+.5,r:4,u:S.day+90});D.lv=true;
-    news(P.patIc,vet?`${p.first} est soigné${p.f?'e':''} !`:`${p.first} est guéri${p.f?'e':''} !`,vet?`${p.owner} te remercie : tout le quartier est rassuré (bonheur +6 pendant 3 mois).`:'Grâce à ta prise en charge, tout le quartier va mieux (bonheur +6 pendant 3 mois).');
-    sndPlay('coin');}
-  else news(P.patIc,`${p.first} reviendra`,'La prise en charge n’était pas la bonne. Révise ce point : un autre cas viendra bientôt.');
-  PATRES={ok,c,order:p.order,j,reward,name:p.name,inCab,baby:p.baby,owner:p.owner,vet};
+  if(ok){S.stat.patOk=(S.stat.patOk|0)+1;}
+  if(reward){S.money+=reward;floatMoney(reward);sndPlay('coin');}
+  const who=vet?`${p.first}`:p.first,e_=p.f?'e':'';
+  if(healed){S.stat.patHeal=(S.stat.patHeal|0)+1;S.lmods.push({k:'hap',v:8,x:home%N+.5,z:((home/N)|0)+.5,r:4,u:S.day+120});D.lv=true;
+    news(P.patIc,vet?`${who} est soigné${e_} !`:`${who} est guéri${e_} après ${ser.tot} séances !`,`${vet?p.owner+' te remercie':'Merci pour ce suivi'} : tout le quartier est rassuré (bonheur +8 pendant 4 mois).`);}
+  else if(last)news(P.patIc,`${who} n’est pas guéri${e_}`,ser.hp<=0?'Son état s’est aggravé : il est parti voir un confrère. Révise ce point, un autre cas viendra.':'Son état ne s’est pas assez amélioré à la fin du suivi. Révise ce point : un autre cas viendra bientôt.');
+  else news(P.patIc,ok?`${who} va mieux`:`${who} ne va pas mieux`,ok?`Bonne séance : il revient dans quelques jours pour la séance ${ser.n+1}/${ser.tot}.`:`Il revient dans quelques jours : la séance ${ser.n+1}/${ser.tot} peut encore tout changer.`);
+  PATRES={ok,c,order:p.order,j,reward,name:p.name,inCab,baby:p.baby,owner:p.owner,vet,ser,last,healed,first:p.first};
   if(!Array.isArray(S.patMiss))S.patMiss=[];
-  if(ok){S.patMiss=S.patMiss.filter(x=>x!==p.k);if(!p.fu)S.patFU={i:p.i,name:p.name,first:p.first,f:p.f,pet:p.pet,owner:p.owner,baby:p.baby,k:p.k,prof:S.prof||'kine',due:S.day+40+((Math.random()*30)|0)};}
-  else if(!S.patMiss.includes(p.k)){S.patMiss.push(p.k);if(S.patMiss.length>12)S.patMiss.shift();}
+  if(ok)S.patMiss=S.patMiss.filter(x=>x!==p.k);else if(!p.cc&&!S.patMiss.includes(p.k)){S.patMiss.push(p.k);if(S.patMiss.length>12)S.patMiss.shift();}
+  S.patFU=last?null:{i:p.i,name:p.name,first:p.first,f:p.f,pet:p.pet,owner:p.owner,baby:p.baby,k:p.k,prof:S.prof||'kine',own:!!p.cc,due:S.day+6+((Math.random()*8)|0),ser:{n:ser.n+1,tot:ser.tot,hp:ser.hp,hist:ser.hist}};
   S.pat=null;S.patNext=S.day+(ok?30:15)+((Math.random()*20)|0);D.icons=true;
   checkAch();save();renderPanel();refreshHUD(true);
+}
+function serHTML(ser,after){
+  if(!ser||ser.tot<2)return '';
+  const [lb,col]=serState(ser.hp),dots=[];for(let k=0;k<ser.tot;k++){const h=ser.hist&&ser.hist[k];dots.push(`<i class="${h===1?'ok':h===0?'ko':k===ser.hist.length?'now':''}"></i>`);}
+  return `<div class="cty-ser"><div class="cty-ser-h"><b>Suivi : séance ${Math.min(ser.n,ser.tot)} / ${ser.tot}</b><span class="cty-ser-d">${dots.join('')}</span></div>
+    <div class="cty-ser-bar"><i style="width:${ser.hp}%;background:${col}"></i></div><small style="color:${col}">${after?'Après cette séance : ':'État : '}${lb}</small></div>`;
 }
 function panelPatient(){
   const L='ABCD',P=P_();
   if(PATRES){const r=PATRES;
     const ans=r.order.map((j,k)=>`<button class="cty-qa${j===0?' ok':j===r.j?' ko':''}" disabled><b>${L[k]}</b><span>${esc(r.c.a[j])}</span></button>`).join('');
+    const end=r.ser&&r.ser.tot>1?(r.healed?`<b>${esc(r.first)} est guéri${r.vet?'':''} après ${r.ser.tot} séances !</b>`:r.last?`<b>Fin du suivi : pas guéri.</b>`:`<b>Prochaine séance (${r.ser.n+1}/${r.ser.tot}) dans quelques jours.</b>`):'';
     return head(P.patIc,P.cab,esc(r.name),'#e6397a')
       +`<div class="cty-case"><p>${esc(r.c.p)}</p><b>${esc(r.c.q)}</b></div><div class="cty-qas">${ans}</div>`
-      +`<div class="cty-qfb ${r.ok?'ok':'ko'}"><b>${r.ok?P.healed:'Pas tout à fait…'}</b> ${r.ok?`+${money(r.reward)}${r.inCab?` (soigné près d’${P.une} : ×1,5)`:''} et le quartier est plus heureux.`:`${r.vet?'L’animal':'Le patient'} reviendra plus tard, sans pénalité.`}<small>${esc(r.c.ex)}</small></div>`
+      +`<div class="cty-qfb ${r.ok?'ok':'ko'}"><b>${r.ok?(r.healed||!r.ser||r.ser.tot<2?P.healed:'Bonne séance !'):'Pas tout à fait…'}</b> ${r.reward?`+${money(r.reward)}${r.inCab?` (près d’${P.une} : ×1,5)`:''}. `:''}${end}${r.c.ex?`<small>${esc(r.c.ex)}</small>`:''}</div>`
+      +serHTML(r.ser,true)
       +`<button class="cty-btn" data-act="patok"><span class="ms">check</span>Continuer</button>`;}
   const p=S.pat;
-  if(!p){const d=S.patNext!=null?Math.max(0,S.patNext-S.day):null;
+  if(!p){const d=S.patNext!=null?Math.max(0,S.patNext-S.day):null,F=S.patFU;
     return head(P.patIc,P.cab,`Aucun ${P.pat} en attente`,'#e6397a')
-      +`<p class="cty-p">${P.intro}</p>`
-      +(ST.pop<20||S.tut<3?`<p class="cty-p small">Les premiers ${P.pats} arrivent quand ta ville a quelques habitants.</p>`:d!=null?`<p class="cty-p small">Prochain ${P.pat} dans ${d} jour${d>1?'s':''} environ (le temps de la ville).</p>`:'')
-      +rows([['healing',P.healedN,fmt(S.stat.patOk|0)],['groups','Consultations',fmt(S.stat.patTot|0)]]);}
-  const c=patCases()[p.k],x=p.i%N,z=(p.i/N)|0;
+      +`<p class="cty-p">${P.intro} Chaque ${P.pat} est suivi sur 2 ou 3 séances : il guérit si tu réponds bien.</p>`
+      +(F?`<p class="cty-p small"><b>${esc(F.first)}</b> revient pour sa séance ${F.ser?F.ser.n:2}/${F.ser?F.ser.tot:2} dans ${Math.max(0,F.due-S.day)} jour${F.due-S.day>1?'s':''}.</p>`:'')
+      +(ST.pop<20||S.tut<3?`<p class="cty-p small">Les premiers ${P.pats} arrivent quand ta ville a quelques habitants.</p>`:d!=null&&!F?`<p class="cty-p small">Prochain ${P.pat} dans ${d} jour${d>1?'s':''} environ (le temps de la ville).</p>`:'')
+      +rows([['healing',P.healedN,fmt(S.stat.patHeal|0)],['task_alt','Séances réussies',fmt(S.stat.patOk|0)],['groups','Séances',fmt(S.stat.patTot|0)]]);}
+  const c=p.cc||patCases()[p.k],x=p.i%N,z=(p.i/N)|0;
   if(!c){S.pat=null;return panelPatient();}
+  const ser=p.ser,prev=ser&&ser.hist&&ser.hist.length?ser.hist[ser.hist.length-1]:null;
+  const evo=prev===1?'Depuis la dernière séance, ça va mieux. ':prev===0?'Depuis la dernière séance, ça ne s’est pas amélioré. ':'';
   const ans=p.order.map((j,k)=>`<button class="cty-qa" data-act="pata" data-j="${j}"><b>${L[k]}</b><span>${esc(c.a[j])}</span></button>`).join('');
-  return head(P.patIc,p.fu?'Consultation de suivi':p.pet?'Un animal t’attend':P.wait,esc(p.name)+(p.pet?` · chez ${esc(p.owner)}`:p.baby?' · amené par ses parents':''),'#e6397a')
-    +`<div class="cty-case"><p>${p.fu?'<span class="cty-fu">Suivi</span> ':''}<b>${esc(p.first)}</b> ${p.fu?'revient te voir : ':''}${esc(c.p)}</p><b>${esc(c.q)}</b></div><div class="cty-qas">${ans}</div>`
+  return head(P.patIc,ser&&ser.n>1?`Séance ${ser.n} / ${ser.tot}`:p.pet?'Un animal t’attend':P.wait,esc(p.name)+(p.pet?` · chez ${esc(p.owner)}`:p.baby?' · amené par ses parents':''),'#e6397a')
+    +serHTML(ser,false)
+    +`<div class="cty-case"><p>${ser&&ser.n>1?'<span class="cty-fu">Suivi</span> ':''}<b>${esc(p.first)}</b> ${ser&&ser.n>1?'revient te voir. '+evo:''}${esc(c.p)}</p><b>${esc(c.q)}</b>${c.own?'<small class="cty-own">Question tirée de tes cours : ta réponse compte comme une vraie révision.</small>':''}</div><div class="cty-qas">${ans}</div>`
     +`<button class="cty-qprev" data-act="goto" data-x="${x+.5}" data-z="${z+.5}"><span class="ms">home_pin</span>Voir sa maison</button>`
-    +`<p class="cty-p small">Bonne réponse : +${p.fu?700:400} § (×1,5 si ${P.une} couvre sa maison) et un quartier plus heureux. Mauvaise réponse : aucune pénalité.</p>`;
+    +`<p class="cty-p small">Bonne réponse : +300 § par séance (×1,5 si ${P.une} couvre sa maison) et +600 § s’il guérit à la fin du suivi. Mauvaise réponse : son état baisse.</p>`;
 }
 
 // =========================================================
@@ -4625,6 +4803,12 @@ function festCheck(){
   for(const e of ex||[]){if(!e||!e.date)continue;const d=new Date(e.date).setHours(0,0,0,0);if(isNaN(d))continue;const n=Math.round((d-t0)/864e5);
     if(n>=0&&n<=14&&(!best||n<best.days))best={id:String(e.id||e.name),name:e.name||'Partiel',days:n,folders:(e.folderIds||[]).map(String)};}
   const was=S.fest&&S.fest.id;S.fest=best;
+  /* v85 : la semaine avant l'examen, toute la ville passe en « mode révision » : bibliothèque et faculté illuminées,
+     étudiants dans les rues (même le soir), primes du Défi du maire doublées sur TOUTES les questions */
+  const wasRev=!!S.rev;S.rev=best&&best.days<=7?{id:best.id,name:best.name,days:best.days}:null;
+  if(S.rev&&S.revSeen!==best.id){S.revSeen=best.id;
+    news('local_library',`Mode révision : « ${best.name} » ${best.days?`dans ${best.days} jour${best.days>1?'s':''}`:'aujourd’hui'} !`,'Toute la ville révise avec toi : bibliothèque illuminée jour et nuit, étudiants dans les rues et primes du Défi du maire doublées sur toutes tes questions.','good');}
+  if(wasRev!==!!S.rev&&E)D.lights=true;
   if(best&&S.festSeen!==best.id){S.festSeen=best.id;S.stat.fest=(S.stat.fest|0)+1;
     news('festival',`Le festival des partiels commence !`,`« ${best.name} » approche (${best.days?`dans ${best.days} jour${best.days>1?'s':''}`:'aujourd’hui'}). Les primes du Défi du maire sont doublées sur ses matières.`,'good');
     setTimeout(()=>fireworks(3,`Festival des partiels : primes ×2 pour « ${best.name} »`),900);}
@@ -4636,12 +4820,14 @@ function festFolderNames(){
   return S.fest.folders.map(id=>{const f=fl.find(x=>String(x.id)===id);return f?f.name:null;}).filter(Boolean).join(', ')||'ses matières';
 }
 function festMul(q){
+  if(S.rev)return 2;   /* v85 : mode révision = ×2 partout */
   if(!S.fest)return 1;if(!S.fest.folders.length)return 2;
   const co=courseMap().get(String(q.courseId));return co&&S.fest.folders.includes(String(co.folderId))?2:1;
 }
 function quizExtBanner(){
   let h='';
-  if(S.fest)h+=`<div class="cty-qfest"><span class="ms">festival</span><span><b>Festival des partiels</b> · « ${esc(S.fest.name)} » ${S.fest.days?`dans ${S.fest.days} j`:'aujourd’hui'} : primes ×2 sur ${esc(festFolderNames())}</span>${S.fest.folders.length&&quizFilter().f!==S.fest.folders[0]?`<button data-act="festgo">Réviser ce partiel</button>`:''}</div>`;
+  if(S.rev)h+=`<div class="cty-qfest cty-qrev"><span class="ms">local_library</span><span><b>Mode révision</b> · « ${esc(S.rev.name)} » ${S.rev.days?`dans ${S.rev.days} j`:'aujourd’hui'} : primes ×2 sur toutes tes questions</span></div>`;
+  else if(S.fest)h+=`<div class="cty-qfest"><span class="ms">festival</span><span><b>Festival des partiels</b> · « ${esc(S.fest.name)} » ${S.fest.days?`dans ${S.fest.days} j`:'aujourd’hui'} : primes ×2 sur ${esc(festFolderNames())}</span>${S.fest.folders.length&&quizFilter().f!==S.fest.folders[0]?`<button data-act="festgo">Réviser ce partiel</button>`:''}</div>`;
   if(S.crisis){const n=S.crisis.n|0;h+=`<div class="cty-qcrisis"><span class="ms">coronavirus</span><span><b>${esc(S.crisis.name)}</b> · encore ${5-n} bonne${5-n>1?'s':''} réponse${5-n>1?'s':''} d’affilée pour l’arrêter</span><span class="cty-dots5">${[0,1,2,3,4].map(k=>`<i class="${k<n?'on':''}"></i>`).join('')}</span></div>`;}
   return h;
 }
@@ -5406,7 +5592,7 @@ let _hudCache='';
 function extHUD(force){
   if(!ROOT||!S)return;
   const pb=$('cty-pbadge');if(pb){pb.textContent=S.pat&&!VISIT?'1':'';pb.style.display=S.pat&&!VISIT?'':'none';}
-  const pbtn=ROOT.querySelector('.cty-patb');if(pbtn){const P=P_(),kk=P.patIc+P.side;if(pbtn.dataset.k!==kk){pbtn.dataset.k=kk;const ic=pbtn.querySelector('.ms'),lb=pbtn.querySelector('.lbl');if(ic)ic.textContent=P.patIc;if(lb)lb.textContent=P.side;pbtn.title=`${P.cab} : des ${P.pats} viennent consulter avec un cas clinique`;}}
+  const pbtn=ROOT.querySelector('.cty-patb');if(pbtn){const P=P_(),kk=P.patIc+P.side;if(pbtn.dataset.k!==kk){pbtn.dataset.k=kk;const ic=pbtn.querySelector('.ms'),lb=pbtn.querySelector('.lbl');if(ic)ic.textContent=P.patIc;if(lb)lb.textContent=P.side;pbtn.title=`${P.cab} : ${P.help}`;}}
   const de=$('cty-date');if(de){const t=`Rythme du temps : ${TSP_N[clamp(S.set.tsp??2,0,TSP.length-1)]} (Réglages)${isRush()?' · heure de pointe':''}`;if(de.title!==t)de.title=t;}
   spSync();examTick();
   const jb=$('cty-jbadge');if(jb)jb.style.display=!VISIT&&S.news.length>(S.newsSeen|0)?'':'none';
@@ -5417,7 +5603,8 @@ function extHUD(force){
   if(VISIT)b+=`<div class="cty-bn visit"><span class="ms">travel_explore</span><span>Tu visites <b>${esc(VISIT.name)}</b>, la ville de ${esc(VISIT.owner)} <span class="cty-live">● en direct</span></span><button data-act="flike">${VISIT.liked?'❤️ Aimée':'🤍 J’aime'}</button><button data-act="gift">🎁 Offrir</button><button data-act="fback">Retour à ma ville</button></div>`;
   else{
     if(S.show){const D_=SHOWS[S.show.k];b+=`<div class="cty-bn show"><span class="ms">${D_.ic}</span><span><b>${D_.n}</b> · ${S.show.end-S.day>1?`encore ${S.show.end-S.day} jours`:'dernier jour'}</span><button data-act="showgo">Voir</button></div>`;}
-    if(S.fest)b+=`<div class="cty-bn fest"><span class="ms">festival</span><span><b>Festival des partiels</b> · « ${esc(S.fest.name)} » ${S.fest.days?`dans ${S.fest.days} j`:'aujourd’hui'} · primes ×2</span><button data-act="panel" data-p="quiz">Réviser</button></div>`;
+    if(S.rev)b+=`<div class="cty-bn fest"><span class="ms">local_library</span><span><b>Mode révision</b> · « ${esc(S.rev.name)} » ${S.rev.days?`dans ${S.rev.days} j`:'aujourd’hui'} · toute la ville révise, primes ×2 partout</span><button data-act="panel" data-p="quiz">Réviser</button></div>`;
+    else if(S.fest)b+=`<div class="cty-bn fest"><span class="ms">festival</span><span><b>Festival des partiels</b> · « ${esc(S.fest.name)} » ${S.fest.days?`dans ${S.fest.days} j`:'aujourd’hui'} · primes ×2</span><button data-act="panel" data-p="quiz">Réviser</button></div>`;
     b+=v6Banners();
     if(S.crisis)b+=`<div class="cty-bn crisis"><span class="ms">coronavirus</span><span><b>${esc(S.crisis.name)}</b> · ${S.crisis.n|0} / 5 bonnes réponses d’affilée</span><button data-act="panel" data-p="quiz">Agir</button></div>`;
   }
@@ -5430,6 +5617,7 @@ function extClick(a,el,e){
   const k=el.dataset.k;
   if(a==='pata')patientAnswer(+el.dataset.j);
   else if(a==='patok'){PATRES=null;renderPanel();}
+  else if(a==='walk'){WK.on?walkStop():walkStart();}
   else if(a==='rpa')repAnswer(+el.dataset.j);
   else if(a==='festgo'){if(S.fest&&S.fest.folders.length){const F=quizFilter();F.f=S.fest.folders[0];F.t='';qzPushHist();QZV=null;QZ=null;quizNext();save();renderPanel();}}
   else if(a==='follow')followStart(+k);
@@ -8388,6 +8576,7 @@ function roundaboutIsland(i){
 // ── Caméra au clavier : vitesse qui monte et descend en douceur ──
 const CAM_KEYS={z:1,w:1,arrowup:1,s:1,arrowdown:1,q:1,arrowleft:1,d:1,arrowright:1,e:1,a:1},KEYS=new Set(),KV={f:0,r:0,y:0};
 function stepKeys(dt){
+  if(WK.on)return;   /* v85 : en promenade, les touches font marcher le personnage (walkFrame) */
   if(!KEYS.size&&Math.abs(KV.f)+Math.abs(KV.r)+Math.abs(KV.y)<.002){KV.f=KV.r=KV.y=0;return;}
   if(document.body.dataset.screen!=='city'||/input|textarea|select/i.test((document.activeElement&&document.activeElement.tagName)||''))KEYS.clear();
   const h=k=>KEYS.has(k)?1:0,tf=Math.max(h('z'),h('w'),h('arrowup'))-Math.max(h('s'),h('arrowdown')),tr=Math.max(h('d'),h('arrowright'))-Math.max(h('q'),h('arrowleft')),ty=h('e')-h('a');
@@ -8423,6 +8612,7 @@ function lmBuild(PL){
   for(let k=0;k<PL.length;k+=2)lmSplat(PL[k],PL[k+1],.47,1.15,.8,.46,.8);                                            // lampadaires : lumière chaude
   if(E&&E.xmasL)for(let k=0;k<E.xmasL.length;k+=2)lmSplat(E.xmasL[k],E.xmasL[k+1],.34,.55,.38,.2,.75);   /* v15 : guirlandes et sapin de Noël */
   for(let i=0;i<NN;i++)if(zone[i]===ZC&&lvl[i]&&pw[i]&&st[i]!==RUIN)lmSplat(i%N+.5,((i/N)|0)+.5,.36,.32,.27,.2,.55);   // vitrines des commerces
+  if(S&&S.rev)for(const s of SV.values())if(s.t==='biblio'||s.t==='fac')lmSplat(s.x+s.w/2,s.z+s.d/2,1.5,1.5,1.15,.55,1.1);   /* v85 : mode révision, bibliothèque et faculté éclairées */
   for(const s of SV.values()){const b=BT[s.t];if(!b||!(b.cat==='monuments'||LIT_T.has(s.t))||svcOK.get(s.id)===false)continue;   // monuments et grands bâtiments mis en lumière
     const top=Math.min(11.5,(TOP[s.z*N+s.x]||1)+.3),cool=s.t==='tower'||s.t==='chu'||s.t==='stadium';lmRect(s.x+.08,s.z+.08,s.x+s.w-.08,s.z+s.d-.08,cool?.42:.6,cool?.5:.52,cool?.6:.42,top);}
   for(let o=0;o<LM_D.length;o+=4){LM_D[o]=Math.min(255,LM_F[o]*170)|0;LM_D[o+1]=Math.min(255,LM_F[o+1]*170)|0;LM_D[o+2]=Math.min(255,LM_F[o+2]*170)|0;LM_D[o+3]=Math.min(255,LM_F[o+3]/12*255)|0;}
@@ -8481,7 +8671,7 @@ function strollerMesh(){GB=new Map();TX.x=0;TX.z=0;TX.k=0;
   const g=toGeo(GB.get('plain'));GB=null;const M=new THREE.InstancedMesh(g,new THREE.MeshLambertMaterial({vertexColors:true}),60);M.count=0;M.frustumCulled=false;M.setColorAt(0,new THREE.Color('#fff'));E.gC.add(M);return M;}
 function walkSpawn(F){
   const vet=S.prof==='veto',h=hourNow(),we=weekend(),night=h<6||h>=22.5;
-  const want=VISIT?0:Math.round(Math.min(64,ST.pop/45*(vet?1.2:1))*(night?.2:1));
+  const rv=!!(S.rev&&!VISIT),want=VISIT?0:Math.round(Math.min(rv?90:64,ST.pop/45*(vet?1.2:1)*(rv?1.5:1))*(night?(rv?.5:.2):1));   /* v85 : mode révision = plus d'étudiants */
   if(F.walk.length>want+6)for(const w of F.walk){if(F.walk.length-F.walk.filter(q=>q.done).length<=want)break;if(w.st==='inside'||w.st==='leave')w.done=true;}if(F.walk.length>=want)return;   /* v15 : on ne fait plus disparaître les piétons en pleine rue */
   const L=residentialLots();if(!L.length)return;for(let k=0;k<4&&F.walk.length<want;k++){const w=walkNew(L,h,we,vet);if(w)F.walk.push(w);}
 }
@@ -8942,7 +9132,7 @@ function walkNew(L,h,we,vet){
   if(!A||!B||(A.r===B.r&&!B.turn))return null;
   const pts=pedTrip(A,B);if(!pts||pts.length<3)return null;
   const seed=(Math.random()*1e9)|0,w={pts,k:0,u:0,A,B,back,ph:Math.random()*6,kind:jog?'jog':fam?'fam':'walk',leg:'out',st:'walk',wait:0,in:0,loop:B.loop?B.loop.slice():null};
-  w.L=jog?humLook(seed,{v:5,kid:false}):humLook(seed);w.sp=jog?.4+Math.random()*.1:fam?.11:.15+Math.random()*.07;
+  w.L=jog?humLook(seed,{v:5,kid:false}):S.rev&&Math.random()<.55?humLook(seed,{v:3,kid:false}):humLook(seed);   /* v85 : étudiants avec sac à dos */w.sp=jog?.4+Math.random()*.1:fam?.11:.15+Math.random()*.07;
   if(fam){w.L2=humLook(seed+1,{kid:false});w.L3=humLook(seed+2,{kid:true});w.sc=HSTROL[(seed>>>3)%HSTROL.length];}
   w.dog=!jog&&!fam&&Math.random()<(vet?.35:.22);w.dc=DOG_C[(Math.random()*5)|0];
   if(A.door>=0){doorOpen(A.door,1.3);w.st='leave';w.wait=.5;}   // la porte s'ouvre, puis il sort
@@ -9675,6 +9865,179 @@ const PROF={
     crises:[['Vague de caries','dentistry'],['Épidémie de rages de dents','sentiment_very_dissatisfied'],['Vague de gingivites','dentistry'],['Caries d’après les fêtes','cake'],['Épidémie d’aphtes','sick']],
     ach:['Dentiste de quartier','Dentiste de référence'],achV:'Soigne'}
 };
+/* v85 (21 nov. 2026) : un métier pour chaque filière de City Work (kp_prof). mkProf complète les textes communs. */
+function mkProf(o){
+  const p=Object.assign({ach:['De quartier','De référence'],achV:'Aide'},o);
+  p.une=p.une||('un '+p.bld.toLowerCase());
+  p.tip=p.tip||`Tes habitants ont besoin ${p.besoin} : construis ${p.une} !`;
+  p.noCab=p.noCab||`« Il n’y a aucun ${p.bld.toLowerCase()} près de chez moi. »`;
+  p.many=p.many||`« Avec tous ces ${p.pros}, le quartier ne manque plus de rien. »`;
+  p.thNo=p.thNo||`Si seulement il y avait ${p.une} près de chez moi.`;
+  p.thYes=p.thYes||`J’ai trouvé ${p.une} juste à côté, c’est pratique.`;
+  p.wait=p.wait||`Un ${p.pat} t’attend`;p.side=p.side||(p.pats[0].toUpperCase()+p.pats.slice(1));
+  p.intro=p.intro||`Des habitants viennent te voir de temps en temps avec une question de ${p.studies}. Réponds juste pour les aider : la ville gagne du bonheur et des §. Si tu as des QCM dans tes cours, ils te poseront aussi tes propres questions.`;
+  p.help=p.help||`des habitants viennent te voir avec une question de ${p.studies}`;
+  p.startup=p.startup||`De jeunes ${p.pros} veulent lancer une application dans ta ville.`;
+  p.congres=p.congres||[`Congrès national des ${p.pros}`,`Des milliers de ${p.pros} découvrent ta ville.`];
+  p.marathon=p.marathon||[`Course des ${p.pros}`,`Les étudiants en ${p.studies} organisent une course solidaire dans tes rues.`,'Une ville en pleine forme !'];
+  return p;
+}
+Object.assign(PROF,{
+  inf:mkProf({n:'Infirmier',full:'Infirmier·e',ic:'vaccines',d:'Cabinets infirmiers : soins, pansements, prises de sang et suivi à domicile.',pros:'infirmiers',studies:'soins infirmiers',besoin:'de soins à domicile',
+    bld:'Cabinet infirmier',bldD:'Soins et suivi à domicile pour le quartier : plus de bonheur.',bldIc:'vaccines',
+    statue:'Statue de Florence Nightingale',statueD:'Hommage aux infirmiers de la ville.',fac:'Institut de soins infirmiers',facD:'Forme les infirmiers de demain : éducation sur un grand rayon.',
+    centre:'Centre de soins',centreD:'Soins, vaccinations et éducation à la santé.',centreIc:'medical_services',pol:'Soins infirmiers remboursés',polD:'La santé compte presque double dans le bonheur.',
+    city:'Soinville',pat:'patient',pats:'patients',patIc:'vaccines',cab:'Cabinet infirmier',healed:'Patient soigné !',healedN:'Patients soignés',
+    intro:'Des habitants te demandent des soins avec un cas clinique infirmier. Choisis la bonne surveillance ou le bon geste : la ville gagne du bonheur et des §.',
+    crises:[['Épidémie de grippe','coronavirus'],['Vague de gastro-entérite','sick'],['Épidémie de bronchiolite','pulmonology'],['Canicule','thermostat'],['Vague de chutes chez les seniors','elderly']],achV:'Soigne'}),
+  pharma:mkProf({n:'Pharmacien',full:'Pharmacien·ne',ic:'medication',d:'Pharmacies : conseils, interactions, ordonnances et prévention.',pros:'pharmaciens',studies:'pharmacie',besoin:'de conseils pour leurs médicaments',
+    bld:'Pharmacie',une:'une pharmacie',bldD:'Une croix verte au coin de la rue : santé et bonheur du quartier.',bldIc:'medication',
+    statue:'Statue du Mortier d’or',statueD:'Hommage aux pharmaciens de la ville.',fac:'Faculté de pharmacie',facD:'Forme les pharmaciens de demain : éducation sur un grand rayon.',
+    centre:'Laboratoire pharmaceutique',centreD:'Recherche et production de médicaments : emplois et santé.',centreIc:'science',pol:'Médicaments remboursés',polD:'La santé compte presque double dans le bonheur.',
+    city:'Pharmaville',pat:'patient',pats:'patients',patIc:'medication',cab:'Pharmacie du maire',healed:'Bon conseil !',healedN:'Patients conseillés',
+    intro:'Des habitants viennent à la pharmacie avec une question sur leurs médicaments. Donne le bon conseil : la ville gagne du bonheur et des §.',
+    crises:[['Épidémie de grippe','coronavirus'],['Pénurie de médicaments','medication'],['Vague d’allergies au pollen','local_florist'],['Épidémie de gastro-entérite','sick'],['Vague de poux à l’école','bug_report']],achV:'Conseille'}),
+  sf:mkProf({n:'Sage-femme',full:'Sage-femme',ic:'pregnant_woman',d:'Cabinets de sage-femme : grossesse, accouchement, nouveau-nés et suivi gynécologique.',pros:'sages-femmes',studies:'maïeutique',besoin:'d’une sage-femme',
+    bld:'Cabinet de sage-femme',bldD:'Suivi des grossesses et des bébés du quartier : bonheur et valeur foncière.',bldIc:'pregnant_woman',
+    statue:'Statue de la Cigogne d’or',statueD:'Hommage aux sages-femmes de la ville.',fac:'École de sages-femmes',facD:'Forme les sages-femmes de demain : éducation sur un grand rayon.',
+    centre:'Maternité',centreD:'Naissances, préparation et suivi des jeunes parents.',centreIc:'child_care',pol:'Suivi de grossesse remboursé',polD:'La santé compte presque double dans le bonheur.',
+    city:'Berceauville',pat:'patiente',pats:'patientes',patIc:'pregnant_woman',cab:'Cabinet du maire',wait:'Une patiente t’attend',healed:'Bien accompagnée !',healedN:'Patientes suivies',
+    intro:'Des futures mamans et des jeunes parents viennent te consulter avec un cas. Choisis la bonne conduite à tenir : la ville gagne du bonheur et des §.',
+    crises:[['Baby-boom','child_care'],['Épidémie de bronchiolite','pulmonology'],['Épidémie de grippe','coronavirus'],['Canicule','thermostat'],['Vague de gastro chez les bébés','sick']],achV:'Accompagne'}),
+  psy:mkProf({n:'Psychologue',full:'Psychologue',ic:'psychology',d:'Cabinets de psychologue : stress, anxiété, sommeil, mémoire et bien-être.',pros:'psychologues',studies:'psychologie',besoin:'d’écoute',
+    bld:'Cabinet de psychologue',bldD:'Une écoute pour le quartier : moins de stress, plus de bonheur.',bldIc:'psychology',
+    statue:'Statue du Divan d’or',statueD:'Hommage aux psychologues de la ville.',fac:'Faculté de psychologie',facD:'Forme les psychologues de demain : éducation sur un grand rayon.',
+    centre:'Centre médico-psychologique',centreD:'Consultations et ateliers de bien-être pour toute la ville.',centreIc:'self_improvement',pol:'Séances de psychologue remboursées',polD:'Le bien-être compte presque double dans le bonheur.',
+    city:'Psyville',pat:'patient',pats:'patients',patIc:'psychology',cab:'Cabinet du maire',healed:'Ça va mieux !',healedN:'Patients aidés',
+    intro:'Des habitants viennent te parler avec un cas de psychologie. Choisis la bonne compréhension ou la bonne approche : la ville gagne du bonheur et des §.',
+    crises:[['Vague de stress des examens','sentiment_stressed'],['Épidémie d’insomnie','bedtime'],['Déprime de l’hiver','sentiment_dissatisfied'],['Burn-out au bureau','work_off'],['Peur de l’avenir','psychology_alt']],achV:'Aide'}),
+  droit:mkProf({n:'Avocat',full:'Avocat·e',ic:'gavel',d:'Cabinets d’avocats et tribunal : contrats, litiges, droit pénal et constitutionnel.',pros:'avocats',studies:'droit',besoin:'de conseils juridiques',
+    bld:'Cabinet d’avocats',bldD:'Des conseils juridiques pour le quartier : plus de sérénité et de valeur foncière.',bldIc:'gavel',
+    statue:'Statue de la Justice',statueD:'La balance et le glaive, au cœur de la ville.',fac:'Faculté de droit',facD:'Forme les juristes de demain : éducation sur un grand rayon.',
+    centre:'Palais de justice',centreD:'Le tribunal de la ville : audiences, procès et justice pour tous.',centreIc:'account_balance',pol:'Aide juridictionnelle',polD:'Une justice accessible : le bonheur des habitants compte presque double.',
+    city:'Justiceville',pat:'client',pats:'clients',patIc:'gavel',cab:'Cabinet du maire',healed:'Affaire gagnée !',healedN:'Affaires gagnées',
+    marathon:['Course du barreau','Les étudiants en droit organisent une course solidaire jusqu’au palais de justice.','Robes noires et baskets : une ville en pleine forme !'],
+    congres:['Congrès national des avocats','Des milliers de juristes découvrent ta ville.'],
+    crises:[['Vague de litiges entre voisins','gavel'],['Embouteillage au tribunal','account_balance'],['Vague d’arnaques en ligne','report'],['Grève des greffiers','work_off'],['Contrats douteux en série','receipt_long']],achV:'Gagne'}),
+  prepa:mkProf({n:'Ingénieur',full:'Ingénieur·e',ic:'engineering',d:'Bureaux d’études et école d’ingénieurs : calculs, physique, maths et projets.',pros:'ingénieurs',studies:'sciences de l’ingénieur',besoin:'d’ingénieurs',
+    bld:'Bureau d’études',bldD:'Des ingénieurs pour les projets du quartier : emplois et valeur foncière.',bldIc:'engineering',
+    statue:'Statue de l’Ingénieur',statueD:'Compas et équerre, hommage aux bâtisseurs de la ville.',fac:'École d’ingénieurs',facD:'Forme les ingénieurs de demain : éducation sur un grand rayon.',
+    centre:'Technopôle',centreD:'Laboratoires, prototypes et start-up techniques.',centreIc:'precision_manufacturing',pol:'Crédit d’impôt innovation',polD:'L’innovation rend les habitants plus heureux.',
+    city:'Ingéville',pat:'client',pats:'clients',patIc:'engineering',cab:'Bureau du maire',healed:'Problème résolu !',healedN:'Problèmes résolus',
+    crises:[['Panne générale de calculatrices','calculate'],['Pont à recalculer d’urgence','construction'],['Bug dans les plans','bug_report'],['Concours blanc surprise','quiz'],['Pénurie de café en salle de colles','coffee']],achV:'Résout'}),
+  eco:mkProf({n:'Consultant',full:'Consultant·e',ic:'trending_up',d:'Cabinets de conseil et école de commerce : marchés, entreprises, finance et stratégie.',pros:'consultants',studies:'économie-gestion',besoin:'de conseils pour leur entreprise',
+    bld:'Cabinet de conseil',bldD:'Des conseils pour les commerces du quartier : emplois et valeur foncière.',bldIc:'business_center',
+    statue:'Statue du Taureau d’or',statueD:'Le symbole d’une économie qui monte.',fac:'École de commerce',facD:'Forme les entrepreneurs de demain : éducation sur un grand rayon.',
+    centre:'Quartier d’affaires',centreD:'Tours de bureaux, banques et bourse de la ville.',centreIc:'apartment',pol:'Aide à la création d’entreprise',polD:'Les commerces prospèrent : les habitants sont plus heureux.',
+    city:'Businessville',pat:'client',pats:'clients',patIc:'business_center',cab:'Bureau du maire',healed:'Bon conseil !',healedN:'Clients conseillés',
+    crises:[['Krach à la bourse de la ville','trending_down'],['Pénurie de matières premières','inventory_2'],['Vague de faillites','money_off'],['Inflation galopante','price_change'],['Bulle immobilière','real_estate_agent']],achV:'Conseille'}),
+  lettres:mkProf({n:'Écrivain',full:'Écrivain·e',ic:'history_edu',d:'Librairies et faculté des lettres : littérature, langues, grammaire et traduction.',pros:'écrivains',studies:'lettres et langues',besoin:'de livres',
+    bld:'Librairie',une:'une librairie',bldD:'Des livres et des conseils de lecture : le quartier rayonne.',bldIc:'menu_book',
+    statue:'Statue de la Plume d’or',statueD:'Hommage aux écrivains et poètes de la ville.',fac:'Faculté des lettres et langues',facD:'Forme les écrivains et traducteurs de demain : éducation sur un grand rayon.',
+    centre:'Maison de la culture',centreD:'Lectures, théâtre et ateliers d’écriture pour tous.',centreIc:'theater_comedy',pol:'Chèque lecture',polD:'Lire rend heureux : le bonheur compte presque double.',
+    city:'Plumeville',pat:'lecteur',pats:'lecteurs',patIc:'auto_stories',cab:'Librairie du maire',healed:'Bonne réponse !',healedN:'Lecteurs aidés',
+    crises:[['Épidémie de fautes d’orthographe','spellcheck'],['Panne d’inspiration générale','edit_off'],['Vague de traductions automatiques ratées','g_translate'],['Pénurie de papier','description'],['Bibliothèque inondée','water_damage']],achV:'Aide'}),
+  sciences:mkProf({n:'Chercheur',full:'Chercheur·se',ic:'science',d:'Laboratoires et faculté des sciences : biologie, chimie, physique et maths.',pros:'chercheurs',studies:'sciences',besoin:'de chercheurs',
+    bld:'Laboratoire',bldD:'Des découvertes près de chez soi : emplois qualifiés et valeur foncière.',bldIc:'biotech',
+    statue:'Statue de Marie Curie',statueD:'Hommage aux scientifiques de la ville.',fac:'Faculté des sciences',facD:'Forme les scientifiques de demain : éducation sur un grand rayon.',
+    centre:'Centre de recherche',centreD:'Grands instruments et laboratoires de pointe.',centreIc:'biotech',pol:'Budget de la recherche',polD:'La science rend la ville fière : le bonheur compte presque double.',
+    city:'Sciencity',pat:'visiteur',pats:'visiteurs',patIc:'science',cab:'Laboratoire du maire',healed:'Expérience réussie !',healedN:'Questions résolues',
+    crises:[['Fuite au laboratoire','science'],['Expérience qui déborde','experiment'],['Panne du microscope géant','biotech'],['Invasion de mouches drosophiles','bug_report'],['Coupure du supercalculateur','memory']],achV:'Aide'}),
+  info:mkProf({n:'Développeur',full:'Développeur·se',ic:'computer',d:'Start-up et école d’informatique : algorithmes, code, réseaux et bases de données.',pros:'développeurs',studies:'informatique',besoin:'d’informaticiens',
+    bld:'Start-up',une:'une start-up',bldD:'Des développeurs dans le quartier : emplois et valeur foncière.',bldIc:'terminal',
+    statue:'Statue d’Ada Lovelace',statueD:'Hommage à la première programmeuse.',fac:'École d’informatique',facD:'Forme les développeurs de demain : éducation sur un grand rayon.',
+    centre:'Data center',centreD:'Serveurs et fibre optique pour toute la ville.',centreIc:'dns',pol:'Fibre pour tous',polD:'Une ville connectée rend les habitants plus heureux.',
+    city:'Codeville',pat:'client',pats:'clients',patIc:'terminal',cab:'Bureau du maire',healed:'Bug corrigé !',healedN:'Bugs corrigés',
+    crises:[['Panne d’Internet','wifi_off'],['Virus informatique','bug_report'],['Fuite de données','gpp_bad'],['Serveurs en surchauffe','dns'],['Mise à jour géante qui plante','system_update']],achV:'Corrige'}),
+  lycee:mkProf({n:'Tuteur',full:'Tuteur·rice',ic:'school',d:'Soutien scolaire et lycée : maths, histoire, sciences, philo et langues pour le bac.',pros:'tuteurs',studies:'programme du bac',besoin:'d’aide aux devoirs',
+    bld:'Centre de soutien scolaire',bldD:'Aide aux devoirs pour les élèves du quartier : bonheur et valeur foncière.',bldIc:'school',
+    statue:'Statue du Bachelier',statueD:'Hommage aux bacheliers de la ville.',fac:'Lycée général',facD:'Forme les bacheliers de demain : éducation sur un grand rayon.',
+    centre:'Bibliothèque municipale',centreD:'Salles d’étude et livres pour tous les élèves.',centreIc:'local_library',pol:'Fournitures scolaires gratuites',polD:'Des élèves heureux : le bonheur compte presque double.',
+    city:'Bacville',pat:'élève',pats:'élèves',patIc:'edit_note',cab:'Bureau du maire',wait:'Un élève t’attend',healed:'Bien expliqué !',healedN:'Élèves aidés',
+    crises:[['Épidémie de flemme','bedtime'],['Bac blanc surprise','quiz'],['Panne de cantine','restaurant'],['Grève des surveillants','work_off'],['Vague de stress du bac','sentiment_stressed']],achV:'Aide'})
+});
+const PAT_X={
+inf:[
+  {age:[70,90],p:'est alité depuis une semaine et a une rougeur au sacrum qui ne blanchit pas quand on appuie dessus.',q:'De quoi s’agit-il ?',a:['Une escarre de stade 1','Une simple rougeur sans importance','Une brûlure','Un eczéma'],ex:'Érythème qui ne blanchit pas à la pression = escarre de stade 1 : changements de position, matelas adapté, surveillance.'},
+  {age:[40,70],p:'a un pouls à 120/min, une tension à 8/5, il est pâle et en sueur après une hémorragie.',q:'Que suspecter ?',a:['Un état de choc hypovolémique','Une crise d’angoisse','Une poussée d’hypertension','Une hypoglycémie isolée'],ex:'Tachycardie + hypotension + pâleur et sueurs après une hémorragie : choc hypovolémique, urgence.'},
+  {age:[50,75],p:'est diabétique sous insuline. Il tremble, transpire et sa glycémie est à 0,50 g/L. Il est conscient.',q:'Que faire ?',a:['Lui donner 15 g de sucre rapide, puis recontrôler','Lui injecter de l’insuline','Le laisser dormir','Attendre le prochain repas'],ex:'Hypoglycémie chez un patient conscient : 15 g de glucides rapides (3 morceaux de sucre), contrôle 15 minutes après.'},
+  {age:[20,60],p:'doit recevoir un médicament. Avant de le donner, tu vérifies la règle des 5 B.',q:'Laquelle de ces vérifications n’en fait pas partie ?',a:['Le bon prix','Le bon patient','Le bon médicament','La bonne dose'],ex:'Les 5 B : bon patient, bon médicament, bonne dose, bonne voie, bon moment.'},
+  {age:[30,65],p:'a 39 °C, des frissons et une tension basse deux jours après une opération.',q:'Que surveiller en priorité ?',a:['Les signes de sepsis (pouls, tension, conscience, respiration) et alerter le médecin','Uniquement son poids','Son cholestérol','Rien de particulier'],ex:'Fièvre + hypotension après une chirurgie : suspicion de sepsis, surveillance rapprochée et alerte médicale.'},
+  {age:[20,50],p:'va avoir une prise de sang et tu veux éviter de transmettre des infections.',q:'Quel geste d’hygiène est la référence ?',a:['La friction hydroalcoolique avant et après le soin','Un lavage des mains une fois par jour','Porter des gants à la place de l’hygiène des mains','Un rinçage à l’eau froide'],ex:'La friction hydroalcoolique est la référence (OMS : 5 moments de l’hygiène des mains). Les gants ne la remplacent pas.'}],
+pharma:[
+  {age:[55,80],p:'prend un anticoagulant AVK (warfarine) et veut de l’aspirine pour un mal de tête.',q:'Que lui conseiller ?',a:['Éviter l’aspirine (risque de saignement) et préférer le paracétamol','Prendre de l’aspirine à forte dose','Arrêter son anticoagulant','Prendre de l’ibuprofène à la place'],ex:'Aspirine et AINS augmentent le risque hémorragique sous AVK : le paracétamol est l’antalgique de choix.'},
+  {f:true,age:[18,40],p:'prend la pilule et commence un traitement par rifampicine.',q:'Quel est le risque ?',a:['Une baisse d’efficacité de la pilule (inducteur enzymatique)','Une hausse d’efficacité de la pilule','Aucune interaction','Une hypoglycémie'],ex:'La rifampicine est un puissant inducteur enzymatique : elle diminue l’efficacité des contraceptifs hormonaux.'},
+  {age:[25,50],p:'demande combien de paracétamol il peut prendre par jour sans avis médical (adulte de plus de 50 kg).',q:'Quelle dose maximale conseiller ?',a:['3 g par jour (4 g au maximum sur avis médical)','10 g par jour','500 mg par jour','Il n’y a pas de limite'],ex:'1 g par prise, 4 h au moins entre deux prises, 3 g par jour en automédication, jusqu’à 4 g sur avis médical.'},
+  {age:[70,88],p:'a la bouche sèche, de la constipation et des moments de confusion depuis un nouveau médicament.',q:'Quel effet suspecter ?',a:['Un effet anticholinergique','Un effet antiagrégant','Un effet diurétique','Un effet bêtabloquant'],ex:'Bouche sèche, constipation, rétention urinaire, confusion : effets anticholinergiques, fréquents chez la personne âgée.'},
+  {f:true,age:[22,40],p:'est enceinte de 6 mois et a mal au dos.',q:'Quel médicament est contre-indiqué à partir du 6e mois ?',a:['Les AINS (ibuprofène…)','Le paracétamol','Les vitamines prescrites','Le fer prescrit'],ex:'Les AINS sont contre-indiqués à partir du début du 6e mois (24 SA) : toxicité pour le cœur et les reins du fœtus.'},
+  {age:[18,45],p:'réclame un antibiotique pour son rhume.',q:'Que lui répondre ?',a:['Un rhume est viral : les antibiotiques sont inutiles','Un antibiotique guérit le rhume en 24 h','Il faut un antibiotique par précaution','Seulement si le nez coule'],ex:'Les antibiotiques n’agissent pas sur les virus ; leur mauvais usage favorise les résistances.'}],
+sf:[
+  {f:true,age:[22,38],p:'est enceinte et demande quand a lieu la première échographie.',q:'À quel moment ?',a:['Entre 11 SA et 13 SA + 6 jours','À 5 SA','Seulement à 32 SA','Le jour de l’accouchement'],ex:'Trois échographies recommandées : vers 12, 22 et 32 SA ; la première permet notamment la mesure de la clarté nucale.'},
+  {f:true,age:[22,38],p:'est enceinte, a de violents maux de tête, voit des « mouches » et sa tension est à 16/11.',q:'Que suspecter ?',a:['Une pré-éclampsie','Une simple fatigue','Un diabète gestationnel','Une anémie'],ex:'Hypertension de la grossesse + céphalées et troubles visuels : signes de gravité de pré-éclampsie, urgence obstétricale.'},
+  {f:true,age:[22,38],p:'vient d’accoucher et demande à quoi sert le peau-à-peau.',q:'Quel est un bénéfice démontré ?',a:['Il aide le bébé à garder sa température et favorise l’allaitement','Il remplace la vitamine K','Il évite toutes les jaunisses','Il est déconseillé'],ex:'Le peau-à-peau stabilise la température et la glycémie du nouveau-né et favorise une mise au sein précoce.'},
+  {f:true,age:[22,38],p:'est à 39 SA avec des contractions ; on examine son col (dilatation, longueur, consistance, position).',q:'Quel score évalue la maturité du col ?',a:['Le score de Bishop','Le score d’Apgar','Le score de Glasgow','Le score de Silverman'],ex:'Score de Bishop : dilatation, longueur, consistance et position du col, hauteur de la présentation.'},
+  {f:true,age:[22,38],p:'allaite et demande combien de temps l’allaitement exclusif est recommandé.',q:'Que recommande l’OMS ?',a:['6 mois','1 mois','2 ans d’allaitement exclusif','Aucune durée'],ex:'OMS : allaitement exclusif pendant les 6 premiers mois, puis poursuivi avec une alimentation complémentaire.'},
+  {f:true,age:[22,38],p:'vient d’accoucher. On note chez son bébé le cœur, la respiration, le tonus, la réactivité et la couleur à 1, 5 et 10 minutes.',q:'Quel est ce score ?',a:['Le score d’Apgar','Le score de Bishop','Le score de Glasgow','Le score de Silverman'],ex:'Apgar : 5 critères notés de 0 à 2 (sur 10) juste après la naissance.'}],
+psy:[
+  {age:[20,45],p:'ne ressent plus de plaisir à rien depuis 3 semaines, avec une tristesse presque permanente.',q:'Comment appelle-t-on la perte de plaisir ?',a:['L’anhédonie','L’alexithymie','L’aboulie','L’apraxie'],ex:'Anhédonie : incapacité à ressentir du plaisir, symptôme central de l’épisode dépressif caractérisé.'},
+  {age:[20,45],p:'a des crises de peur intense avec palpitations et peur de mourir, qui montent en quelques minutes.',q:'De quoi s’agit-il ?',a:['D’attaques de panique','D’un trouble obsessionnel compulsif','D’une phobie sociale','D’un trouble bipolaire'],ex:'Attaque de panique : peur intense, maximale en quelques minutes, avec palpitations, sensation d’étouffement…'},
+  {age:[20,45],p:'veut une thérapie courte et structurée pour changer ses pensées négatives.',q:'Quelle approche correspond le mieux ?',a:['Les thérapies cognitives et comportementales (TCC)','La psychanalyse classique sur plusieurs années','L’hypnose de spectacle','Aucune thérapie n’est validée'],ex:'Les TCC travaillent sur les pensées et les comportements, en séances structurées, avec une bonne validation scientifique.'},
+  {age:[20,40],p:'n’arrive pas à retenir un numéro de téléphone le temps de le composer.',q:'Quelle mémoire garde une information quelques secondes pour l’utiliser ?',a:['La mémoire de travail','La mémoire épisodique','La mémoire procédurale','La mémoire sémantique'],ex:'Mémoire de travail (Baddeley) : maintien et manipulation temporaire de l’information.'},
+  {age:[18,40],p:'a vécu un accident grave il y a 2 mois : cauchemars, souvenirs qui reviennent sans cesse, il évite les lieux.',q:'Quel trouble évoquer ?',a:['Un trouble de stress post-traumatique','Un trouble de la personnalité','Une schizophrénie','Un trouble de l’attention'],ex:'TSPT : reviviscences, évitement, hypervigilance, plus d’un mois après un événement traumatique.'},
+  {age:[18,35],p:'salive dès qu’il entend la sonnerie de la cantine, comme le chien de l’expérience célèbre.',q:'Quel type d’apprentissage ?',a:['Le conditionnement classique (Pavlov)','Le conditionnement opérant (Skinner)','L’apprentissage vicariant (Bandura)','L’insight (Köhler)'],ex:'Pavlov : un stimulus neutre associé à un stimulus inconditionnel finit par déclencher seul la réponse.'}],
+droit:[
+  {age:[25,60],p:'a acheté une voiture d’occasion qui tombe en panne une semaine après, à cause d’un défaut caché que le vendeur connaissait.',q:'Sur quel fondement peut-il agir ?',a:['La garantie des vices cachés','La rescision pour lésion','Le droit de rétractation de 14 jours','Aucun : la vente est définitive'],ex:'Code civil, art. 1641 : le vendeur doit la garantie des défauts cachés qui rendent la chose impropre à l’usage.'},
+  {age:[20,35],p:'loue un appartement vide à un particulier, qui veut le faire partir au bout de 6 mois sans raison.',q:'Quelle est la durée minimale de ce bail ?',a:['3 ans','1 an','6 mois','9 ans'],ex:'Loi du 6 juillet 1989 : 3 ans minimum quand le bailleur est une personne physique (6 ans pour une société).'},
+  {age:[18,30],p:'a acheté un téléphone sur Internet il y a 5 jours et a changé d’avis.',q:'Peut-il se rétracter ?',a:['Oui : il a 14 jours pour se rétracter','Non : une vente est définitive','Seulement si le téléphone est défectueux','Seulement avec l’accord du vendeur'],ex:'Code de la consommation : 14 jours de rétractation pour un contrat conclu à distance.'},
+  {age:[30,60],p:'a été renversé par un cycliste qui roulait trop vite sur le trottoir et s’est cassé le poignet.',q:'Sur quel fondement le cycliste doit-il réparer le dommage ?',a:['La responsabilité civile délictuelle pour faute (art. 1240 du Code civil)','La responsabilité contractuelle','La garantie des vices cachés','Aucun : c’est un simple accident'],ex:'Art. 1240 : tout fait quelconque de l’homme qui cause à autrui un dommage oblige celui par la faute duquel il est arrivé à le réparer.'},
+  {age:[35,60],p:'est poursuivi pour un délit commis il y a longtemps.',q:'Dans quel délai se prescrit, en principe, l’action publique pour un délit ?',a:['6 ans','1 an','3 ans','20 ans'],ex:'Depuis la loi du 27 février 2017 : 1 an pour les contraventions, 6 ans pour les délits, 20 ans pour les crimes (en principe).'},
+  {age:[25,55],p:'pense qu’une loi appliquée dans son procès est contraire à la Constitution.',q:'Quelle procédure peut-il utiliser ?',a:['La question prioritaire de constitutionnalité (QPC)','Le référé-liberté','Un pourvoi en cassation immédiat','La Cour européenne des droits de l’homme directement'],ex:'Art. 61-1 de la Constitution (2010) : la QPC est transmise au Conseil constitutionnel par le Conseil d’État ou la Cour de cassation.'},
+  {age:[30,55],p:'vient d’être licencié sans jamais avoir été convoqué à un entretien.',q:'Quelle étape obligatoire manque ?',a:['L’entretien préalable au licenciement','Rien : l’entretien est facultatif','Un jugement des prud’hommes avant le licenciement','L’accord de ses collègues'],ex:'Code du travail : avant un licenciement pour motif personnel, l’employeur convoque le salarié à un entretien préalable.'}],
+prepa:[
+  {age:[18,22],p:'lâche une pierre sans vitesse du haut d’un puits de 20 m (g ≈ 10 m/s², sans frottements).',q:'Combien de temps dure la chute ?',a:['2 s','4 s','1 s','20 s'],ex:'h = ½ g t², donc t = √(2h/g) = √(40/10) = 2 s.'},
+  {age:[18,22],p:'branche deux résistances de 10 Ω en parallèle.',q:'Quelle est la résistance équivalente ?',a:['5 Ω','20 Ω','10 Ω','100 Ω'],ex:'En parallèle : 1/R = 1/10 + 1/10, donc R = 5 Ω.'},
+  {age:[18,22],p:'cherche la dérivée de f(x) = x·eˣ.',q:'Que vaut f’(x) ?',a:['(x + 1)·eˣ','x·eˣ','eˣ','x²·eˣ'],ex:'(uv)’ = u’v + uv’ = eˣ + x·eˣ = (x + 1)·eˣ.'},
+  {age:[25,50],p:'veut l’énergie cinétique d’une voiture de 1 000 kg qui roule à 20 m/s.',q:'Combien vaut-elle ?',a:['200 kJ','20 kJ','400 kJ','10 kJ'],ex:'Ec = ½ m v² = ½ × 1 000 × 20² = 200 000 J.'},
+  {age:[18,22],p:'calcule le déterminant de la matrice ((2, 1), (4, 3)).',q:'Que vaut-il ?',a:['2','10','−2','6'],ex:'det = 2 × 3 − 1 × 4 = 2.'},
+  {age:[25,50],p:'alimente un appareil sous 12 V qui consomme 2 A.',q:'Quelle puissance consomme-t-il ?',a:['24 W','6 W','14 W','144 W'],ex:'P = U × I = 12 × 2 = 24 W.'}],
+eco:[
+  {age:[25,55],p:'vend un produit 50 € qui lui coûte 30 € à fabriquer, avec 20 000 € de charges fixes.',q:'Combien doit-il en vendre pour atteindre son seuil de rentabilité ?',a:['1 000','400','667','2 000'],ex:'Marge unitaire = 50 − 30 = 20 € ; seuil = 20 000 / 20 = 1 000 unités.'},
+  {age:[25,55],p:'augmente ses prix et voit ses ventes chuter beaucoup plus fortement.',q:'Comment est la demande de son produit ?',a:['Élastique au prix','Inélastique au prix','Parfaitement rigide','Indépendante du prix'],ex:'Demande élastique : la quantité varie plus que proportionnellement au prix (|élasticité| > 1).'},
+  {age:[25,55],p:'veut analyser son entreprise : forces, faiblesses, opportunités et menaces.',q:'Quel outil utiliser ?',a:['La matrice SWOT','La matrice BCG','Le modèle PESTEL','Les 5 forces de Porter'],ex:'SWOT : Strengths, Weaknesses, Opportunities, Threats.'},
+  {age:[25,55],p:'voit son salaire augmenter de 3 % alors que l’inflation atteint 8 %.',q:'Que devient son pouvoir d’achat ?',a:['Il baisse d’environ 5 %','Il augmente de 3 %','Il ne change pas','Il augmente de 11 %'],ex:'Évolution réelle ≈ hausse nominale − inflation = 3 % − 8 % ≈ −5 %.'},
+  {age:[25,55],p:'se demande pourquoi la banque centrale relève ses taux directeurs.',q:'Quel en est le but principal ?',a:['Freiner l’inflation','Relancer l’inflation','Augmenter le déficit public','Faire monter la bourse'],ex:'Des taux plus élevés renchérissent le crédit, freinent la demande et donc l’inflation.'},
+  {age:[25,55],p:'a un produit avec une forte part de marché, sur un marché en forte croissance.',q:'Dans la matrice BCG, c’est…',a:['Une vedette','Une vache à lait','Un dilemme','Un poids mort'],ex:'BCG : vedette = forte part + forte croissance ; vache à lait = forte part + faible croissance.'}],
+lettres:[
+  {age:[18,30],p:'hésite : « Les fleurs que j’ai … » (cueillir).',q:'Quelle est la bonne orthographe ?',a:['cueillies','cueilli','cueillis','cueillie'],ex:'Avec avoir, le participe passé s’accorde avec le COD placé avant : « que » = les fleurs (féminin pluriel).'},
+  {age:[18,30],p:'analyse le vers de Corneille « Cette obscure clarté qui tombe des étoiles ».',q:'Quelle figure de style ?',a:['Un oxymore','Une anaphore','Une hyperbole','Une litote'],ex:'Oxymore : deux mots de sens opposé rapprochés (« obscure » / « clarté »).'},
+  {age:[18,30],p:'prépare un exposé sur la bataille d’Hernani de Victor Hugo (1830).',q:'Quel mouvement littéraire triomphe alors ?',a:['Le romantisme','Le classicisme','Le surréalisme','Le naturalisme'],ex:'La bataille d’Hernani (1830) marque le triomphe du drame romantique.'},
+  {age:[18,30],p:'traduit « I have been living here for three years ».',q:'Quelle traduction est correcte ?',a:['J’habite ici depuis trois ans','J’ai habité ici trois ans puis je suis parti','J’habiterai ici trois ans','J’habitais ici il y a trois ans'],ex:'Present perfect continuous + for : action commencée dans le passé qui dure encore → présent + « depuis ».'},
+  {age:[18,30],p:'compte les syllabes d’un vers de Racine : il y en a douze.',q:'Comment s’appelle ce vers ?',a:['Un alexandrin','Un octosyllabe','Un décasyllabe','Un hexasyllabe'],ex:'L’alexandrin compte 12 syllabes, souvent coupées en deux hémistiches de 6.'},
+  {age:[18,30],p:'lit « Je suis venu, j’ai vu, j’ai vaincu ».',q:'Quel procédé structure cette phrase ?',a:['Une gradation en rythme ternaire','Une antithèse','Une périphrase','Une litote'],ex:'Trois verbes de plus en plus forts, en trois temps : une gradation au rythme ternaire.'}],
+sciences:[
+  {age:[18,30],p:'observe au microscope des chromosomes alignés au milieu de la cellule.',q:'À quelle phase de la mitose ?',a:['La métaphase','La prophase','L’anaphase','La télophase'],ex:'En métaphase, les chromosomes s’alignent sur la plaque équatoriale.'},
+  {age:[18,30],p:'mesure le pH d’une solution à 25 °C : pH = 3.',q:'La solution est…',a:['Acide','Basique','Neutre','Impossible à dire'],ex:'À 25 °C, pH < 7 : solution acide.'},
+  {age:[18,30],p:'cherche où est produite la plus grande partie de l’ATP d’une cellule eucaryote.',q:'Dans quel organite ?',a:['La mitochondrie','Le noyau','L’appareil de Golgi','Le ribosome'],ex:'La chaîne respiratoire de la mitochondrie produit l’essentiel de l’ATP.'},
+  {age:[18,30],p:'équilibre la réaction CH₄ + 2 O₂ → CO₂ + … H₂O.',q:'Quel coefficient devant H₂O ?',a:['2','1','3','4'],ex:'4 atomes d’hydrogène à gauche → 2 H₂O ; l’oxygène : 4 = 2 (CO₂) + 2 (H₂O).'},
+  {age:[18,30],p:'étudie l’ADN et cherche la base complémentaire de l’adénine.',q:'Laquelle ?',a:['La thymine','La guanine','La cytosine','L’uracile'],ex:'Dans l’ADN : A–T et G–C (dans l’ARN, l’uracile remplace la thymine).'},
+  {age:[18,30],p:'cherche la relation entre l’énergie et la masse.',q:'Laquelle ?',a:['E = mc²','E = mgh','E = ½mv²','E = hν'],ex:'Einstein (1905) : E = mc², l’énergie de masse.'}],
+info:[
+  {age:[20,40],p:'cherche un élément dans une liste triée d’un million d’éléments.',q:'Quel algorithme est le plus rapide ?',a:['La recherche dichotomique','La recherche séquentielle','Le tri à bulles','Le parcours en largeur'],ex:'La recherche dichotomique est en O(log n) : une vingtaine d’étapes pour un million d’éléments.'},
+  {age:[20,40],p:'se demande ce qu’affiche print(7 // 2) en Python.',q:'Quel résultat ?',a:['3','3.5','4','1'],ex:'// est la division entière : 7 // 2 = 3.'},
+  {age:[20,40],p:'cherche la structure de données « dernier entré, premier sorti ».',q:'Laquelle ?',a:['Une pile','Une file','Un arbre binaire de recherche','Une table de hachage'],ex:'Pile = LIFO (last in, first out) ; file = FIFO (first in, first out).'},
+  {age:[20,40],p:'veut tous les clients de Lyon dans sa base de données.',q:'Quelle requête SQL ?',a:["SELECT * FROM clients WHERE ville = 'Lyon';","GET clients IF ville = Lyon;","SELECT clients WHERE Lyon;","FIND * IN clients = 'Lyon';"],ex:'SELECT … FROM … WHERE … : la clause WHERE filtre les lignes.'},
+  {age:[20,40],p:'utilise un tri qui compare chaque élément à tous les autres.',q:'Quelle est sa complexité ?',a:['O(n²)','O(n)','O(log n)','O(1)'],ex:'Deux boucles imbriquées sur n éléments : de l’ordre de n² comparaisons.'},
+  {age:[20,40],p:'convertit le nombre binaire 1011 en décimal.',q:'Quel résultat ?',a:['11','13','9','1011'],ex:'1×8 + 0×4 + 1×2 + 1×1 = 11.'}],
+lycee:[
+  {age:[15,18],p:'révise les suites : u₀ = 2 et uₙ₊₁ = uₙ + 3.',q:'Que vaut u₄ ?',a:['14','11','12','17'],ex:'Suite arithmétique de raison 3 : u₄ = 2 + 4 × 3 = 14.'},
+  {age:[15,18],p:'révise l’histoire : la prise de la Bastille.',q:'En quelle année ?',a:['1789','1815','1848','1792'],ex:'La Bastille est prise le 14 juillet 1789.'},
+  {age:[15,18],p:'révise la photosynthèse.',q:'Quel gaz les plantes rejettent-elles à la lumière ?',a:['Le dioxygène','Le dioxyde de carbone','Le diazote','Le dihydrogène'],ex:'6 CO₂ + 6 H₂O → C₆H₁₂O₆ + 6 O₂ : la photosynthèse libère du dioxygène.'},
+  {age:[15,18],p:'résout l’équation 2x + 6 = 0.',q:'Quelle est la solution ?',a:['x = −3','x = 3','x = −6','x = 12'],ex:'2x = −6, donc x = −3.'},
+  {age:[16,18],p:'prépare la philo : « Je pense, donc je suis ».',q:'Qui l’a écrit ?',a:['Descartes','Platon','Kant','Rousseau'],ex:'René Descartes, Discours de la méthode (1637).'},
+  {age:[15,18],p:'révise la géographie de la France.',q:'Quel est le plus long fleuve entièrement français ?',a:['La Loire','La Seine','Le Rhône','La Garonne'],ex:'La Loire (environ 1 000 km) est le plus long fleuve entièrement situé en France.'}]
+};
+const PROF_ORDER=['kine','med','dent','veto','inf','pharma','sf','psy','droit','prepa','eco','lettres','sciences','info','lycee'];
+const PROF_SANTE=new Set(['kine','med','dent','veto','inf','pharma','sf','psy']);
 function P_(){return PROF[S&&S.prof]||PROF.kine;}
 // Noms, textes et cas cliniques selon le métier (appelé au chargement et quand on change de métier)
 function applyProf(){
@@ -9693,7 +10056,12 @@ function applyProf(){
   const a5=ACH.find(a=>a.id==='pat5'),a25=ACH.find(a=>a.id==='pat25'),w=p.pats;
   if(a5){a5.n=p.ach[0];a5.d=`${p.achV} 5 ${w}`;}if(a25){a25.n=p.ach[1];a25.d=`${p.achV} 25 ${w}`;}
 }
-function patCases(){const p=S&&S.prof;return p==='veto'?PAT_VETO:p==='med'?PAT_MED:p==='dent'?PAT_DENT:PATIENTS;}
+function patCases(){const p=S&&S.prof;return p==='veto'?PAT_VETO:p==='med'?PAT_MED:p==='dent'?PAT_DENT:PAT_X[p]||PATIENTS;}
+/* v85 : le métier suit la filière choisie dans City Work (kp_prof), une fois par changement de filière ;
+   un changement fait ensuite dans les Réglages de la ville est gardé tant que la filière ne change pas. */
+function kpProf(){let k='';try{k=(localStorage.getItem('kp_prof')||'').replace(/"/g,'');}catch(e){}return PROF[k]?k:'';}
+function syncKpProf(){if(!S||VISIT)return;const k=kpProf();if(!k||S.profFrom===k)return;S.profFrom=k;if(S.prof!==k){setProf(k);toast(`Ta ville suit ta filière : métier « ${esc(P_().full)} »`,P_().ic);}else save();}
+document.addEventListener('kc-prof',()=>{if(E&&E.running)syncKpProf();});
 function setProf(k){
   if(!PROF[k]||VISIT)return;
   const was=S.prof;S.prof=k;applyProf();
@@ -9954,13 +10322,14 @@ function mount(root){
   loop();
   // Métier : demandé une seule fois, au tout début d'une nouvelle ville (kiné par défaut, enregistré tout de suite :
   // fermer la fenêtre sans choisir ne la fait plus revenir). Une ville déjà commencée garde kiné, modifiable dans les Réglages.
-  if(!S.prof&&!VISIT){S.prof='kine';applyProf();save();if(!S.helped)openPanel('prof');}
+  if(!S.prof&&!VISIT){const kp=kpProf();S.prof=kp||'kine';if(kp)S.profFrom=kp;applyProf();save();if(!S.helped&&!kp)openPanel('prof');}
+  syncKpProf();
   if(PANEL!=='prof'&&!S.helped&&!VISIT){openPanel('help');S.helped=true;save();}
 }
 function unmount(){
   if(isFS())setFS(false);   // on quitte l'écran de la ville (ex. « Réviser ») : sortir du plein écran
   if(!E)return;E.running=false;cancelAnimationFrame(E.raf);
-  toolCancel();PTR.clear();GEST=null;extUnmount();save();
+  walkStop();toolCancel();PTR.clear();GEST=null;extUnmount();save();
 }
 function refresh(){if(E&&E.running){if(!VISIT)syncGrants();refreshHUD(true);extRefresh();}}
 return {mount,unmount,refresh,visit:uid=>{const go=()=>{if(VISIT&&VISIT.user===uid)return;if(VISIT)visitEnd();visitStart(uid);};E?go():setTimeout(go,1500);},_debug:()=>({S,ST,E,CAM,road,zone,lvl,st,ter,tree,svcAt,SV,pw,wt,lval,hap,cap,setTool,simDay,simRefresh,placeAt,commitRoad,commitRect,applyCam,setView,openPanel,SEL:()=>SEL,setSel:t=>{SEL=t;showSelection();openPanel('inspect');},

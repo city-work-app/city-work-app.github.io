@@ -162,7 +162,7 @@ function socialPushProfile(now){
   _socialPushT=setTimeout(async()=>{
     try{
       _sbProfile=await _rpc('update_my_profile',{p:{
-        avatar:gam.char,
+        avatar:typeof kcAvatarPayload==='function'?kcAvatarPayload():gam.char,
         house:(gam.house.items||[]).map(i=>({uid:i.uid,type:i.type,x:i.x,z:i.z,rot:i.rot||0})),
         streak:typeof stats!=='undefined'?stats.streak||0:0
       }});
@@ -232,8 +232,9 @@ function _socialRenderAuth(msg,isErr){
     </div>
     <div class="soc-row2">
       ${typeof kcProfSelectHTML==='function'?kcProfSelectHTML():''}
-      <div class="fg2"><label class="fl" for="au-promo">Promo (facultatif)</label><input class="fi" id="au-promo" maxlength="24" value="${promo}" placeholder="ex : K2"></div>
+      <div class="fg2"><label class="fl" for="au-promo">Promo (facultatif)</label><input class="fi" id="au-promo" maxlength="24" value="${promo}" placeholder="ex : L1, K2"></div>
     </div>
+    <div class="fg2"><label class="fl" for="au-school">École / fac (facultatif)</label><input class="fi" id="au-school" maxlength="60" value="${_socEsc(localStorage.getItem('kp_school')||'')}" placeholder="ex : Université Lyon 3"><small class="soc-hint">Pour trouver les cours de ta promo et le classement de ta fac.</small></div>
     <button class="btn btn-p soc-wide" id="au-go" onclick="_socialDoSignup()">Créer mon compte</button>
     <p class="soc-small">Ton XP, ton personnage et ta maison seront sauvegardés sur ton compte. Tes cours restent sur ton appareil, sauf ceux que tu choisis de partager.</p>`;
   else if(_authMode==='login')form=`
@@ -272,23 +273,25 @@ async function _socialDoSignup(){
   const email=document.getElementById('au-email').value.trim(),password=document.getElementById('au-pass').value;
   const username=document.getElementById('au-user').value.trim(),display_name=document.getElementById('au-name').value.trim();
   const promo=document.getElementById('au-promo').value.trim();
+  try{const sc=document.getElementById('au-school');if(sc)localStorage.setItem('kp_school',sc.value.trim());}catch(e){}
   if(!email||!password||!username){_socialRenderAuthKeep('Remplis l’e-mail, le mot de passe et le pseudo.',true);return;}
   if(!/^[a-z0-9_.]{3,20}$/.test(username)){_socialRenderAuthKeep('Pseudo : 3 à 20 caractères (minuscules, chiffres, _ ou .).',true);return;}
   _authBusy(true);
   try{
     if(!(await _rpc('username_available',{p_username:username})))throw new Error('Ce pseudo est déjà pris.');
-    const {data,error}=await _sb.auth.signUp({email,password,options:{data:{username,display_name:display_name||username,promo,avatar:gam.char},emailRedirectTo:_socRedirect()}});
+    const {data,error}=await _sb.auth.signUp({email,password,options:{data:{username,display_name:display_name||username,promo,avatar:typeof kcAvatarPayload==='function'?kcAvatarPayload():gam.char},emailRedirectTo:_socRedirect()}});
     if(error)throw _socialErr(error);
     if(display_name)localStorage.setItem('kp_firstname',display_name);
     if(promo)localStorage.setItem('kp_promo',promo);
     if(data.session){closeModal('modal-soc-auth');showNotif('Compte créé, bienvenue !','ok');}
     else{_authMode='login';_socialRenderAuth('Presque fini : clique sur le lien reçu par e-mail pour confirmer ton compte, puis connecte-toi.');}
+    if(typeof kcOnboardAfterSignup==='function'&&data.session)kcOnboardAfterSignup();   /* v85 : visite guidée juste après l'inscription */
   }catch(e){_socialRenderAuthKeep(e.message,true);}
   _authBusy(false);
 }
 // Réaffiche un message sans effacer ce qui a été tapé
 function _socialRenderAuthKeep(msg,isErr){
-  const vals={};['au-email','au-pass','au-user','au-name','au-promo'].forEach(id=>{const el=document.getElementById(id);if(el)vals[id]=el.value;});
+  const vals={};['au-email','au-pass','au-user','au-name','au-promo','au-school'].forEach(id=>{const el=document.getElementById(id);if(el)vals[id]=el.value;});
   _socialRenderAuth(_socEsc(msg),isErr);
   Object.entries(vals).forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.value=v;});
 }
@@ -296,7 +299,8 @@ async function _socialDoLogin(){
   const email=document.getElementById('au-email').value.trim(),password=document.getElementById('au-pass').value;
   if(!email||!password){_socialRenderAuthKeep('E-mail et mot de passe requis.',true);return;}
   _authBusy(true);
-  try{const {error}=await _sb.auth.signInWithPassword({email,password});if(error)throw _socialErr(error);closeModal('modal-soc-auth');showNotif('Connecté·e !','ok');}
+  try{const {error}=await _sb.auth.signInWithPassword({email,password});if(error)throw _socialErr(error);closeModal('modal-soc-auth');showNotif('Connecté·e !','ok');
+    if(typeof kcOnboardAfterSignup==='function'&&!localStorage.getItem('kp_onb_tour'))kcOnboardAfterSignup();}
   catch(e){_socialRenderAuthKeep(e.message,true);}
   _authBusy(false);
 }
@@ -410,6 +414,12 @@ async function _socialReloadLB(){
   _socialRenderLB();
 }
 function socialSetScope(s){_soc.scope=s;_soc.lb=null;_socialRenderLB();_socialReloadLB();}
+function socialSetFil(f){
+  const myF=(localStorage.getItem('kp_prof')||'').replace(/"/g,''),myE=(localStorage.getItem('kp_school')||'').trim();
+  if(f==='f'&&!myF){if(typeof kcPickProf==='function')kcPickProf();return;}
+  if(f==='e'&&!myE){if(typeof kcPrompt==='function')kcPrompt('Ton école ou ta fac','',{icon:'apartment'}).then(v=>{if(v&&v.trim()){localStorage.setItem('kp_school',v.trim());if(typeof socialPushProfile==='function')socialPushProfile(true);_soc.fil='e';_socialRenderLB();}});return;}
+  _soc.fil=f;_socialRenderLB();
+}
 function socialSetMetric(m){_soc.metric=m;_soc.lb=null;_socialRenderLB();_socialReloadLB();}
 
 function _socialWeekInfo(){
@@ -425,7 +435,16 @@ function _socialWeekInfo(){
 function _socialRenderLB(){
   const el=document.getElementById('soc-lb');if(!el)return;
   const wi=_socialWeekInfo();
-  const rows=(_soc.lb&&_soc.lb.rows)||[];
+  /* v85 : classement par filière / école (lu dans avatar._f / avatar._e envoyés par kcAvatarPayload) */
+  const myF=(localStorage.getItem('kp_prof')||'').replace(/"/g,''),myE=typeof kcSchoolKey==='function'?kcSchoolKey(localStorage.getItem('kp_school')||''):'';
+  if(_soc.fil==='f'&&!myF)_soc.fil='';if(_soc.fil==='e'&&!myE)_soc.fil='';
+  const allRows=(_soc.lb&&_soc.lb.rows)||[];
+  const rows=allRows.filter(r=>!_soc.fil||r.is_me||(_soc.fil==='f'?(r.avatar&&r.avatar._f)===myF:typeof kcSchoolKey==='function'&&kcSchoolKey(r.avatar&&r.avatar._e)===myE));
+  const filN=myF&&window.KC_PROFS&&KC_PROFS[myF]?KC_PROFS[myF].n:'';
+  const filBar=`<div class="lb-fil" role="group" aria-label="Filtrer le classement">
+    <button class="${!_soc.fil?'on':''}" onclick="socialSetFil('')"><span class="ms">public</span>Tout</button>
+    <button class="${_soc.fil==='f'?'on':''}" onclick="socialSetFil('f')"${myF?'':' title="Choisis ta filière dans Paramètres"'}><span class="ms">${myF&&window.KC_PROFS&&KC_PROFS[myF]?KC_PROFS[myF].ic:'school'}</span>${filN?'Ma filière · '+_socEsc(filN):'Ma filière'}</button>
+    <button class="${_soc.fil==='e'?'on':''}" onclick="socialSetFil('e')"${myE?'':' title="Indique ton école dans Paramètres"'}><span class="ms">apartment</span>${myE?'Mon école · '+_socEsc((localStorage.getItem('kp_school')||'').slice(0,28)):'Mon école'}</button></div>`;
   const ranked=rows.filter(r=>r.value!=null&&Number(r.value)>0);
   const prizes=_soc.metric==='xp'&&_soc.scope==='all';
   const slot=(r,place)=>`
@@ -454,6 +473,7 @@ function _socialRenderLB(){
           <button class="${_soc.scope==='friends'?'on':''}" onclick="socialSetScope('friends')" role="tab" aria-selected="${_soc.scope==='friends'}">Mes amis</button>
         </div>
       </div>
+      ${filBar}
       <div class="lb-metrics">${SOCIAL_METRICS.map(m=>`<button class="lb-metric${m.id===_soc.metric?' on':''}" onclick="socialSetMetric('${m.id}')"><span class="ms">${m.icon}</span>${m.name}</button>`).join('')}</div>
       ${_soc.err?`<div class="soc-note err">${_socEsc(_soc.err)} <button class="soc-link" onclick="_socialLoadAll()">Réessayer</button></div>`:''}
       ${!_soc.lb&&!_soc.err?`<div class="lb-loading"><div class="house-spinner"></div></div>`:`
@@ -463,7 +483,7 @@ function _socialRenderLB(){
         <button class="lb-row${r.is_me?' me':''}" ${r.is_me?'':`onclick="socialOpenFriend('${r.id}')"`}>
           <span class="lb-rank">${r.value==null||Number(r.value)<=0?'–':r.rank}</span>
           <span class="lb-av">${gamAvatarSVG(r.avatar,34)}</span>
-          <span class="lb-name"><b>${_socEsc(_socName(r))}${r.is_me?' <small>toi</small>':''}</b><small>Niv. ${r.level}${r.promo?' · '+_socEsc(r.promo):''}</small></span>
+          <span class="lb-name"><b>${_socEsc(_socName(r))}${r.is_me?' <small>toi</small>':''}</b><small>Niv. ${r.level}${r.promo?' · '+_socEsc(r.promo):''}${r.avatar&&r.avatar._e?' · '+_socEsc(String(r.avatar._e).slice(0,30)):''}</small></span>
           <span class="lb-val">${_socFmt(_soc.metric,r.value)}</span>
         </button>`).join('')}</div>`:''}`}
       <div class="lb-ms-wrap">
@@ -851,7 +871,9 @@ async function socialDoShare(){
   if(isF&&!T)return;
   const c=isF?{id:T.id,name:T.name}:courses.find(x=>x.id===s.courseId),payload=s.matId?_socialSubjectPayload(s.matId):isF?_socialFolderPayload(s.sfId):_socialCoursePayload(s.courseId);
   if(!c||!payload)return;
-  try{if(!payload.cat){const pf=(localStorage.getItem('kp_prof')||'').replace(/"/g,'');if(/^(kine|med|dent|veto)$/.test(pf))payload.cat=pf;}}catch(e){}   /* v84 : rubrique du Drive commun (kiné, véto…) */
+  try{if(!payload.cat){const pf=(localStorage.getItem('kp_prof')||'').replace(/"/g,'');if(/^[a-z]{2,10}$/.test(pf)&&pf!=='autre')payload.cat=pf;}
+    const sc=(localStorage.getItem('kp_school')||'').trim(),yr=(localStorage.getItem('kp_promo')||'').trim();
+    if(sc&&!payload.school)payload.school=sc.slice(0,60);if(yr&&!payload.year)payload.year=yr.slice(0,24);}catch(e){}   /* v85 : Drive par filière, école et promo */   /* v84 : rubrique du Drive commun (kiné, véto…) */
   const btn=document.getElementById('sh-go');if(btn)btn.disabled=true;
   try{
     if(JSON.stringify(payload).length>1900000)throw new Error('Ce dossier est trop gros pour être partagé d’un coup (images ou très nombreuses questions) : partage ses cours un par un.');

@@ -37,6 +37,20 @@ const KINDS={
   annales:{ic:'link',t:'Cours ↔ Annales',d:'L’IA relie chaque question d’annale au passage exact du cours.',c:'#7c3aed'}
 };
 const ORDER=['course','cards','fiche','map','cases','annales'];
+/* v85 : les « cas cliniques » deviennent cas pratiques / exercices / études de cas selon la filière (kp_prof) */
+const CASE_FIL={
+  droit:['gavel','Cas pratiques','Des situations concrètes façon examen : faits, questions, puis correction (syllogisme juridique).','CAS PRATIQUES','les faits (personnes, dates, contrats, litige…)','qualification des faits, problème de droit, règles applicables (articles, jurisprudence), application aux faits, solution','« Vente d’une voiture d’occasion avec vice caché »'],
+  prepa:['functions','Exercices corrigés','Des exercices façon concours : énoncé, questions guidées, puis corrigé détaillé.','EXERCICES façon concours','l’énoncé (données, hypothèses, schéma décrit)','modélisation, méthode, calculs, résultat, vérification (homogénéité, ordre de grandeur)','« Chute d’une bille avec frottement fluide »'],
+  sciences:['science','Exercices corrigés','Des exercices et problèmes : énoncé, questions guidées, puis corrigé détaillé.','EXERCICES / PROBLÈMES','l’énoncé (données, protocole, résultats d’expérience)','méthode, raisonnement, calculs, interprétation, conclusion','« Dosage d’un acide faible par la soude »'],
+  info:['terminal','Exercices corrigés','Des exercices pratiques : énoncé, questions, puis corrigé avec le code expliqué.','EXERCICES PRATIQUES','l’énoncé (problème, contraintes, exemple d’entrée / sortie)','analyse, algorithme, complexité, code commenté, tests','« Trouver les doublons d’un tableau »'],
+  eco:['work','Études de cas','Des situations d’entreprise façon examen : contexte, questions, puis correction.','ÉTUDES DE CAS','le contexte (entreprise, marché, chiffres clés, problème)','diagnostic, outils / concepts du cours, calculs, recommandations argumentées','« Une PME qui perd des parts de marché »'],
+  lettres:['menu_book','Analyses de texte','Des extraits à analyser : questions guidées, puis correction rédigée.','ANALYSES DE TEXTES / DOCUMENTS','l’extrait ou le document (auteur, œuvre, date, contexte)','problématique, axes de lecture, procédés, citations commentées, conclusion','« Incipit de L’Étranger »'],
+  lycee:['edit_note','Exercices type bac','Des exercices façon bac : énoncé, questions, puis corrigé détaillé.','EXERCICES TYPE BAC','l’énoncé ou le document','méthode attendue au bac, étapes de résolution, réponse rédigée','« Étude d’une fonction exponentielle »'],
+  autre:['quiz','Mises en situation','Des situations concrètes façon examen : questions, puis correction détaillée.','MISES EN SITUATION','la situation de départ','raisonnement attendu, notions du cours, réponse argumentée','titre court']
+};
+function caseFil(){let p='kine';try{p=(localStorage.getItem('kp_prof')||'kine').replace(/"/g,'');}catch(e){}return CASE_FIL[p]||null;}
+function syncCaseKind(){const c=caseFil();Object.assign(KINDS.cases,c?{ic:c[0],t:c[1],d:c[2]}:{ic:'stethoscope',t:'Cas cliniques',d:'Des patients façon examen : questions, puis correction détaillée.'});}
+syncCaseKind();document.addEventListener('kc-prof',syncCaseKind);
 const AIS=[
   {id:'gemini',n:'Gemini',u:'https://gemini.google.com/app',tag:'Conseillé · lit les longs PDF',c:'#1a73e8'},
   {id:'aistudio',n:'Google AI Studio',u:'https://aistudio.google.com/prompts/new_chat',tag:'Le plus puissant, gratuit',c:'#0b8043'},
@@ -45,7 +59,7 @@ const AIS=[
 ];
 const LANGS=['Français','Español','English','Português','Italiano'];
 const LEVELS={debutant:['Débutant','débutant : explique simplement, sans jargon non défini'],inter:['Intermédiaire','intermédiaire : étudiant de 2e-3e année'],avance:['Avancé','avancé : niveau examen final, précis et technique']};
-const PROF={kine:['kinésithérapie (physiothérapie)','en kinésithérapie'],med:['médecine','en médecine'],dent:['chirurgie dentaire','en dentaire'],veto:['médecine vétérinaire','vétérinaire']};
+const PROF={kine:['kinésithérapie (physiothérapie)','en kinésithérapie'],med:['médecine','en médecine'],dent:['chirurgie dentaire','en dentaire'],veto:['médecine vétérinaire','vétérinaire'],inf:['soins infirmiers (IFSI)','en soins infirmiers'],pharma:['pharmacie','en pharmacie'],sf:['maïeutique (sage-femme)','en maïeutique'],psy:['psychologie','en psychologie'],droit:['droit','en droit'],prepa:['classes préparatoires scientifiques et école d’ingénieurs (maths, physique, chimie, SI)','en prépa'],eco:['économie, gestion et commerce','en éco-gestion'],lettres:['lettres, langues et sciences humaines','en lettres'],sciences:['sciences (biologie, chimie, physique, maths)','en sciences'],info:['informatique','en informatique'],lycee:['programme du lycée et du baccalauréat','au lycée'],autre:['ses études','dans ses études']};
 const prof=()=>PROF[LS('kp_prof','kine')]||PROF.kine;
 
 /* ───────── Stockage ───────── */
@@ -251,6 +265,17 @@ TÂCHE : transforme ce cours en COURS INTERACTIF, découpé en étapes courtes q
 - "flashcards" : 10 à 20 cartes (recto court, verso précis).
 Structure exacte :
 {"titre":"…","intro":"2 phrases : de quoi parle le cours et ce que l’étudiant saura faire","etapes":[{"titre":"…","pages":"p. 1-3","explication":"…","a_retenir":["…"],"questions":[{"type":"qcm","question":"…","options":["…","…","…","…"],"bonne":0,"explication":"…"},{"type":"vf","affirmation":"…","vrai":true,"explication":"…"}]}],"resume":["…"],"flashcards":[{"recto":"…","verso":"…"}]}
+`+fmt;
+  }
+  if(W.kind==='cases'&&caseFil()){
+    const C=caseFil();
+    return head+`
+TÂCHE : crée ${W.opt||5} ${C[3]} basés sur ce cours, variés (situations, difficultés et contextes différents).
+- "contexte" : en Markdown, ${C[4]}. 80 à 200 mots.
+- "questions" : 3 à 5 par cas, dans l’ordre du raisonnement attendu (${C[5]}). Mélange des QCM (4 options plausibles, une seule bonne, "bonne" = numéro de la bonne option à partir de 0, varie sa position ; "explication" = pourquoi) et des questions ouvertes ("reponse" = la réponse attendue, précise, 1 à 4 phrases).
+- "correction" : en Markdown, la correction complète, rédigée comme attendu à l’examen.
+Structure exacte :
+{"titre":"…","cas":[{"titre":"court, ex. ${C[6].replace(/"/g,'')}","contexte":"…","questions":[{"type":"qcm","question":"…","options":["…","…","…","…"],"bonne":0,"explication":"…"},{"type":"ouverte","question":"…","reponse":"…"}],"correction":"…"}]}
 `+fmt;
   }
   if(W.kind==='cases'){
@@ -465,7 +490,7 @@ function foot(){
   if(W.step===2)return `<footer class="kia-df">${R?'':`<button class="btn btn-g" data-a="back"><span class="ms">arrow_back</span>Réglages</button>`}<span class="kia-flex"></span><button class="btn btn-p" data-a="next">J’ai la réponse<span class="ms">arrow_forward</span></button></footer>`;
   return `<footer class="kia-df"><button class="btn btn-g" data-a="back"><span class="ms">arrow_back</span>Consigne</button><span class="kia-flex"></span><button class="btn btn-p" data-a="save" disabled><span class="ms">check</span>${R&&R.saveLabel?esc(R.saveLabel):saveLabel()}</button></footer>`;
 }
-function saveLabel(){return {course:'Ouvrir le cours interactif',cases:'Ouvrir les cas cliniques',cards:'Ajouter les flashcards',fiche:'Enregistrer la fiche',map:'Ouvrir la carte mentale'}[W.kind]||'Enregistrer';}
+function saveLabel(){return {course:'Ouvrir le cours interactif',cases:'Ouvrir les '+KINDS.cases.t.toLowerCase(),cards:'Ajouter les flashcards',fiche:'Enregistrer la fiche',map:'Ouvrir la carte mentale'}[W.kind]||'Enregistrer';}
 function copyText(t){
   try{if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).catch(()=>fallbackCopy(t));return true;}}catch(e){}
   return fallbackCopy(t);
@@ -551,7 +576,7 @@ async function doSave(){
       created:Date.now(),courseId:W.src==='course'?W.courseId:null,src:W.src,lang:W.lang,
       progress:{step:-1,ans:{},stepsDone:[],done:false,xp:0,best:null}};
     if(!putItem(it))return;
-    closeDlg();notif((k==='cases'?'Cas cliniques prêts':'Cours interactif prêt')+' : '+it.steps.length+(k==='cases'?' cas':' étapes'),'ok');
+    closeDlg();notif((k==='cases'?KINDS.cases.t+' prêts':'Cours interactif prêt')+' : '+it.steps.length+(k==='cases'?' cas':' étapes'),'ok');
     kiaPlay(it.id);return;
   }
   if(k==='cards'){
@@ -621,7 +646,7 @@ function renderHub(){
     </section>
     <div class="kia-kinds kia-kinds-hub">${ORDER.map(k=>{const K=KINDS[k];return `<button class="kia-kind" onclick="kiaNew('${k}')" style="--c:${K.c}"><span class="kia-kind-ic"><span class="ms">${K.ic}</span></span><b>${K.t}</b><small>${K.d}</small><span class="ms kia-kind-go">arrow_forward</span></button>`;}).join('')}</div>
     <section class="kia-mine">
-      <h2>Mes cours interactifs et cas cliniques${items.length?` <span>${items.length}</span>`:''}</h2>
+      <h2>Mes cours interactifs et ${KINDS.cases.t.toLowerCase()}${items.length?` <span>${items.length}</span>`:''}</h2>
       ${items.length?`<div class="kia-list">${items.map(m=>{const K=KINDS[m.kind]||KINDS.course;return `
         <div class="kia-it" style="--c:${K.c}">
           <button class="kia-it-main" onclick="kiaPlay('${esc(m.id)}')">
@@ -690,7 +715,7 @@ function renderPlay(){
 function introHTML(it){
   const P=it.progress,cases=it.kind==='cases',T=totals(it);
   return `<section class="kia-intro">
-    <div class="kia-badge"><span class="ms">${(KINDS[it.kind]||KINDS.course).ic}</span>${cases?'Cas cliniques':'Cours interactif'}</div>
+    <div class="kia-badge"><span class="ms">${(KINDS[it.kind]||KINDS.course).ic}</span>${cases?KINDS.cases.t:'Cours interactif'}</div>
     <h1>${esc(it.title)}</h1>
     ${it.intro?`<p>${esc(it.intro)}</p>`:''}
     <div class="kia-facts"><span><span class="ms">${cases?'stethoscope':'layers'}</span>${it.steps.length} ${cases?'cas':'étapes'}</span><span><span class="ms">quiz</span>${T.n} questions</span>${it.cards&&it.cards.length?`<span><span class="ms">style</span>${it.cards.length} flashcards</span>`:''}<span><span class="ms">schedule</span>≈ ${Math.max(5,Math.round(it.steps.length*(cases?6:4)))} min</span></div>

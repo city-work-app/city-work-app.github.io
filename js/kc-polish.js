@@ -107,7 +107,9 @@ function notifs(){
   /* v72 : plus de « 1995 questions à revoir » (évident quand on révise beaucoup) → une petite révision du jour,
      les 20 questions les plus urgentes, sans les matières terminées (kcDailySRS, kc-v72.js) */
   let srs=[];try{srs=G('kcDailySRS',()=>[])()||[];}catch(e){}
-  if(srs.length)out.push({id:'srs20:'+tk,ic:'my_location',cls:'t-rose',t:'Ta révision du jour : '+srs.length+' question'+(srs.length>1?'s':''),s:'Les plus urgentes à revoir · environ '+Math.max(2,Math.round(srs.length*0.4))+' min',go:()=>{const f=G('kcLaunchDailySRS',null);if(f)f();}});
+  const pl=G('kcPlanLabel',null)?G('kcPlanLabel',null)():null;   /* v85 : planning d'examen */
+  if(pl){if(!pl.done)out.push({id:'plan:'+tk,ic:'event_upcoming',cls:'t-violet',t:pl.title,s:pl.sub,go:()=>{const f=G('kcPlanLaunch',null);if(f)f();}});}
+  else if(srs.length)out.push({id:'srs20:'+tk,ic:'my_location',cls:'t-rose',t:'Ta révision du jour : '+srs.length+' question'+(srs.length>1?'s':''),s:'Les plus urgentes à revoir · environ '+Math.max(2,Math.round(srs.length*0.4))+' min',go:()=>{const f=G('kcLaunchDailySRS',null);if(f)f();}});
   /* examens et évènements proches */
   try{
     const up=(G('_agUpcoming',()=>[])(tk)||[]),t0=new Date(now.getFullYear(),now.getMonth(),now.getDate());

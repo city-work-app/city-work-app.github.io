@@ -254,7 +254,9 @@ function renderAgenda(){
   const dueAll=typeof getDueCount==='function'?getDueCount():0,due=Math.min(dueAll,FC_DAILY);
   if(due)items.push({today:true,d:today,icon:'style',cls:'t-green',title:'Flashcards du jour',sub:`${due} carte${due>1?'s':''} les plus en retard · ≈ ${Math.max(2,Math.round(due*.25))} min`,go:'startDueFlashcards()'});
   let srs=0;try{srs=typeof kcDailySRS==='function'?kcDailySRS(20).length:0;}catch(e){}
-  if(srs)items.push({today:true,d:today,icon:'my_location',cls:'t-rose',title:'Ta révision du jour',sub:`${srs} question${srs>1?'s':''} les plus urgentes · ≈ ${Math.max(2,Math.round(srs*.4))} min`,go:'kcLaunchDailySRS()'});
+  const pl=typeof kcPlanLabel==='function'?kcPlanLabel():null;   /* v85 : planning d'examen à la place de la révision du jour */
+  if(pl)items.push({today:true,d:today,icon:pl.done?'task_alt':'event_upcoming',cls:'t-violet',title:pl.title,sub:pl.sub,go:'kcPlanOpen()'});
+  else if(srs)items.push({today:true,d:today,icon:'my_location',cls:'t-rose',title:'Ta révision du jour',sub:`${srs} question${srs>1?'s':''} les plus urgentes · ≈ ${Math.max(2,Math.round(srs*.4))} min`,go:'kcLaunchDailySRS()'});
   let up=[];try{up=typeof _agUpcoming==='function'?_agUpcoming(tk):[];}catch(e){}
   up.forEach(e=>{
     const [y,m,d]=e.date.split('-').map(Number),dt=new Date(y,m-1,d);

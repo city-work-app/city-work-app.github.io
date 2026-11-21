@@ -46,14 +46,14 @@ const QUICK=[
 
 const U={view:'setup',src:null,contents:[],busy:false,ctrl:null,pdfOpen:true,obs:null,pdf:null,smart:false};
 const set=()=>({lang:LS('kp_ultra_lang','Français'),mode:U.smart?LS('kp_smart_mode','interactive'):LS('kp_ultra_mode','guided'),level:LS('kp_ultra_level','inter')});
-const PROF_TXT={kine:['kinésithérapie, physiothérapie','en kiné'],med:['médecine','en médecine'],dent:['chirurgie dentaire, odontologie','en dentaire'],veto:['médecine vétérinaire','vétérinaire']};
+const PROF_TXT={kine:['kinésithérapie, physiothérapie','en kiné'],med:['médecine','en médecine'],dent:['chirurgie dentaire, odontologie','en dentaire'],veto:['médecine vétérinaire','vétérinaire'],inf:['soins infirmiers (IFSI)','en soins infirmiers'],pharma:['pharmacie','en pharmacie'],sf:['maïeutique (sage-femme)','en maïeutique'],psy:['psychologie','en psychologie'],droit:['droit','en droit'],prepa:['classes préparatoires scientifiques et école d’ingénieurs (maths, physique, chimie, SI)','en prépa'],eco:['économie, gestion et commerce','en éco-gestion'],lettres:['lettres, langues et sciences humaines','en lettres'],sciences:['sciences (biologie, chimie, physique, maths)','en sciences'],info:['informatique','en informatique'],lycee:['programme du lycée et du baccalauréat','au lycée'],autre:['ses études','dans ses études']};
 const prof=()=>PROF_TXT[LS('kp_prof','kine')]||PROF_TXT.kine;
 
 function sysPrompt(){
   const s=set(),m=MODES[s.mode]||MODES.guided;
   const pdf=U.src&&U.src.kind==='pdf';
   const P=prof();
-  return `Tu es « Ultra », un professeur particulier expert en ${P[0]} et sciences de la santé (anatomie, physiologie, neurologie, biomécanique, pathologies, pharmacologie…). Tu aides un étudiant ${P[1]} à vraiment comprendre son cours.
+  return `Tu es « Ultra », un professeur particulier expert en ${P[0]}${/^(kine|med|dent|veto|inf|pharma|sf|psy)$/.test(LS('kp_prof','kine'))?' et sciences de la santé (anatomie, physiologie, neurologie, biomécanique, pathologies, pharmacologie…)':''}. Tu aides un étudiant ${P[1]} à vraiment comprendre son cours.
 LANGUE : réponds TOUJOURS en ${s.lang}, même si le document est dans une autre langue (traduis ; garde entre parenthèses le terme du document quand c’est utile pour l’examen).
 NIVEAU : ${LEVELS[s.level]||LEVELS.inter}.
 ${m.p}

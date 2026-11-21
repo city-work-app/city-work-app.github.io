@@ -186,6 +186,7 @@ function applyBar(){barCfg().forEach((id,i)=>{const b=$(id);if(b)b.style.order=i
 const TB=[
   {id:'level',n:'Niveau et XP',ic:'military_tech'},
   {id:'pomo',n:'Pomodoro',ic:'timer'},
+  {id:'mus',n:'Musique (ta playlist)',ic:'queue_music'},
   {id:'amb',n:'Sons d’ambiance',ic:'graphic_eq'},
   {id:'theme',n:'Thème clair / sombre',ic:'light_mode'},
   {id:'search',n:'Recherche',ic:'search'},

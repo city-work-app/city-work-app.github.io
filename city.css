@@ -1012,3 +1012,33 @@ button.cty-kpi:hover{background:var(--hov)}
 .cty.dk .cty-blist{background:rgba(255,255,255,.08)}
 .cty.dk .cty-study{background:linear-gradient(135deg,rgba(79,209,197,.12),rgba(80,140,255,.1));border-color:rgba(79,209,197,.3)}
 .cty.dk .cty-study b{color:#7fe3d6}.cty.dk .cty-study small{color:#b7c1bc}
+
+/* ───────── v85 (21 nov. 2026) : patients suivis, questions de mes cours, mode révision, promenade ───────── */
+.cty-ser{margin:10px 0;padding:10px 12px;border-radius:12px;background:rgba(230,57,122,.07);border:1px solid rgba(230,57,122,.18)}
+.cty-ser-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px}
+.cty-ser-d{display:flex;gap:4px}
+.cty-ser-d i{width:10px;height:10px;border-radius:50%;background:rgba(0,0,0,.12)}
+.cty-ser-d i.ok{background:#16a34a}.cty-ser-d i.ko{background:#dc2626}.cty-ser-d i.now{background:#e6397a;box-shadow:0 0 0 3px rgba(230,57,122,.25)}
+.cty-ser-bar{height:7px;border-radius:99px;background:rgba(0,0,0,.08);margin:8px 0 5px;overflow:hidden}
+.cty-ser-bar i{display:block;height:100%;border-radius:99px;transition:width .5s}
+.cty-ser small{font-size:11.5px;font-weight:650}
+.cty.dk .cty-ser{background:rgba(230,57,122,.12)}
+.cty.dk .cty-ser-d i,.cty.dk .cty-ser-bar{background:rgba(255,255,255,.12)}
+.cty-own{display:block;margin-top:6px;font-size:11px;font-weight:500;color:#0e8c87}
+.cty-qrev{background:linear-gradient(90deg,#fff7e0,#eef6ff);color:#7a4a00}.cty-qrev .ms{color:#d97706}
+.cty.dk .cty-qrev{background:linear-gradient(90deg,rgba(217,119,6,.18),rgba(59,130,246,.1));color:#fcd9a0}
+.cty-walkb .ms{color:#0e8c87}
+.cty-walk{position:absolute;left:50%;bottom:86px;transform:translateX(-50%);z-index:30;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border-radius:16px;background:rgba(255,255,255,.94);color:#14232b;box-shadow:0 10px 30px rgba(0,0,0,.22);font-family:var(--kc-font,inherit);max-width:calc(100% - 24px)}
+.cty-walk>.ms{font-size:22px;color:#0e8c87}
+.cty-walk-t{display:flex;flex-direction:column;min-width:0}
+.cty-walk-t b{font-size:13.5px}
+.cty-walk-t small{font-size:11.5px;color:#5c6b73;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cty-walk-go{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:11px;border:0;background:#0e8c87;color:#fff;font:650 13px var(--kc-font,inherit);cursor:pointer;white-space:nowrap;animation:ctyPulse 1.6s infinite}
+.cty-walk-go .ms{font-size:18px}
+@keyframes ctyPulse{0%,100%{box-shadow:0 0 0 0 rgba(14,140,135,.45)}60%{box-shadow:0 0 0 8px transparent}}
+.cty-walk-x{width:34px;height:34px;border-radius:10px;border:0;background:rgba(0,0,0,.06);color:#14232b;display:grid;place-items:center;cursor:pointer}
+.cty.dk .cty-walk{background:rgba(20,24,30,.94);color:#eef2f4}.cty.dk .cty-walk-t small{color:#9aa7ad}.cty.dk .cty-walk-x{background:rgba(255,255,255,.08);color:#eef2f4}
+.cty-joy{position:absolute;left:24px;bottom:120px;z-index:30;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.6);backdrop-filter:blur(4px);touch-action:none}
+.cty-joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.cty-wbub{position:absolute;z-index:29;transform:translate(-50%,-100%);margin-top:-8px;padding:7px 12px;border-radius:12px 12px 12px 4px;background:#fff;color:#14232b;font:600 12.5px var(--kc-font,inherit);box-shadow:0 8px 22px rgba(0,0,0,.2);white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;opacity:0;transition:opacity .25s}
+.cty-wbub.in{opacity:1}

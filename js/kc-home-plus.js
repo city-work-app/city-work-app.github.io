@@ -166,8 +166,8 @@ const GREY={day:{sky:['#7f8ea6','#a9b5c6','#ccd4df'],b:['#d9dee7','#c6cdd9','#b3
 function cloudPath(x,y,s){return `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="8" rx="26" ry="9"/><circle cx="-10" cy="3" r="10"/><circle cx="6" cy="-1" r="13"/><circle cx="20" cy="6" r="8"/></g>`;}
 let lastOpts=null,ro=null;
 function scene(o){
-  const el=$('kh-city-scene');if(!el)return;
-  lastOpts=o;
+  const el=o.el||$('kh-city-scene');if(!el)return;   /* v85 : o.el = autre endroit (fond d'écran « ma ville », vitrine) */
+  if(!o.el)lastOpts=o;
   const W=Math.max(240,Math.round(el.clientWidth||340)),H=Math.max(140,Math.round(el.clientHeight||168));
   const wx=o.wx||null,kind=wx?wxKind(wx.code,wx.cloud):'clear';
   const sol=solar(wx),per=sol.period;
@@ -265,8 +265,9 @@ function scene(o){
   if(kind==='fog')fx+=`<rect class="kcs-fog" x="-40" y="${G-40}" width="${W+80}" height="22" rx="11" fill="#fff" opacity=".22"/><rect class="kcs-fog kcs-fog2" x="-40" y="${G-16}" width="${W+80}" height="16" rx="8" fill="#fff" opacity=".28"/>`;
   el.innerHTML=`<svg class="kcs" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="none" data-per="${per}" data-wx="${kind}"><defs>${defs}</defs>${sky}${clouds}${trees}${bld}${ghost}${ground}${life}${fx}</svg>
     ${o.next?`<div class="kh-city-next" style="left:${gx}px;width:${nextW}px;height:${nextH}px"><span class="ms">${o.next.icon}</span><span class="kh-num">${o.next.pct} %</span></div>`:''}
-    ${wxChip(wx,kind,per)}`;
+    ${o.el?'':wxChip(wx,kind,per)}`;
   el.dataset.per=per;
+  if(o.el)return;
   if(!ro&&window.ResizeObserver){let last=W;ro=new ResizeObserver(()=>{const w=Math.round(el.clientWidth);if(Math.abs(w-last)>6){last=w;if(lastOpts)scene(lastOpts);}});ro.observe(el);}
 }
 function wxChip(wx,kind,per){

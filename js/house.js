@@ -944,5 +944,5 @@ function spin(type,frames,size){
   return _thumbs.get(k);
 }
 
-return {mount,unmount,update,setDecorate,arm,disarm,armedType,select,rotateSelected,moveSelected,deleteSelected,cam,setGrid,say,thumb,thumbCached,spin,buildModel};
+return {mount,unmount,update,setDecorate,arm,disarm,armedType,select,rotateSelected,moveSelected,deleteSelected,cam,setGrid,say,thumb,thumbCached,spin,buildModel,buildChar};   /* v85 : buildChar pour la promenade dans « Ma ville » */
 })();
