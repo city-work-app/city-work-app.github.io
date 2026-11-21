@@ -504,6 +504,7 @@ function _socialRenderSide(){
         <button class="soc-friend" onclick="socialOpenFriend('${p.id}')">
           <span class="soc-friend-av">${gamAvatarSVG(p.avatar,38)}</span>
           <span class="soc-friend-txt"><b>${_socEsc(_socName(p))}</b><small>Niv. ${p.level} · ${(p.week&&p.week.xp||0).toLocaleString('fr-FR')} XP cette semaine</small></span>
+          <span class="soc-city" role="button" tabindex="0" title="Voir sa ville" aria-label="Voir sa ville" onclick="event.stopPropagation();cityVisitFriend('${p.id}')"><span class="ms">location_city</span></span>
           <span class="ms soc-chev">chevron_right</span>
         </button>`).join(''):`<p class="soc-empty">Pas encore d’amis. Ajoute tes camarades pour les défier !</p><button class="btn btn-sm btn-g soc-wide" onclick="socialOpenAdd()"><span class="ms" style="font-size:16px">person_add</span> Ajouter des amis</button>`}
     </div>
@@ -663,6 +664,7 @@ async function socialOpenFriend(id){
       </div>
       <div class="fr" style="gap:8px;flex-wrap:wrap;margin-bottom:14px">
         ${p.is_friend&&Array.isArray(p.house)?`<button class="btn btn-sm btn-p" onclick="socialVisit('${p.id}')"><span class="ms" style="font-size:16px">cottage</span> Visiter sa maison</button>`:''}
+        ${p.is_friend?`<button class="btn btn-sm btn-p" onclick="closeModal('modal-soc-friend');cityVisitFriend('${p.id}')"><span class="ms" style="font-size:16px">location_city</span> Voir sa ville</button>`:''}
         ${p.is_friend?`<button class="btn btn-sm btn-g" onclick="closeModal('modal-soc-friend');socialOpenShare(null,'${p.id}')"><span class="ms" style="font-size:16px">send</span> Envoyer un cours</button>`
           :`<button class="btn btn-sm btn-p" onclick="socialAdd('${p.id}',this)"><span class="ms" style="font-size:16px">person_add</span> Ajouter</button>`}
       </div>
@@ -849,6 +851,7 @@ async function socialDoShare(){
   if(isF&&!T)return;
   const c=isF?{id:T.id,name:T.name}:courses.find(x=>x.id===s.courseId),payload=s.matId?_socialSubjectPayload(s.matId):isF?_socialFolderPayload(s.sfId):_socialCoursePayload(s.courseId);
   if(!c||!payload)return;
+  try{if(!payload.cat){const pf=(localStorage.getItem('kp_prof')||'').replace(/"/g,'');if(/^(kine|med|dent|veto)$/.test(pf))payload.cat=pf;}}catch(e){}   /* v84 : rubrique du Drive commun (kiné, véto…) */
   const btn=document.getElementById('sh-go');if(btn)btn.disabled=true;
   try{
     if(JSON.stringify(payload).length>1900000)throw new Error('Ce dossier est trop gros pour être partagé d’un coup (images ou très nombreuses questions) : partage ses cours un par un.');

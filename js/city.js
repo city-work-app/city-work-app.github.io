@@ -12,7 +12,7 @@ function _cityLoad(){
   if(!_cityLoading){
     _cityLoading=new Promise((res,rej)=>{
       if(window.KineCityReady)return res(window.KineCityReady);
-      const s=document.createElement('script');s.src='js/city-game.js?v=40';
+      const s=document.createElement('script');s.src='js/city-game.js?v=41';
       s.onload=()=>window.KineCityReady?res(window.KineCityReady):rej(new Error('city-game.js chargé mais vide'));
       s.onerror=()=>rej(new Error('fichier js/city-game.js introuvable'));
       document.head.appendChild(s);
@@ -47,4 +47,10 @@ function cityPendingFunds(){
     if(!m||m.xpSeen==null||typeof gam==='undefined'||!gam)return null;
     return{name:m.name||'Ma ville',money:Math.max(0,(gam.xp|0)-(m.xpSeen|0))*CITY_XP_MONEY,pop:m.pop|0};
   }catch(e){return null;}
+}
+
+// v84 (21 nov. 2026) : « Voir sa ville » depuis l'onglet Amis — ouvre Ma ville puis la visite de la ville de l'ami
+function cityVisitFriend(uid){
+  if(!uid)return;if(typeof showScreen==='function')showScreen('city');
+  let n=0;const go=()=>{if(_cityMod&&_cityMounted&&_cityMod.visit){_cityMod.visit(uid);return;}if(++n<80)setTimeout(go,250);};setTimeout(go,300);
 }

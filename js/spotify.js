@@ -358,14 +358,19 @@
     left = Math.max(8, Math.min(left, window.innerWidth - panelW - 8));
     panel.style.left    = left + 'px';
     panel.style.display = 'block';
+    /* v84 : petite animation d'ouverture (le panneau se déroule, puis « À suivre » défile titre par titre) */
+    panel.classList.remove('sp-closing'); void panel.offsetWidth; panel.classList.add('sp-opening');
     btn.classList.add('open');
     spLoadQueue();
   }
 
   function spClosePanel() {
     _spPanelOpen = false;
-    document.getElementById('sp-panel').style.display = 'none';
+    const panel = document.getElementById('sp-panel');
     document.getElementById('sp-expand-btn').classList.remove('open');
+    if (!panel || panel.style.display === 'none') return;
+    panel.classList.remove('sp-opening'); panel.classList.add('sp-closing');
+    setTimeout(() => { if (!_spPanelOpen) { panel.style.display = 'none'; panel.classList.remove('sp-closing'); } }, 190);
   }
 
   window.spTogglePanel = spOpenPanel;
@@ -595,7 +600,7 @@
     list.innerHTML = data.queue.slice(0, 4).map((t, i) => {
       const name   = t.name || '—';
       const artist = (t.artists || []).map(a => a.name).join(', ');
-      return `<div class="sp-queue-item">
+      return `<div class="sp-queue-item" style="--i:${i}">
         <span class="sp-queue-num">${i + 1}</span>
         <div class="sp-queue-info">
           <div class="sp-queue-name">${name}</div>
@@ -617,6 +622,12 @@
 
     if (expandBtn && panel) {
       expandBtn.addEventListener('mouseenter', spOpenPanel);
+      /* v84 : survoler la pochette ou le titre ouvre aussi le panneau (après un court instant) */
+      let _spHoverT = null;
+      document.querySelectorAll('#sp-player .sp-cover-wrap, #sp-player .sp-info, #sp-player .sp-track-info').forEach(el => {
+        el.addEventListener('mouseenter', () => { clearTimeout(_spHoverT); _spHoverT = setTimeout(spOpenPanel, 350); });
+        el.addEventListener('mouseleave', () => { clearTimeout(_spHoverT); if (_spPanelOpen) _spLeaveTimer = setTimeout(spClosePanel, 250); });
+      });
       expandBtn.addEventListener('mouseleave', () => {
         _spLeaveTimer = setTimeout(spClosePanel, 200);
       });

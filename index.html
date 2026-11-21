@@ -70,8 +70,8 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="premium.css?v=7">
 <link rel="stylesheet" href="desktop.css?v=19">
 <link rel="stylesheet" href="gamification.css?v=4">
-<link rel="stylesheet" href="social.css?v=1">
-<link rel="stylesheet" href="city.css?v=26">
+<link rel="stylesheet" href="social.css?v=2">
+<link rel="stylesheet" href="city.css?v=27">
 <link rel="stylesheet" href="annale-import.css?v=1">
 <link rel="stylesheet" href="cours-annales.css?v=4">
 <link rel="stylesheet" href="home-v2.css?v=1">
@@ -79,7 +79,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 <link rel="stylesheet" href="cobalt.css?v=7">
 <link rel="stylesheet" href="cobalt-plus.css?v=4">
 <link rel="stylesheet" href="atelier-ia.css?v=1">
-<link rel="stylesheet" href="cobalt-more.css?v=9">
+<link rel="stylesheet" href="cobalt-more.css?v=10">
 <!-- Styles déplacés vers styles7.css — voir section "Composants base" -->
 </head>
 <body data-screen="home">
@@ -211,7 +211,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
         <span class="ms" style="font-size:16px">close</span>
       </button>
     </div>
-<button class="ib" data-tb="pomo" onclick="openModal('modal-pomodoro')" data-tooltip="Pomodoro" aria-label="Pomodoro"><span class="ms">timer</span></button>
+<button class="ib" data-tb="pomo" onclick="Pomodoro.show()" data-tooltip="Pomodoro" aria-label="Pomodoro"><span class="ms">timer</span></button>
 <button class="ib" id="kc-amb-btn" data-tb="amb" onclick="kcAmbOpen(event)" data-tooltip="Sons d’ambiance" aria-label="Sons d’ambiance"><span class="ms">graphic_eq</span></button>
 <button class="ib" id="dark-toggle" data-tb="theme" onclick="toggleThemePicker(event)" data-tooltip="Thème" aria-label="Thème">
   <svg id="theme-icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -745,6 +745,10 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       <input class="fi" id="rename-matiere-input" maxlength="60" placeholder="Nom de la matière…"
         onkeydown="if(event.key==='Enter')saveRenameMatiere()">
     </div>
+    <div class="fg2" style="margin-top:12px">
+      <label class="fl">Couleur</label>
+      <div class="mh-colors" id="rename-matiere-colors"></div>
+    </div>
     <div class="fr" style="margin-top:16px">
       <button class="btn btn-p" onclick="saveRenameMatiere()">
         <span class="ms">check</span> Enregistrer
@@ -1070,6 +1074,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
           <button type="button" id="zoom-pct" class="kq-ts-val" onclick="toggleQfsMenu(event)" title="Choisir la taille du texte" aria-haspopup="menu">100%</button>
           <button type="button" onclick="changeQuizZoom(0.1)" title="Texte plus grand (touche +)" aria-label="Texte plus grand">A+</button>
         </div>
+        <button class="kq-ib" type="button" onclick="kcColorsOpen('quiz')" title="Couleurs du QCM" aria-label="Couleurs du QCM"><span class="ms">palette</span></button>
         <button id="focus-btn" class="kq-ib" type="button" onclick="toggleFocusMode()" title="Mode focus" aria-label="Mode focus"><span class="ms">fullscreen</span></button>
         <button class="btn btn-g kq-only-d kq-quit" type="button" onclick="confirmQuit()"><span class="ms">close</span>Quitter</button>
       </div>
@@ -1345,7 +1350,7 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
         <span class="ms" style="font-size:18px;color:var(--primary)">volume_up</span>
         <div>
           <div class="settings-card-title">Sons</div>
-          <div class="settings-card-desc">Un petit son quand tu tapes au clavier ou quand tu cliques — 4 sons au choix pour chacun</div>
+          <div class="settings-card-desc">Un petit son quand tu tapes au clavier ou quand tu cliques — 10 sons de clavier et 12 clics au choix</div>
         </div>
       </div>
       <div id="kp-sound-body"></div>
@@ -1443,11 +1448,11 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       <div class="settings-card-header">
         <span class="ms" style="font-size:18px;color:var(--primary)">upload_file</span>
         <div>
-          <div class="settings-card-title">Importer Anki / Quizlet</div>
-          <div class="settings-card-desc">Importe des flashcards depuis Anki ou Quizlet</div>
+          <div class="settings-card-title">Importer depuis une autre appli</div>
+          <div class="settings-card-desc">Anki, Quizlet, Knowt, Brainscape, RemNote, Notion, Obsidian, Excel, Kahoot, Quizizz, Moodle, Wooclap… : récupère toutes tes cartes et tes QCM</div>
         </div>
       </div>
-      <button class="btn btn-sm" style="margin-top:14px" onclick="openFlashcardInput()"><span class="ms" style="font-size:15px">upload_file</span> Importer</button>
+      <button class="btn btn-sm" style="margin-top:14px" onclick="kcImportOpen()"><span class="ms" style="font-size:15px">upload_file</span> Importer</button>
     </div>
 
     <div class="settings-card">
@@ -1592,9 +1597,9 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 
 <div id="screen-heatmap" class="screen">
 <div class="wrap">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+  <div class="kmy-head" style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+    <button class="hub-back" onclick="showScreen('profil-hub')" aria-label="Retour" title="Retour"><span class="ms">arrow_back</span></button>
     <div><p style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--on-sv);margin-bottom:4px">Visualisation</p><h1 class="hf" style="font-size:22px;font-weight:800">Carte de Maîtrise</h1></div>
-    <button class="btn btn-sm btn-g" onclick="showScreen('profil-hub')">← Retour</button>
   </div>
   <div id="heatmap-content"></div>
 </div>
@@ -2441,6 +2446,10 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
       <label class="fl">Nouveau nom</label>
       <input class="fi" id="rename-folder-input" type="text" maxlength="80" placeholder="Nom de la matière" onkeydown="if(event.key==='Enter')confirmRenameFolder()">
     </div>
+    <div class="fg2" style="margin-top:12px">
+      <label class="fl">Couleur</label>
+      <div class="mh-colors" id="rename-folder-colors"></div>
+    </div>
     <div class="fr" style="margin-top:16px">
       <button class="btn btn-p" onclick="confirmRenameFolder()">Renommer</button>
       <button class="btn btn-g" onclick="closeModal('modal-rename-folder')">Annuler</button>
@@ -2974,20 +2983,20 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/data.js?v=12",
   "js/content.js?v=64",
   "js/quiz.js?v=11",
-  "js/ui.js?v=30",
+  "js/ui.js?v=31",
   "js/premium.js?v=9",
   "js/features.js?v=7",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
   "js/imaging.js?v=4",
   "js/mindmap.js?v=14",
   "js/mindmap-extra.js?v=1",
-  "js/integrations.js?v=12",
+  "js/integrations.js?v=13",
   "js/diagram.js?v=2",
   "js/friends.js?v=4",
   "js/audio.js?v=2",
   "js/datepicker.js?v=1",
-  "js/app.js?v=7",
-  "js/spotify.js?v=6",
+  "js/app.js?v=8",
+  "js/spotify.js?v=7",
   "js/pdf-import.js?v=5",
   "js/annale-import.js?v=2",
   "js/cours-annales.js?v=8",
@@ -2995,26 +3004,28 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
   "js/config.js?v=3",
   "js/gamification.js?v=7",
   "js/agenda.js?v=2",
-  "js/social.js?v=7",
-  "js/city.js?v=38",
+  "js/social.js?v=8",
+  "js/city.js?v=39",
   "js/home-cobalt.js?v=10",
   "js/quiz-cobalt.js?v=2",
   "js/flashcards-cobalt.js?v=6",
   "js/ai-gemini.js?v=3",
-  "js/fc-editor.js?v=5",
+  "js/fc-editor.js?v=6",
   "js/ultra-ai.js?v=4",
   "js/cobalt-plus.js?v=1",
   "js/ux-cobalt.js?v=6",
-  "js/kc-extras.js?v=2",
+  "js/kc-extras.js?v=3",
   "js/atelier-ia.js?v=2",
   "js/kc-home-plus.js?v=5",
-  "js/kc-layout.js?v=8",
-  "js/kc-stats.js?v=3",
+  "js/kc-layout.js?v=9",
+  "js/kc-stats.js?v=4",
   "js/kc-polish.js?v=4",
   "js/kc-shortcuts.js?v=4",
   "js/kc-v72.js?v=2",
-  "js/kc-ambiance.js?v=3",
-  "js/kc-drive.js?v=1"
+  "js/kc-ambiance.js?v=4",
+  "js/kc-colors.js?v=1",
+  "js/kc-import.js?v=2",
+  "js/kc-drive.js?v=2"
 ]);</script>
 
 <!-- ══════════ MODAL: RECHERCHE GLOBALE ══════════ -->
@@ -3108,57 +3119,34 @@ try{if((localStorage.getItem('kcu_c')||'[]').length>2)document.documentElement.c
 
 <!-- ══════════ MODAL : POMODORO ══════════ -->
 <div class="mdbg" id="modal-pomodoro" onclick="closeBg(event,'modal-pomodoro')">
-  <div class="md" style="max-width:340px;padding:0;overflow:hidden;border-radius:20px">
-
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:10px;padding:18px 20px 14px;border-bottom:1px solid var(--bd,rgba(255,255,255,.07))">
-      <span class="ms" style="font-size:22px;color:#ef4444">timer</span>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:15px">Pomodoro</div>
-        <div style="font-size:11px;color:var(--text3,#64748b)"><span class="ms f" style="font-size:14px;vertical-align:-2px;color:var(--gold)">local_fire_department</span> <span id="pomo-streak-count">0</span> jours · Aujourd'hui : <span id="pomo-today">0</span> cycles</div>
-      </div>
+  <!-- v84 (21 nov. 2026) : Pomodoro redessiné (style du site) + durées personnalisables -->
+  <div class="md kpm" data-mode="work">
+    <div class="kpm-h">
+      <span class="kpm-ic"><span class="ms">timer</span></span>
+      <div class="kpm-ht"><b>Pomodoro</b><small><span class="ms f">local_fire_department</span> <span id="pomo-streak-count">0</span> jours · aujourd’hui <span id="pomo-today">0</span> cycles · record <strong id="pomo-best">0</strong></small></div>
+      <button class="kpm-gear" id="pomo-gear" type="button" title="Régler les durées" aria-label="Régler les durées"><span class="ms">tune</span></button>
+      <button class="kpm-x" type="button" data-action="hidePomodoro" aria-label="Fermer"><span class="ms">close</span></button>
     </div>
-
-    <!-- Tabs mode -->
-    <div style="display:flex;gap:6px;padding:14px 20px 0">
-      <button class="pomo-tab active" data-mode="work" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:1px solid var(--bd,rgba(255,255,255,.1));border-radius:10px;background:transparent;cursor:pointer;color:var(--text2,#94a3b8);transition:all .15s">Travail<br><span style="font-size:10px;opacity:.7">25 min</span></button>
-      <button class="pomo-tab" data-mode="short-break" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:1px solid var(--bd,rgba(255,255,255,.1));border-radius:10px;background:transparent;cursor:pointer;color:var(--text2,#94a3b8);transition:all .15s">Courte<br><span style="font-size:10px;opacity:.7">5 min</span></button>
-      <button class="pomo-tab" data-mode="long-break" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:1px solid var(--bd,rgba(255,255,255,.1));border-radius:10px;background:transparent;cursor:pointer;color:var(--text2,#94a3b8);transition:all .15s">Longue<br><span style="font-size:10px;opacity:.7">15 min</span></button>
+    <div class="kpm-tabs" role="tablist">
+      <button class="pomo-tab active" data-mode="work" type="button"><span class="ms">psychology</span>Travail<small id="pomo-t-work">25 min</small></button>
+      <button class="pomo-tab" data-mode="short-break" type="button"><span class="ms">coffee</span>Pause courte<small id="pomo-t-short">5 min</small></button>
+      <button class="pomo-tab" data-mode="long-break" type="button"><span class="ms">self_improvement</span>Pause longue<small id="pomo-t-long">15 min</small></button>
     </div>
-
-    <!-- Anneau + timer -->
-    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 20px 10px;position:relative">
-      <svg viewBox="0 0 120 120" style="width:150px;height:150px;transform:rotate(-90deg)">
-        <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bd,rgba(255,255,255,.07))" stroke-width="8"/>
-        <circle cx="60" cy="60" r="54" fill="none" stroke="#ef4444" stroke-width="8"
-          stroke-linecap="round" stroke-dasharray="339.3" stroke-dashoffset="0"
-          id="pomo-ring-fill" style="transition:stroke-dashoffset .5s linear"/>
-      </svg>
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;margin-top:10px">
-        <div id="pomo-time" style="font-size:36px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">25:00</div>
-        <div id="pomo-label" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3,#64748b);margin-top:2px">Travail</div>
-      </div>
+    <div class="kpm-ring">
+      <svg viewBox="0 0 120 120"><circle class="kpm-track" cx="60" cy="60" r="54"/><circle class="kpm-fill" id="pomo-ring-fill" cx="60" cy="60" r="54" stroke-dasharray="339.3" stroke-dashoffset="0"/></svg>
+      <div class="kpm-center"><div id="pomo-time">25:00</div><div id="pomo-label">Travail</div><div class="kpm-dots" id="pomo-dots"></div></div>
     </div>
-
-    <!-- Contrôles -->
-    <div style="display:flex;align-items:center;justify-content:center;gap:12px;padding:0 20px 16px">
-      <button id="pomo-reset" title="Réinitialiser" style="all:unset;width:40px;height:40px;border-radius:50%;border:1px solid var(--bd,rgba(255,255,255,.1));display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3,#64748b)">
-        <span class="ms" style="font-size:20px">replay</span>
-      </button>
-      <button id="pomo-toggle" title="Démarrer / Pause" style="all:unset;width:58px;height:58px;border-radius:50%;background:#ef4444;box-shadow:0 4px 16px rgba(239,68,68,.35);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff">
-        <span class="ms" id="pomo-play-icon" style="font-size:28px">play_arrow</span>
-      </button>
-      <button id="pomo-skip" title="Passer" style="all:unset;width:40px;height:40px;border-radius:50%;border:1px solid var(--bd,rgba(255,255,255,.1));display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3,#64748b)">
-        <span class="ms" style="font-size:20px">skip_next</span>
-      </button>
+    <div class="kpm-ctrl">
+      <button id="pomo-reset" type="button" title="Recommencer" aria-label="Recommencer"><span class="ms">replay</span></button>
+      <button id="pomo-toggle" type="button" title="Démarrer / Pause" aria-label="Démarrer ou mettre en pause"><span class="ms" id="pomo-play-icon">play_arrow</span></button>
+      <button id="pomo-skip" type="button" title="Passer à la suite" aria-label="Passer à la suite"><span class="ms">skip_next</span></button>
     </div>
-
-    <!-- Stats + Fermer -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px 18px;border-top:1px solid var(--bd,rgba(255,255,255,.07))">
-      <span style="font-size:12px;color:var(--text3,#64748b)">Record : <strong id="pomo-best" style="color:var(--text,#e2e8f0)">0</strong> 🔥</span>
-      <button class="btn btn-g" data-action="hidePomodoro" style="padding:7px 16px;font-size:13px">Fermer</button>
+    <div class="kpm-set" id="pomo-set" hidden>
+      <div class="kpm-st">Mes durées</div>
+      <div class="kpm-pre" id="pomo-pre"></div>
+      <div class="kpm-rows" id="pomo-rows"></div>
+      <label class="kpm-auto"><input type="checkbox" id="pomo-auto"><span>Enchaîner tout seul (la pause démarre à la fin du travail, et inversement)</span></label>
     </div>
-
   </div>
 </div>
 

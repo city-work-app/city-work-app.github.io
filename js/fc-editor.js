@@ -529,7 +529,7 @@ window.fceCreate=function(){
     ['quiz','#10B981','Depuis mes QCM','Chaque question devient une carte',"fceNew({qcm:true})"],
     ['add_photo_alternate','#F59E0B','Avec des images','Schémas, radios, anatomie : une image au recto ou au verso',"fceNew({img:true})"],
     ['auto_awesome','#8B5CF6','Sur un sujet avec l’IA','Donne un thème, l’IA écrit les cartes',"fceNew({ai:true,topic:'topic'})"],
-    ['download','#0EA5E9','Importer Anki / Quizlet','Colle ta liste exportée',"fceNew({importList:true})"]
+    ['download','#0EA5E9','Importer depuis une autre appli','Anki, Quizlet, Knowt, Notion, Excel…',"(window.kcImportOpen?kcImportOpen():fceNew({importList:true}))"]
   ];
   const d=dlg(`<button class="fcd-x" data-close aria-label="Fermer"><span class="ms">close</span></button>
     <h2 class="fcc-h">Créer des flashcards</h2><p class="fcd-lead">Choisis comment tu veux commencer</p>

@@ -110,6 +110,30 @@ function heat(D){
     <div class="ks2-heat-k"><span>Moins</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>Plus</span></div></div>`;
 }
 
+/* v84 (21 nov. 2026) : nouvelles cartes — « Aujourd'hui » (objectif du jour), « Quand révises-tu le mieux ? » (moments de
+   la journée : questions et réussite) et « Prévisions » (au rythme actuel, quand tout sera vu / maîtrisé). */
+function insights(D,P,allQ,cnt,days){
+  const today=D.dc[dk(new Date())]||0,gp=Math.min(100,Math.round(today/D.goal*100));
+  const SL=[['Nuit','bedtime',0,6],['Matin','wb_twilight',6,10],['Fin de matinée','light_mode',10,12],['Début d’après-midi','wb_sunny',12,15],['Après-midi','sunny',15,18],['Soirée','wb_twilight',18,21],['Fin de soirée','nights_stay',21,24]];
+  const B=SL.map(x=>({n:x[0],ic:x[1],q:0,c:0,s:0}));
+  D.sh.forEach(x=>{if(!x.ts||x.type==='flashcards')return;const h=new Date(x.ts-(x.duration||0)*500).getHours();const k=SL.findIndex(y=>h>=y[2]&&h<y[3]);if(k<0)return;B[k].q+=x.total||0;B[k].c+=x.correct||0;B[k].s++;});
+  const mq=Math.max(1,...B.map(b=>b.q)),withQ=B.filter(b=>b.q>=10),best=withQ.slice().sort((a,b)=>b.c/b.q-a.c/a.q)[0],most=B.slice().sort((a,b)=>b.q-a.q)[0];
+  const slots=B.map(b=>{const r=b.q?Math.round(b.c/b.q*100):null;return `<div class="ks2-slot${b===best?' best':''}" title="${esc(b.n)} : ${nf(b.q)} questions${r!=null?' · '+r+' % de réussite':''}"><div class="ks2-slot-b"><i style="height:${Math.max(b.q?6:2,Math.round(b.q/mq*100))}%"></i></div><b>${r==null?'—':r+'%'}</b><span class="ms">${b.ic}</span><small>${esc(b.n)}</small></div>`;}).join('');
+  /* prévisions : rythme = moyenne des 14 derniers jours */
+  let q14=0;for(let i=0;i<14;i++)q14+=D.dc[dk(addD(new Date(),-i))]||0;const pace=q14/14,unseen=cnt.new,toMaster=cnt.hard+cnt.medium+cnt.new;
+  const when=n=>{if(!n)return 'c’est déjà fait 🎉';if(pace<.5)return 'révise un peu chaque jour pour le savoir';const d=Math.ceil(n/pace);const dt=addD(new Date(),d);return `dans ≈ ${nf(d)} jour${d>1?'s':''} (${dt.getDate()} ${MON[dt.getMonth()]})`;};
+  return `<section class="ks2-row ks2-row3">
+    <div class="ks2-card ks2-today"><div class="ks2-card-h"><div><h2>Aujourd’hui</h2><p>${today>=D.goal?'Objectif atteint, bravo !':'Encore '+nf(D.goal-today)+' question'+(D.goal-today>1?'s':'')+' pour ton objectif'}</p></div></div>
+      <div class="ks2-tring" style="--p:${gp}"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="50" class="t"/><circle cx="60" cy="60" r="50" class="f" stroke-dasharray="314.16" stroke-dashoffset="${(314.16*(1-gp/100)).toFixed(1)}"/></svg><div><b>${nf(today)}</b><small>/ ${nf(D.goal)}</small></div></div>
+      <button class="btn btn-p ks2-sm ks2-go" onclick="typeof startFlash==='function'?startFlash():showScreen('modes-hub')"><span class="ms">bolt</span>Réviser maintenant</button></div>
+    <div class="ks2-card ks2-wide"><div class="ks2-card-h"><div><h2>Quand révises-tu le mieux ?</h2><p>${best?`Ta meilleure réussite : <b>${esc(best.n.toLowerCase())}</b> (${Math.round(best.c/best.q*100)} %)`+(most&&most!==best&&most.q?` · tu révises surtout ${esc(most.n.toLowerCase())}`:''):'Fais quelques QCM à différents moments de la journée pour le découvrir.'}</p></div></div>
+      <div class="ks2-slots">${slots}</div></div>
+    <div class="ks2-card ks2-fc"><div class="ks2-card-h"><div><h2>Prévisions</h2><p>Au rythme des 14 derniers jours : ${nf(Math.round(pace))} question${Math.round(pace)>1?'s':''} / jour</p></div></div>
+      <div class="ks2-fcl"><div><span class="ms">visibility</span><div><b>Tout avoir vu</b><small>${nf(unseen)} jamais vue${unseen>1?'s':''} · ${when(unseen)}</small></div></div>
+        <div><span class="ms">workspace_premium</span><div><b>Tout maîtriser</b><small>${nf(toMaster)} à travailler · ${when(toMaster*2)}</small></div></div>
+        <div><span class="ms">flag</span><div><b>Objectif ${nf(D.goal)} / jour</b><small>${P.goalDays} jour${P.goalDays>1?'s':''} réussi${P.goalDays>1?'s':''} sur ${days}</small></div></div></div></div>
+  </section>`;
+}
 /* ── Rendu ── */
 function render(){
   const root=$('ks2-root');if(!root)return;
@@ -143,10 +167,10 @@ function render(){
 
   root.innerHTML=`
   <header class="ks2-head">
-    <div><p class="ks2-kick">Mon espace</p><h1>Statistiques</h1><p class="ks2-sub">${P.active} jour${P.active>1?'s':''} actif${P.active>1?'s':''} sur les ${days} derniers jours</p></div>
+    <div class="ks2-hl"><button class="hub-back ks2-backr" onclick="showScreen('profil-hub')" aria-label="Retour" title="Retour"><span class="ms">arrow_back</span></button>
+      <div><p class="ks2-kick">Mon espace</p><h1>Statistiques</h1><p class="ks2-sub">${P.active} jour${P.active>1?'s':''} actif${P.active>1?'s':''} sur les ${days} derniers jours</p></div></div>
     <div class="ks2-head-r">
       <div class="ks2-seg" role="tablist" aria-label="Période">${RANGES.map(([v,l])=>`<button class="${v===range?'on':''}" data-ks2="range" data-v="${v}">${l}</button>`).join('')}</div>
-      <button class="btn btn-g ks2-back" onclick="showScreen('profil-hub')"><span class="ms">arrow_back</span>Retour</button>
     </div>
   </header>
 
@@ -163,6 +187,8 @@ function render(){
       <div class="ks2-mast">${donut(parts,tot)}<div class="ks2-mast-c"><b>${mastPct}%</b><span>maîtrisé</span></div></div>
       <ul class="ks2-legend">${parts.map(p=>`<li><i style="background:${p.c}"></i>${p.l}<b>${nf(p.n)}</b></li>`).join('')}</ul></div>
   </section>
+
+  ${insights(D,P,allQ,cnt,days)}
 
   <section class="ks2-row">
     <div class="ks2-card ks2-wide"><div class="ks2-card-h"><div><h2>Réussite au fil du temps</h2><p>Taux de bonnes réponses par jour de QCM (courbe lissée)</p></div></div>${lineChart(D,days)}</div>
@@ -192,6 +218,8 @@ function render(){
         <div><span class="ms">functions</span><b>${nf(allTime)}</b><small>questions en tout</small></div>
         <div><span class="ms">timer</span><b>${fmtDur(totalSecs)}</b><small>${nf(totalSess)} sessions</small></div>
         <div><span class="ms">speed</span><b>${dks.length?nf(Math.round(allTime/dks.length)):'—'}</b><small>questions par jour actif</small></div>
+        <div><span class="ms">hourglass_bottom</span><b>${(()=>{let q=0,t=0;D.sh.forEach(x=>{if(x.type!=='flashcards'&&(x.total||0)>0&&(x.duration||x.secs)){q+=x.total;t+=x.duration||x.secs;}});return q?Math.round(t/q)+' s':'—';})()}</b><small>en moyenne par question</small></div>
+        <div><span class="ms">percent</span><b>${(()=>{let q=0,c=0;D.sh.forEach(x=>{if(x.type!=='flashcards'){q+=x.total||0;c+=x.correct||0;}});return q?Math.round(c/q*100)+' %':'—';})()}</b><small>réussite depuis le début</small></div>
       </div></div>
   </section>`;
 }

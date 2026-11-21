@@ -839,10 +839,20 @@ const _Pomo = {
   _STORE_KEY: 'kine_pomodoro',
   _tick:      null,
   _remaining: 25 * 60,
+  _end:       0,
   _mode:      'work',
   _running:   false,
   _cycleCount: 0,
   _DURATIONS: { 'work': 25*60, 'short-break': 5*60, 'long-break': 15*60 },
+  /* v84 (21 nov. 2026) : durées personnalisables (kine_pomodoro.cfg = {w,s,l en minutes, n = cycles avant la grande pause, auto}) */
+  _PRESETS: [['Classique','25 / 5',25,5,15,4],['Long','50 / 10',50,10,20,3],['Très long','90 / 20',90,20,30,2],['Court','15 / 3',15,3,10,4]],
+  _cfg() { const c = this._load().cfg || {}; const k = (v, d, lo, hi) => Math.max(lo, Math.min(hi, Math.round(+v || d)));
+    return { w: k(c.w, 25, 1, 180), s: k(c.s, 5, 1, 60), l: k(c.l, 15, 1, 90), n: k(c.n, 4, 1, 12), auto: !!c.auto }; },
+  _applyCfg() { const c = this._cfg(); this._DURATIONS = { 'work': c.w*60, 'short-break': c.s*60, 'long-break': c.l*60 };
+    const t = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v + ' min'; };
+    t('pomo-t-work', c.w); t('pomo-t-short', c.s); t('pomo-t-long', c.l); },
+  _setCfg(patch) { const c = Object.assign(this._cfg(), patch); this._save({ cfg: c }); this._applyCfg();
+    if (!this._running) { this._remaining = this._DURATIONS[this._mode]; this._updateDisplay(); } this._renderSet(); },
 
   /* ── Persistance ── */
   _load() {
@@ -856,7 +866,7 @@ const _Pomo = {
   _recordCycle() {
     const today = new Date().toISOString().slice(0, 10);
     const data  = this._load();
-    const todayCycles = (data.todayCycles || 0) + 1;
+    const todayCycles = (data.lastCycleDate === today ? (data.todayCycles || 0) : 0) + 1;
     const newStreak = data.lastCycleDate === today ? (data.streak || 0) : (data.streak || 0) + 1;
     this._save({
       streak: newStreak, lastCycleDate: today,
@@ -871,77 +881,100 @@ const _Pomo = {
       { detail: { streak: newStreak, mode: this._mode } }));
   },
 
-  /* ── Timer ── */
+  /* ── Timer (heure de fin : reste juste même si l'onglet est en arrière-plan) ── */
   _tick_fn() {
-    this._remaining--;
+    this._remaining = Math.max(0, Math.round((this._end - Date.now()) / 1000));
     this._updateDisplay();
     if (this._remaining <= 0) this._onCycleEnd();
   },
 
   _onCycleEnd() {
     this.stop();
+    const auto = this._cfg().auto;
     if (this._mode === 'work') {
       this._cycleCount++;
       this._recordCycle();
       _notify('⏱ Pomodoro terminé !', 'Prends une pause méritée.');
-      this.setMode(this._cycleCount % 4 === 0 ? 'long-break' : 'short-break');
+      this.setMode(this._cycleCount % this._cfg().n === 0 ? 'long-break' : 'short-break');
     } else {
       _notify('☕ Pause terminée !', 'C\'est reparti !');
       this.setMode('work');
     }
+    if (typeof kcPlaySound === 'function') try { kcPlaySound('click', 10); } catch (e) {}
+    if (auto) this.start(true);
   },
 
   _updateDisplay() {
     const m   = Math.floor(this._remaining / 60).toString().padStart(2, '0');
     const s   = (this._remaining % 60).toString().padStart(2, '0');
-    const pct = this._remaining / this._DURATIONS[this._mode];
+    const pct = this._remaining / (this._DURATIONS[this._mode] || 1);
     const el  = document.getElementById('pomo-time');
     const ring = document.getElementById('pomo-ring-fill');
     if (el)   el.textContent = `${m}:${s}`;
     if (ring) ring.style.strokeDashoffset = 339.3 * (1 - pct);
     document.title = this._running ? `⏱ ${m}:${s} — City Work` : (window._kpTitle||'City Work');
-    // Sync topbar chip
     const topTime = document.getElementById('pomo-topbar-time');
     if (topTime) topTime.textContent = `${m}:${s}`;
     const topIcon = document.getElementById('pomo-topbar-icon');
     if (topIcon) topIcon.textContent = this._running ? 'pause' : 'play_arrow';
+    const md = document.querySelector('#modal-pomodoro .kpm');
+    if (md) { md.dataset.mode = this._mode; md.classList.toggle('run', this._running); }
+    const dots = document.getElementById('pomo-dots');
+    if (dots) { const n = this._cfg().n, k = this._cycleCount % n; dots.innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < k ? 'on' : ''}"></i>`).join(''); dots.title = `${k} / ${n} avant la grande pause`; }
+  },
+
+  _renderSet() {
+    const c = this._cfg(), pre = document.getElementById('pomo-pre'), rows = document.getElementById('pomo-rows'), au = document.getElementById('pomo-auto');
+    if (pre) pre.innerHTML = this._PRESETS.map(p => `<button type="button" class="kpm-chip${c.w === p[2] && c.s === p[3] && c.l === p[4] && c.n === p[5] ? ' on' : ''}" data-pp="${p[2]},${p[3]},${p[4]},${p[5]}"><b>${p[0]}</b><small>${p[1]}</small></button>`).join('');
+    const row = (k, lab, ic, v, step, unit) => `<div class="kpm-row"><span class="ms">${ic}</span><span class="kpm-rl">${lab}</span>
+      <button type="button" class="kpm-step" data-k="${k}" data-d="${-step}" aria-label="Moins">−</button>
+      <input class="kpm-in" type="text" inputmode="numeric" data-no-step data-k="${k}" value="${v}" aria-label="${lab}"><span class="kpm-u">${unit}</span>
+      <button type="button" class="kpm-step" data-k="${k}" data-d="${step}" aria-label="Plus">+</button></div>`;
+    if (rows) rows.innerHTML = row('w', 'Travail', 'psychology', c.w, 5, 'min') + row('s', 'Pause courte', 'coffee', c.s, 1, 'min') + row('l', 'Pause longue', 'self_improvement', c.l, 5, 'min') + row('n', 'Grande pause tous les', 'repeat', c.n, 1, 'cycles');
+    if (au) au.checked = c.auto;
   },
 
   /* ── API publique ── */
   show() {
+    this._applyCfg();
+    if (!this._running && this._remaining > this._DURATIONS[this._mode]) this._remaining = this._DURATIONS[this._mode];
     if (typeof openModal === 'function') openModal('modal-pomodoro');
-    const data = this._load();
+    const data = this._load(), today = new Date().toISOString().slice(0, 10);
     const sc = document.getElementById('pomo-streak-count');
     const td = document.getElementById('pomo-today');
     const best = document.getElementById('pomo-best');
     if (sc)   sc.textContent   = data.streak || 0;
-    if (td)   td.textContent   = data.todayCycles || 0;
+    if (td)   td.textContent   = data.lastCycleDate === today ? (data.todayCycles || 0) : 0;
     if (best) best.textContent = data.bestStreak || 0;
+    this._renderSet();
     this._updateDisplay();
   },
 
+  /* fermer la fenêtre ne coupe plus le minuteur (il continue dans la barre du haut) */
   hide() {
-    this.stop();
     if (typeof closeModal === 'function') closeModal('modal-pomodoro');
-    document.title = window._kpTitle||'City Work';
+    if (!this._running) document.title = window._kpTitle||'City Work';
   },
 
   toggle() { this._running ? this.stop() : this.start(); },
 
-  start() {
+  start(keepOpen) {
     if (this._running) return;
+    if (this._remaining <= 0) this._remaining = this._DURATIONS[this._mode];
     this._running = true;
-    this._tick = setInterval(() => this._tick_fn(), 1000);
+    this._end = Date.now() + this._remaining * 1000;
+    this._tick = setInterval(() => this._tick_fn(), 250);
     const icon = document.getElementById('pomo-play-icon');
     if (icon) icon.textContent = 'pause';
-    // Ferme la modale et affiche le mini-chip dans la topbar
-    if (typeof closeModal === 'function') closeModal('modal-pomodoro');
+    if (!keepOpen && typeof closeModal === 'function') closeModal('modal-pomodoro');
     const chip = document.getElementById('pomo-topbar-chip');
     if (chip) chip.style.display = 'flex';
+    this._updateDisplay();
     _pomoSyncTopbar();
   },
 
   stop() {
+    if (this._running) this._remaining = Math.max(0, Math.round((this._end - Date.now()) / 1000));
     this._running = false;
     clearInterval(this._tick);
     this._tick = null;
@@ -949,6 +982,7 @@ const _Pomo = {
     if (icon) icon.textContent = 'play_arrow';
     const topIcon = document.getElementById('pomo-topbar-icon');
     if (topIcon) topIcon.textContent = 'play_arrow';
+    const md = document.querySelector('#modal-pomodoro .kpm'); if (md) md.classList.remove('run');
   },
 
   reset() {
@@ -977,6 +1011,7 @@ const _Pomo = {
 
 /* Wiring des boutons de la modale (exécuté une fois au chargement) */
 document.addEventListener('DOMContentLoaded', function() {
+  _Pomo._applyCfg(); _Pomo._remaining = _Pomo._DURATIONS.work;
   const tog  = document.getElementById('pomo-toggle');
   const rst  = document.getElementById('pomo-reset');
   const skp  = document.getElementById('pomo-skip');
@@ -986,6 +1021,18 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('#modal-pomodoro .pomo-tab').forEach(tab => {
     tab.addEventListener('click', () => _Pomo.setMode(tab.dataset.mode));
   });
+  const gear = document.getElementById('pomo-gear'), set = document.getElementById('pomo-set');
+  if (gear && set) gear.addEventListener('click', () => { set.hidden = !set.hidden; gear.classList.toggle('on', !set.hidden); if (!set.hidden) _Pomo._renderSet(); });
+  if (set) {
+    set.addEventListener('click', e => {
+      const pp = e.target.closest('[data-pp]'); if (pp) { const [w, s, l, n] = pp.dataset.pp.split(',').map(Number); _Pomo._setCfg({ w, s, l, n }); return; }
+      const st = e.target.closest('.kpm-step'); if (st) { const k = st.dataset.k, c = _Pomo._cfg(); let v = c[k] + (+st.dataset.d); if (k !== 'n' && Math.abs(+st.dataset.d) === 5 && v > 5) v = Math.round(v / 5) * 5; _Pomo._setCfg({ [k]: v }); }
+    });
+    set.addEventListener('change', e => {
+      if (e.target.id === 'pomo-auto') { _Pomo._setCfg({ auto: e.target.checked }); return; }
+      const inp = e.target.closest('.kpm-in'); if (inp) _Pomo._setCfg({ [inp.dataset.k]: +inp.value });
+    });
+  }
 });
 
 window._Pomo = _Pomo;   // exposé pour les onclick inline du chip topbar

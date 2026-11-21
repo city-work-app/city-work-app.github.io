@@ -337,3 +337,7 @@ button.soc-friend:focus-visible{outline:var(--focus-ring)}
 .scm-q{background:var(--surf-low);border-radius:12px;padding:10px 12px}
 .scm-q b{display:block;font:700 13.5px/1.4 'Manrope',sans-serif}
 .scm-q small{color:var(--tertiary);font-size:12px}
+/* v84 : bouton « Voir sa ville » dans la liste des amis */
+.soc-city{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--kc-primary,#e0475f);background:var(--surf-low);flex-shrink:0;transition:background .15s,transform .15s}
+.soc-city:hover{background:var(--kc-primary-soft,rgba(224,71,95,.15));transform:scale(1.06)}
+.soc-city .ms{font-size:19px}

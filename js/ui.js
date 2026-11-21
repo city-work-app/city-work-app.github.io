@@ -1205,6 +1205,7 @@ function _themePickerHTML(full){
   const fonts=[['geist','Geist'],['inter','Inter'],['manrope','Manrope'],['bricolage','Bricolage'],['lexend','Lexend'],['atkinson','Atkinson'],['serif','Serif'],['system','Système']];
   return `<div class="kp-row"><div class="kp-lbl">Mode</div>${modes}</div>
     <div class="kp-row"><div class="kp-lbl">Couleur d'accent</div>${accents}</div>
+    <div class="kp-row"><div class="kp-lbl">Couleurs par écran</div><button type="button" class="kp-more" onclick="kcColorsOpen&&kcColorsOpen()"><span class="ms">palette</span>Une couleur pour le QCM, les flashcards, les annales…</button></div>
     <div class="kp-row"><div class="kp-lbl">Fond</div>${seg('bg',[['neutre','Neutre'],['chaud','Chaud'],['froid','Froid'],['teinte','Teinté'],['noir','Noir pur']])}</div>
     <div class="kp-row"><div class="kp-lbl">Police</div><div class="kp-fonts">${fonts.map(([v,n])=>`<button type="button" class="kp-font" data-kp-look="font:${v}" onclick="setLook('font','${v}')" style="font-family:${LOOK_FONTS[v][0]?`'${LOOK_FONTS[v][0]}',`:''}system-ui,sans-serif"><b>Aa</b><span>${n}</span></button>`).join('')}</div></div>
     <div class="kp-row"><div class="kp-lbl">Taille de l'interface</div>${seg('size',[['90','90 %'],['100','100 %'],['110','110 %'],['120','120 %']])}</div>

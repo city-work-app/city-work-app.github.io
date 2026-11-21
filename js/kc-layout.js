@@ -146,6 +146,37 @@ function applyNav(){
   nav.appendChild(frag);
 }
 
+/* ───────── Éléments à afficher ou cacher (v84, 21 nov. 2026) ─────────
+   « Je veux pouvoir supprimer la barre de recherche, la barre de niveau, la carte de profil, le logo… » :
+   kp_layout2.show = {clé: 0 caché | 1 affiché} → classes kc-no-<clé> sur body ; kp_layout2.brand = texte du logo. */
+const SHOWS=[
+  ['logo','Logo (en haut à gauche)','apps','Le logo et le nom du site'],
+  ['logoimg','Image du logo','image','Garder seulement le nom, sans l’image'],
+  ['prof','Carte de profil','account_circle','Ta photo, ton prénom et ta série dans le menu'],
+  ['lvl','Barre de niveau','military_tech','Niveau et XP sous ta carte de profil'],
+  ['search','Barre de recherche','search','« Rechercher » en haut du menu (la touche / marche toujours)'],
+  ['labels','Titres des catégories du menu','label','Réviser, Organiser, Communauté…'],
+  ['hello','Date et salutation de l’accueil','waving_hand','« Vendredi 20 novembre · Bonsoir … »'],
+  ['chips','Pastilles série et XP de l’accueil','local_fire_department','En haut à droite de l’accueil'],
+  ['bell','Cloche des notifications','notifications','En haut à droite de l’accueil']
+];
+function showOn(k){const o=load().show||{};return o[k]!==0;}
+function applyShow(){
+  const B=document.body;if(!B)return;SHOWS.forEach(([k])=>B.classList.toggle('kc-no-'+k,!showOn(k)));
+  const sp=document.querySelector('.topbar .logo>span');if(sp){const t=(load().brand||'').trim();
+    if(t){if(sp.dataset.brand!==t){sp.textContent=t;sp.dataset.brand=t;}}else if(sp.dataset.brand){sp.innerHTML='City <em>Work</em>';delete sp.dataset.brand;}}
+}
+function elsUI(){
+  const o=load();
+  return `<p class="kl-hint">Choisis ce qui s’affiche autour de l’accueil. Tout ce que tu caches peut revenir d’un clic.</p>
+    <div class="kl-list">${SHOWS.map(([k,n,ic,d])=>{const on=showOn(k);return `<div class="kl-item kl-sm${on?'':' off'}" data-id="${k}">
+      <span class="kl-ic"><span class="ms">${ic}</span></span><div class="kl-main"><b>${esc(n)}</b><small class="kl-d">${esc(d)}</small></div>
+      <button class="kl-eye" data-a="show" data-k="${k}" title="${on?'Cacher':'Afficher'}"><span class="ms">${on?'visibility':'visibility_off'}</span></button></div>`;}).join('')}</div>
+    <div class="kl-sep"></div>
+    <button class="kl-link" data-a="scol"><span class="ms">palette</span><span><b>Couleurs des écrans</b><small>Une ambiance de couleur pour le QCM, les flashcards, l’accueil…</small></span><span class="ms">chevron_right</span></button>
+    <div class="kl-sub">Nom affiché à côté du logo</div>
+    <div class="kl-brandrow"><input class="fi kl-brand" maxlength="24" placeholder="City Work" value="${esc(o.brand||'')}" aria-label="Nom affiché à côté du logo">${o.brand?'<button class="btn btn-g" data-a="brandreset">Remettre</button>':''}</div>`;
+}
 /* ───────── Barre du bas (téléphone) ───────── */
 function barItems(){return [...document.querySelectorAll('.bnav > .ni')].map(b=>({id:b.id,ic:(b.querySelector('.ms')||{}).textContent||'',n:[...b.childNodes].filter(n=>n.nodeType===3).map(n=>n.textContent).join('').trim()}));}
 function barCfg(){const all=barItems().map(b=>b.id),s=(load().bar||[]).filter(id=>all.includes(id));all.forEach(id=>{if(!s.includes(id))s.push(id);});return s;}
@@ -270,7 +301,7 @@ function tbRemove(id){
   const o=load();o.top=c;save(o);applyTop();
 }
 
-function applyAll(){try{applyHome();}catch(e){console.warn('[layout] accueil',e);}try{applyNav();}catch(e){console.warn('[layout] menu',e);}try{applyBar();}catch(e){}try{applyTop();}catch(e){console.warn('[layout] barre du haut',e);}}
+function applyAll(){try{applyShow();}catch(e){console.warn('[layout] éléments',e);}try{applyHome();}catch(e){console.warn('[layout] accueil',e);}try{applyNav();}catch(e){console.warn('[layout] menu',e);}try{applyBar();}catch(e){}try{applyTop();}catch(e){console.warn('[layout] barre du haut',e);}}
 window.kcLayoutApply=applyAll;
 
 /* ───────── Glisser pour réordonner (souris + doigt) ───────── */
@@ -313,7 +344,7 @@ function panel(){
   let p=$('kl-panel');if(p)return p;
   p=document.createElement('aside');p.id='kl-panel';p.className='kl-panel';p.setAttribute('aria-label','Personnaliser la mise en page');
   p.innerHTML=`<header class="kl-h"><span class="kl-h-ic"><span class="ms">dashboard_customize</span></span><div><b>Mise en page</b><small>Les changements s’appliquent tout de suite</small></div><button class="kl-x" data-a="close" aria-label="Fermer"><span class="ms">close</span></button></header>
-    <nav class="kl-tabs" role="tablist"><button data-t="home">Accueil</button><button data-t="nav">Menu</button><button data-t="top">Barre du haut</button><button data-t="bar">Barre du bas</button></nav>
+    <nav class="kl-tabs" role="tablist"><button data-t="home">Accueil</button><button data-t="nav">Menu</button><button data-t="top">Barre du haut</button><button data-t="els">Afficher</button><button data-t="bar">Barre du bas</button></nav>
     <div class="kl-body" id="kl-body"></div>
     <footer class="kl-f"><button class="btn btn-g" data-a="reset"><span class="ms">restart_alt</span>Réinitialiser</button><span style="flex:1"></span><button class="btn btn-p" data-a="close">Terminé</button></footer>`;
   document.body.appendChild(p);
@@ -337,6 +368,7 @@ function draw(){
   if(tab==='home')b.innerHTML=homeUI();
   else if(tab==='nav')b.innerHTML=navUI();
   else if(tab==='top')b.innerHTML=topUI();
+  else if(tab==='els')b.innerHTML=elsUI();
   else b.innerHTML=barUI();
 }
 function topUI(){
@@ -362,6 +394,7 @@ function homeUI(){
       <div class="kl-main"><b>${esc(B.n)}</b>${x.id==='modes'?'<button class="kl-pick" data-a="modes"><span class="ms">tune</span>Choisir les raccourcis (0 à 8)</button>':''}<div class="kl-seg">${SIZES.map(([v,l])=>`<button class="${x.size===v&&!x.w?'on':''}" data-a="size" data-v="${v}">${l}</button>`).join('')}${x.w?`<i class="kl-wtag" title="Largeur réglée à la souris">${x.w}/12</i>`:''}</div></div>
       <button class="kl-eye" data-a="hide" title="${x.hide?'Afficher':'Cacher'}"><span class="ms">${x.hide?'visibility_off':'visibility'}</span></button></div>`;}).join('')}</div>
     <div class="kl-sep"></div>
+    <button class="kl-link" data-t="els"><span class="ms">visibility</span><span><b>Logo, recherche, profil, niveau…</b><small>Cache ou affiche les éléments autour de l’accueil, change le nom du logo</small></span><span class="ms">chevron_right</span></button>
     <button class="kl-link" data-a="wx"><span class="ms">partly_cloudy_day</span><span><b>Météo de ma ville</b><small>Le vrai ciel et le vrai temps de chez toi sur la carte « Ma ville »</small></span><span class="ms">chevron_right</span></button>
     <button class="kl-link" data-a="mat"><span class="ms">folder_open</span><span><b>Ordre de mes matières</b><small>Dans « Mes matières », attrape la poignée d’une matière pour la déplacer</small></span><span class="ms">chevron_right</span></button>`;
 }
@@ -390,6 +423,7 @@ function onSorted(){
   else{setCfg('bar',[...p.querySelectorAll('[data-list="bar"] .kl-item')].map(x=>x.dataset.id));}
 }
 function onInput(e){
+  const br=e.target.closest('.kl-brand');if(br){const o=load();o.brand=br.value.slice(0,24);save(o);applyShow();return;}
   const n=e.target.closest('.kl-gname');if(!n)return;
   const c=navCfg();const g=c.groups[+n.dataset.g];if(!g)return;g.label=n.value.slice(0,30);setCfg('nav',c);
 }
@@ -402,6 +436,9 @@ function onClick(e){
   if(a==='modes'){if(window.kcShortcutsPick)kcShortcutsPick();return;}
   if(a==='size'||a==='hide'){const c=homeCfg(),x=c.find(y=>y.id===id);if(!x)return;if(a==='size'){x.size=b.dataset.v;delete x.w;}else x.hide=!x.hide;setCfg('home',c);draw();return;}
   if(a==='tbput'){if(tbAdd(b.dataset.id))draw();return;}
+  if(a==='show'){const o=load(),sh=Object.assign({},o.show||{});sh[b.dataset.k]=showOn(b.dataset.k)?0:1;o.show=sh;save(o);applyAll();draw();return;}
+  if(a==='scol'){if(window.kcColorsOpen)kcColorsOpen();return;}
+  if(a==='brandreset'){const o=load();delete o.brand;save(o);applyAll();draw();return;}
   if(a==='tbrm'){tbRemove(id);draw();return;}
   if(a==='side'){const c=navCfg();c.side=b.dataset.v;setCfg('nav',c);draw();return;}
   if(a==='navhide'){const c=navCfg();c.hidden=c.hidden.includes(id)?c.hidden.filter(k=>k!==id):c.hidden.concat(id);setCfg('nav',c);draw();return;}
@@ -411,7 +448,7 @@ function onClick(e){
   if(a==='mat'){close();if(typeof showScreen==='function')showScreen('matieres-hub');return;}
   if(a==='reset'){
     const o=load();
-    if(tab==='home'){delete o.home;delete o.homeGap;delete o.homeMax;}else if(tab==='nav')delete o.nav;else if(tab==='top')delete o.top;else delete o.bar;
+    if(tab==='home'){delete o.home;delete o.homeGap;delete o.homeMax;}else if(tab==='nav')delete o.nav;else if(tab==='top')delete o.top;else if(tab==='els'){delete o.show;delete o.brand;}else delete o.bar;
     save(o);
     if(tab==='nav'){document.body.classList.remove('kc-nav-right');}
     if(tab==='bar')document.querySelectorAll('.bnav > .ni').forEach(x=>x.style.order='');

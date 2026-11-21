@@ -36,7 +36,7 @@ const SOUNDS=[
   {id:'wind',n:'Vent',ic:'air',g:'Nature',f:'nature/wind',k:2.8,syn:'wind'},
   {id:'crickets',n:'Grillons (nuit d’été)',ic:'nights_stay',g:'Nature',f:'animals/crickets',k:16},
   {id:'fire',n:'Feu de cheminée',ic:'fireplace',g:'Maison & lieux',f:'nature/campfire',k:8,syn:'fire'},
-  {id:'cat',n:'Chat qui ronronne',ic:'pets',g:'Maison & lieux',f:'animals/cat-purring',k:10},
+  {id:'cat',n:'Chat qui ronronne',ic:'pets',g:'Maison & lieux',f:'animals/cat-purring',k:10,vr:{rate:.07,seg:[5,11],gap:.22}},
   {id:'cafe',n:'Café',ic:'local_cafe',g:'Maison & lieux',f:'places/cafe',k:1.9},
   {id:'library',n:'Bibliothèque',ic:'local_library',g:'Maison & lieux',f:'places/library',k:6},
   {id:'train',n:'Dans le train',ic:'train',g:'Maison & lieux',f:'transport/inside-a-train',k:2},
@@ -66,7 +66,8 @@ function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'{}');const v=
   /* anciens identifiants (v73-v74) → nouveaux */
   if(v.forest!=null){v.birds=v.forest;delete v.forest;}if(v.stream!=null){v.river=v.stream;delete v.stream;}
   Object.keys(v).forEach(k=>{if(!SBY[k])delete v[k];});
-  return {v,m:typeof o.m==='number'?o.m:.7,t:TIMERS.includes(o.t)?o.t:0};}catch(e){return {v:{},m:.7,t:0};}}
+  const u=Array.isArray(o.u)?o.u.filter(x=>x&&x.id&&x.v&&typeof x.v==='object').slice(0,24):[];
+  return {v,m:typeof o.m==='number'?o.m:.7,t:TIMERS.includes(o.t)?o.t:0,u};}catch(e){return {v:{},m:.7,t:0,u:[]};}}
 let st=load();
 function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
 const vol=id=>Math.max(0,Math.min(1,+st.v[id]||0));
@@ -272,6 +273,30 @@ function loadRec(s){
     delete LOADING[s.id];delete FAILED[s.id];return lb;
   },e=>{delete LOADING[s.id];FAILED[s.id]=1;throw e;});
 }
+/* v84 (21 nov. 2026) : « les sons sont répétitifs (surtout le chat) ». Au lieu de boucler toujours le même
+   enregistrement, on enchaîne des MORCEAUX pris au hasard dans le fichier (6 à 20 s), avec un fondu enchaîné de 2,5 s,
+   une vitesse de lecture qui varie un peu (± 3 %, donc la hauteur aussi), un volume et une position gauche / droite qui
+   changent doucement. Pour certains sons (chat), petites pauses naturelles de temps en temps. Résultat : jamais deux
+   fois la même chose. */
+function varied(o,s,buf,out){
+  const V=s.vr||{},rate=V.rate||.03,seg=V.seg||[6,20],XF=2.5,D=buf.duration;
+  const wob=gain(1);wob.connect(out);o.nodes.push(wob);
+  jitter(wob.gain,.78,1.12,R(3500,6000),1.6,o.timers);   /* le volume respire lentement */
+  let next=ctx.currentTime+.02,first=true;
+  const one=()=>{
+    if(!ctx||!N[s.id]||N[s.id]!==o)return;
+    if(ctx.state!=='running'){o.timers.push(setTimeout(one,500));return;}
+    const gap=!first&&V.gap&&Math.random()<V.gap?R(1.5,5):0;   /* pause (le chat s'arrête un instant) */
+    const len=Math.min(D-.5,R(seg[0],seg[1])),r_=1+R(-rate,rate),t0=Math.max(ctx.currentTime+.02,next+gap),off=Math.random()*Math.max(.01,D-len*r_-.2);
+    const sr=ctx.createBufferSource(),eg=ctx.createGain(),pn=pan(R(-.25,.25));sr.buffer=buf;sr.playbackRate.value=r_;
+    const xf=first?.4:XF;eg.gain.setValueAtTime(0,t0);eg.gain.linearRampToValueAtTime(1,t0+xf);eg.gain.setValueAtTime(1,t0+len-XF);eg.gain.linearRampToValueAtTime(0,t0+len);
+    sr.connect(eg);eg.connect(pn);pn.connect(wob);sr.start(t0,off,len*r_+.05);
+    o.nodes.push(sr);sr.onended=()=>{const i=o.nodes.indexOf(sr);if(i>=0)o.nodes.splice(i,1);try{pn.disconnect();}catch(e){}};
+    first=false;next=t0+len-XF;
+    o.timers.push(setTimeout(one,Math.max(200,(next-ctx.currentTime-1.2)*1000)));
+  };
+  one();
+}
 function rowState(id,cls,on){const r=document.querySelector('#kc-amb .kamb-row[data-id="'+id+'"]');if(r)r.classList.toggle(cls,!!on);}
 function mount(id){
   const s=SBY[id];
@@ -284,10 +309,8 @@ function mount(id){
   loadRec(s).then(buf=>{
     rowState(id,'ld',false);rowState(id,'off',false);
     if(N[id]!==o||!ctx)return;
-    const k=gain((s.k||1)*1.4),src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
-    src.connect(k);k.connect(g);
-    src.start(ctx.currentTime+.02,Math.random()*buf.duration*.8);
-    o.nodes.push(src,k);
+    const k=gain((s.k||1)*1.4);k.connect(g);o.nodes.push(k);
+    varied(o,s,buf,k);   /* v84 : plus de boucle qui se répète */
   },e=>{
     rowState(id,'ld',false);
     if(N[id]!==o)return;
@@ -366,6 +389,10 @@ function panelHTML(){
       <button type="button" class="kamb-play${PLAY?' on':''}" data-am="play" aria-label="${PLAY?'Pause':'Lecture'}"><span class="ms">${PLAY?'pause':'play_arrow'}</span></button>
       <div class="kamb-mv"><span class="ms">${m?'volume_up':'volume_off'}</span><input type="range" min="0" max="100" value="${m}" data-am="master" aria-label="Volume général" style="--p:${m}%"></div>
     </div>
+    <div class="kamb-my"><div class="kamb-myh"><span class="ms">bookmark</span>Mes mélanges<button type="button" class="kamb-save" data-am="save" title="Enregistrer les sons et volumes actuels"><span class="ms">bookmark_add</span>Enregistrer ce mélange</button></div>
+      ${st.u.length?`<div class="kamb-pre">${st.u.map(p=>`<span class="kamb-chip kamb-uchip${presetOn(p)?' on':''}" data-am="upre" data-id="${esc(p.id)}" role="button" tabindex="0"><span class="ms">${esc(p.ic||'graphic_eq')}</span>${esc(p.n)}<button type="button" class="kamb-del" data-am="udel" data-id="${esc(p.id)}" aria-label="Supprimer ${esc(p.n)}"><span class="ms">close</span></button></span>`).join('')}</div>`
+        :`<p class="kamb-hint">Règle les sons comme tu aimes, puis « Enregistrer ce mélange » : il suffira ensuite d’un clic.</p>`}</div>
+    <div class="kamb-grp kamb-g0">Ambiances toutes prêtes</div>
     <div class="kamb-pre">${PRESETS.map(p=>`<button type="button" class="kamb-chip${presetOn(p)?' on':''}" data-am="pre" data-id="${p.id}"><span class="ms">${p.ic}</span>${esc(p.n)}</button>`).join('')}</div>
     <div class="kamb-list">${listHTML()}</div>
     <div class="kamb-foot"><span class="kamb-fl"><span class="ms">timer</span>Arrêt auto</span>
@@ -373,6 +400,7 @@ function panelHTML(){
       <span class="kamb-left" id="kamb-left">${leftTxt()}</span></div>`;
 }
 function ui(){
+  try{fabSync();}catch(e){}
   const b=$('kc-amb-btn');if(b){b.classList.toggle('kc-amb-on',PLAY);b.dataset.tooltip=PLAY?'Sons d’ambiance (en cours)':'Sons d’ambiance';}
   const p=$('kc-amb');if(p){const sc=p.querySelector('.kamb-list')?.scrollTop||0;p.innerHTML=panelHTML();const l=p.querySelector('.kamb-list');if(l)l.scrollTop=sc;}
 }
@@ -384,8 +412,8 @@ function place(p,anchor){
   p.style.top=Math.min(r.bottom+8,innerHeight-p.offsetHeight-8)+'px';
 }
 function close(){const p=$('kc-amb');if(p){p.classList.remove('open');setTimeout(()=>p.remove(),150);}document.removeEventListener('pointerdown',outside,true);document.removeEventListener('keydown',onKey,true);}
-function outside(e){const p=$('kc-amb');if(!p)return;if(p.contains(e.target)||e.target.closest('#kc-amb-btn'))return;close();}
-function onKey(e){if(e.key==='Escape'&&$('kc-amb')){e.stopPropagation();close();}}
+function outside(e){const p=$('kc-amb');if(!p)return;if(p.contains(e.target)||e.target.closest('#kc-amb-btn,#kc-amb-fab,#kc-dlg,.kc-dlg-bg'))return;close();}
+function onKey(e){if(e.key==='Escape'&&$('kc-amb')){e.stopPropagation();close();return;}if((e.key==='Enter'||e.key===' ')&&e.target.classList&&e.target.classList.contains('kamb-uchip')){e.preventDefault();e.target.click();}}
 window.kcAmbOpen=function(e){
   if(e&&e.stopPropagation)e.stopPropagation();
   if($('kc-amb')){close();return;}
@@ -401,6 +429,15 @@ document.addEventListener('click',e=>{
   const a=b.dataset.am;
   if(a==='close')close();
   else if(a==='play')window.kcAmbToggle();
+  else if(a==='udel'){e.stopPropagation();const p=st.u.find(x=>x.id===b.dataset.id);if(!p)return;
+    (typeof kcConfirm==='function'?kcConfirm('Supprimer le mélange « '+p.n+' » ?',{ok:'Supprimer',danger:true}):Promise.resolve(true)).then(ok=>{if(!ok)return;st.u=st.u.filter(x=>x!==p);save();ui();});}
+  else if(a==='upre'){const p=st.u.find(x=>x.id===b.dataset.id);if(!p)return;st.v=Object.assign({},p.v);save();if(PLAY)SOUNDS.forEach(s=>applyVol(s.id));else play();ui();}
+  else if(a==='save'){
+    const v={};SOUNDS.forEach(s=>{const x=vol(s.id);if(x>0)v[s.id]=Math.round(x*100)/100;});
+    if(!Object.keys(v).length){if(typeof showNotif==='function')showNotif('Active d’abord au moins un son','err');return;}
+    const top=Object.keys(v).sort((a,b)=>v[b]-v[a])[0],ic=SBY[top]?SBY[top].ic:'graphic_eq';
+    const ask=typeof kcPrompt==='function'?kcPrompt('Nom de ton mélange','Mon mélange '+(st.u.length+1),{ok:'Enregistrer',max:30,icon:'bookmark_add'}):Promise.resolve('Mon mélange '+(st.u.length+1));
+    ask.then(n=>{n=String(n||'').trim().slice(0,30);if(!n)return;st.u.push({id:'u'+Date.now().toString(36),n,ic,v});if(st.u.length>24)st.u.shift();save();ui();if(typeof showNotif==='function')showNotif('Mélange « '+n+' » enregistré','ok');});}
   else if(a==='pre'){const p=PRESETS.find(x=>x.id===b.dataset.id);if(!p)return;st.v=Object.assign({},p.v);save();if(PLAY)SOUNDS.forEach(s=>applyVol(s.id));else play();ui();}
   else if(a==='tog'){const id=b.dataset.id;st.v[id]=vol(id)>0?0:.5;save();if(PLAY)applyVol(id);else if(st.v[id])play();ui();}
   else if(a==='timer'){st.t=+b.dataset.v||0;save();endAt=PLAY&&st.t?Date.now()+st.t*60000:0;startTick.fading=false;if(PLAY&&ctx)master.gain.setTargetAtTime(st.m*st.m,ctx.currentTime,.3);ui();}
@@ -413,11 +450,23 @@ document.addEventListener('input',e=>{
     const id=r.dataset.id;st.v[id]=v;save();
     const row=r.closest('.kamb-row');if(row)row.classList.toggle('on',v>0);
     if(PLAY)applyVol(id,true);else if(v>0)play();
-    document.querySelectorAll('#kc-amb .kamb-chip').forEach(c=>{const p=PRESETS.find(x=>x.id===c.dataset.id);c.classList.toggle('on',!!p&&presetOn(p));});
+    document.querySelectorAll('#kc-amb .kamb-chip').forEach(c=>{const p=PRESETS.find(x=>x.id===c.dataset.id)||st.u.find(x=>x.id===c.dataset.id);c.classList.toggle('on',!!p&&presetOn(p));});
   }
 });
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#kc-amb input[type=range]'))ui();});
-window.addEventListener('resize',()=>{const p=$('kc-amb');if(p)place(p,$('kc-amb-btn'));});
-function start(){ui();}
+window.addEventListener('resize',()=>{const p=$('kc-amb');if(p){const b=$('kc-amb-btn');place(p,b&&b.offsetParent?b:$('kc-amb-fab'));}});
+/* v84 : bouton flottant des sons d'ambiance quand la barre du haut est cachée (QCM, annales, flashcards, résultats…) */
+const FAB_SCREENS=/^(quiz|results|annales|annales-hub|all-flashcards|concept-fc|fc-editor|imaging-session|match|course|fiche|atelier|ultra)$/;
+function fabSync(){
+  let f=$('kc-amb-fab');const b=$('kc-amb-btn'),scr=document.body.dataset.screen||'';
+  const hidden=!b||!b.offsetParent||b.getBoundingClientRect().width===0;
+  const modal=document.querySelector('.modal.open,.modal.show,.mdov.open,#fc-review.open,.fc-study.open');
+  const want=hidden&&(FAB_SCREENS.test(scr)||PLAY||!!modal);
+  if(!want){if(f)f.remove();return;}
+  if(!f){f=document.createElement('button');f.id='kc-amb-fab';f.type='button';f.setAttribute('aria-label','Sons d’ambiance');f.innerHTML='<span class="ms">graphic_eq</span>';
+    f.addEventListener('click',e=>window.kcAmbOpen(e));document.body.appendChild(f);}
+  f.classList.toggle('on',PLAY);f.title=PLAY?'Sons d’ambiance (en cours)':'Sons d’ambiance';
+}
+function start(){ui();fabSync();setInterval(fabSync,1200);new MutationObserver(fabSync).observe(document.body,{attributes:true,attributeFilter:['data-screen','class']});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();

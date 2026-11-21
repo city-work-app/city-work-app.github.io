@@ -154,9 +154,13 @@ window.kcProfSelectHTML=function(){
 };
 
 /* ───────── 2. Sons ───────── */
-const KEY_SOUNDS=[['Mécanique','keyboard'],['Doux','cloud'],['Machine à écrire','history_edu'],['Bulle','bubble_chart']];
-const CLICK_SOUNDS=[['Tic','touch_app'],['Pop','radio_button_checked'],['Cristal','diamond'],['Bois','forest']];
-const cfg=()=>({keys:LS('kp_snd_keys','0')==='1',kt:+LS('kp_snd_keys_t','0')||0,click:LS('kp_snd_click','0')==='1',ct:+LS('kp_snd_click_t','0')||0,vol:Math.max(0,Math.min(100,+LS('kp_snd_vol','60'))) /100});
+/* v84 (21 nov. 2026) : 6 nouveaux sons de clavier et 8 nouveaux clics, plus « satisfaisants » (thock grave, clicky, gouttes,
+   carillon qui joue une petite mélodie, crayon, rétro…) */
+const KEY_SOUNDS=[['Mécanique','keyboard'],['Doux','cloud'],['Machine à écrire','history_edu'],['Bulle','bubble_chart'],
+  ['Thock grave','graphic_eq'],['Clicky','keyboard_alt'],['Gouttes d’eau','water_drop'],['Carillon','music_note'],['Crayon','edit'],['Rétro 8-bit','sports_esports']];
+const CLICK_SOUNDS=[['Tic','touch_app'],['Pop','radio_button_checked'],['Cristal','diamond'],['Bois','forest'],
+  ['Bulle','bubble_chart'],['Interrupteur','toggle_on'],['Goutte','water_drop'],['Marimba','piano'],['Arcade','sports_esports'],['Feutré','cloud'],['Carillon','notifications'],['Déclic photo','photo_camera']];
+const cfg=()=>({keys:LS('kp_snd_keys','0')==='1',kt:Math.min(KEY_SOUNDS.length-1,+LS('kp_snd_keys_t','0')||0),click:LS('kp_snd_click','0')==='1',ct:Math.min(CLICK_SOUNDS.length-1,+LS('kp_snd_click_t','0')||0),vol:Math.max(0,Math.min(100,+LS('kp_snd_vol','60'))) /100});
 let AC=null,noiseBuf=null;
 function ac(){
   if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}
@@ -179,7 +183,12 @@ const vary=(x,p)=>x*(1+(Math.random()*2-1)*p);
 function play(kind,idx,special){
   const c=ac();if(!c)return;
   const v=cfg().vol;if(v<=0)return;
-  const out=c.createGain();out.gain.value=v*.9;out.connect(c.destination);
+  const out=c.createGain();out.gain.value=v*.9;
+  /* v84 : petite pièce (réverbération très courte) + léger placement gauche / droite → son plus plein, plus « satisfaisant » */
+  if(!c._kv){try{const L=c.sampleRate*.22|0,ir=c.createBuffer(2,L,c.sampleRate);for(let ch=0;ch<2;ch++){const d=ir.getChannelData(ch);for(let i=0;i<L;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/L,3.2);}
+    const cv=c.createConvolver();cv.buffer=ir;const rg=c.createGain();rg.gain.value=.16;cv.connect(rg);rg.connect(c.destination);c._kv=cv;}catch(e){c._kv=null;}}
+  let pn=null;if(c.createStereoPanner){pn=c.createStereoPanner();pn.pan.value=(Math.random()*2-1)*.18;out.connect(pn);pn.connect(c.destination);}else out.connect(c.destination);
+  if(c._kv)out.connect(c._kv);
   const t=c.currentTime+.001;
   if(kind==='key'){
     if(idx===0){ // Mécanique : clic sec + petit « clac »
@@ -193,8 +202,30 @@ function play(kind,idx,special){
       noise(c,out,{t,dur:.035,gain:.55,type:'bandpass',f:vary(2400,.12),q:3});
       tone(c,out,{type:'triangle',f:vary(130,.05),t,dur:.04,gain:.25});
       if(special==='enter'){tone(c,out,{f:2093,t:t+.05,a:.002,dur:.6,gain:.18});tone(c,out,{f:4186,t:t+.05,dur:.35,gain:.05});}
-    }else{ // Bulle
+    }else if(idx===3){ // Bulle
       const f=vary(special?520:760,.12);tone(c,out,{f,f2:f*.45,t,a:.002,dur:.06,gain:.35});
+    }else if(idx===4){ // Thock grave : touche lubrifiée, gros « thock » profond
+      tone(c,out,{f:vary(special?92:128,.07),f2:58,t,a:.0015,dur:.1,gain:.6});
+      noise(c,out,{t,dur:.018,gain:.32,type:'lowpass',f:vary(2000,.1),q:.7});
+      noise(c,out,{t:t+.004,dur:.05,gain:.14,type:'bandpass',f:vary(520,.1),q:1.6});
+    }else if(idx===5){ // Clicky : double clic sec du ressort + fond de course
+      noise(c,out,{t,dur:.006,gain:.62,f:vary(4800,.08),q:1});
+      noise(c,out,{t:t+.011,dur:.007,gain:.42,f:vary(3900,.08),q:1});
+      tone(c,out,{type:'square',f:vary(3300,.04),t,dur:.008,gain:.045});
+      tone(c,out,{f:vary(special?120:165,.06),f2:80,t:t+.018,dur:.05,gain:.3});
+    }else if(idx===6){ // Gouttes d'eau : « bloup » qui remonte
+      const f=vary(special?520:820,.18);tone(c,out,{f,f2:f*2.3,t,a:.002,dur:.05,gain:.32});tone(c,out,{f:f*2.3,t:t+.03,a:.002,dur:.09,gain:.07});
+    }else if(idx===7){ // Carillon : chaque touche joue la note suivante d'une gamme (petite mélodie)
+      const P=[523.3,587.3,659.3,784,880,1046.5,1174.7,1318.5,1568,1760];
+      if(special==='enter'){[0,2,4,7].forEach((k,j)=>tone(c,out,{f:P[k],t:t+j*.07,a:.003,dur:.5,gain:.14}));}
+      else{play.ci=Math.max(0,Math.min(P.length-1,(play.ci==null?4:play.ci)+(special==='big'?-2:[-1,1,1,2,-2,0][(Math.random()*6)|0])));
+        const f=P[play.ci];tone(c,out,{f,t,a:.003,dur:.42,gain:.16});tone(c,out,{f:f*2,t,a:.003,dur:.2,gain:.04});tone(c,out,{type:'triangle',f:f*3,t,dur:.06,gain:.02});}
+    }else if(idx===8){ // Crayon : petit grattement sur le papier
+      noise(c,out,{t,a:.006,dur:vary(.055,.3),gain:.3,type:'bandpass',f:vary(3600,.25),q:.9});
+      noise(c,out,{t:t+.01,dur:.03,gain:.1,type:'bandpass',f:vary(6000,.2),q:1.5});
+    }else{ // Rétro 8-bit
+      const P=[880,987.8,1046.5,1174.7,1318.5,1568];const f=special?440:P[(Math.random()*P.length)|0];
+      tone(c,out,{type:'square',f,t,a:.001,dur:.045,gain:.07});if(special==='enter')tone(c,out,{type:'square',f:f*1.5,t:t+.05,a:.001,dur:.08,gain:.06});
     }
   }else{
     if(idx===0){ // Tic
@@ -204,12 +235,31 @@ function play(kind,idx,special){
       tone(c,out,{f:vary(880,.04),f2:280,t,a:.002,dur:.09,gain:.42});
     }else if(idx===2){ // Cristal
       const f=vary(1568,.02);tone(c,out,{f,t,a:.002,dur:.35,gain:.16});tone(c,out,{f:f*1.5,t,a:.002,dur:.22,gain:.07});tone(c,out,{f:f*2.01,t,dur:.12,gain:.04});
-    }else{ // Bois
+    }else if(idx===3){ // Bois
       noise(c,out,{t,dur:.05,gain:.35,type:'bandpass',f:vary(1100,.05),q:6});
       tone(c,out,{type:'triangle',f:vary(620,.03),f2:520,t,dur:.06,gain:.3});
+    }else if(idx===4){ // Bulle qui éclate
+      const f=vary(420,.1);tone(c,out,{f,f2:f*3,t,a:.002,dur:.055,gain:.38});noise(c,out,{t:t+.045,dur:.012,gain:.12,f:3500});
+    }else if(idx===5){ // Interrupteur : clic-clac
+      noise(c,out,{t,dur:.014,gain:.5,type:'bandpass',f:vary(2600,.05),q:4});tone(c,out,{f:vary(240,.05),f2:150,t,dur:.03,gain:.2});
+      noise(c,out,{t:t+.04,dur:.012,gain:.3,type:'bandpass',f:vary(1900,.05),q:4});
+    }else if(idx===6){ // Goutte d'eau
+      const f=vary(700,.1);tone(c,out,{f,f2:f*2.6,t,a:.002,dur:.035,gain:.36});tone(c,out,{f:f*2.6,t:t+.03,a:.002,dur:.14,gain:.08});
+    }else if(idx===7){ // Marimba : note ronde et boisée
+      const P=[523.3,587.3,659.3,784,880];const f=P[(Math.random()*P.length)|0];
+      tone(c,out,{f,t,a:.002,dur:.32,gain:.38});tone(c,out,{f:f*3.93,t,a:.001,dur:.05,gain:.1});noise(c,out,{t,dur:.01,gain:.08,type:'bandpass',f:f*2,q:3});
+    }else if(idx===8){ // Arcade : petite montée de 3 notes
+      [659.3,830.6,987.8].forEach((f,j)=>tone(c,out,{type:'square',f,t:t+j*.035,a:.001,dur:.04,gain:.06}));
+    }else if(idx===9){ // Feutré : « tomp » doux
+      tone(c,out,{f:vary(190,.05),f2:105,t,a:.003,dur:.07,gain:.5});noise(c,out,{t,dur:.025,gain:.1,type:'lowpass',f:900,q:.5});
+    }else if(idx===10){ // Carillon : petite cloche claire
+      const P=[1318.5,1568,1760,2093,2349];const f=P[(Math.random()*P.length)|0];
+      tone(c,out,{type:'triangle',f,t,a:.002,dur:.5,gain:.12});tone(c,out,{f:f*2.76,t,a:.002,dur:.18,gain:.035});
+    }else{ // Déclic photo
+      noise(c,out,{t,dur:.02,gain:.5,f:vary(1800,.05),q:.7});noise(c,out,{t:t+.055,dur:.03,gain:.32,type:'bandpass',f:vary(1200,.05),q:1.2});
     }
   }
-  setTimeout(()=>{try{out.disconnect();}catch(e){}},900);
+  setTimeout(()=>{try{out.disconnect();}catch(e){}try{pn&&pn.disconnect();}catch(e){}},1200);
 }
 window.kcPlaySound=play;
 const isTyping=el=>el&&(el.isContentEditable||(el.tagName==='TEXTAREA')||(el.tagName==='INPUT'&&!/^(checkbox|radio|range|button|submit|color|file)$/i.test(el.type)));

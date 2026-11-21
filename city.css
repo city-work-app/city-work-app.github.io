@@ -979,3 +979,36 @@ button.cty-kpi:hover{background:var(--hov)}
 .cty.dk .cty-qz-fs .cty-px{background:transparent}
 .cty.dk .cty-qz-pct{color:#c9d1cd}
 .cty.dk .cty-qz-rs{filter:invert(1) brightness(.8)}
+/* v84 (21 nov. 2026) : budget lisible (gains en vert, dépenses en rouge, barres) — clair et sombre */
+.cty-bg{display:flex;flex-direction:column;gap:10px}
+.cty-bg-box{border-radius:14px;padding:10px 12px;border:1.5px solid}
+.cty-bg-box.gain{background:#eefaf3;border-color:#c5ebd4}
+.cty-bg-box.cost{background:#fdf1f0;border-color:#f3cdc8}
+.cty-bg-h{display:flex;align-items:center;gap:7px;font:800 13px 'Manrope',sans-serif;margin-bottom:6px}
+.cty-bg-h b{margin-left:auto;font-variant-numeric:tabular-nums}
+.gain .cty-bg-h{color:#1f8a4c}.cost .cty-bg-h{color:#c2412d}
+.cty-bg-row{display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:8px;padding:4px 0;font:500 12.5px 'Inter',sans-serif;color:#33453b}
+.cty-bg-row .ms{font-size:17px;opacity:.8}
+.gain .cty-bg-row .ms{color:#2f9e63}.cost .cty-bg-row .ms{color:#d65a45}
+.cty-bg-n{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cty-bg-n i{display:block;height:4px;border-radius:3px;background:currentColor;opacity:.25}
+.gain .cty-bg-n i{background:#2f9e63;opacity:.55}.cost .cty-bg-n i{background:#e0624c;opacity:.55}
+.cty-bg-row b{font:800 12.5px 'Manrope',sans-serif;font-variant-numeric:tabular-nums}
+.gain .cty-bg-row b{color:#1f8a4c}.cost .cty-bg-row b{color:#c2412d}
+.cty-bg-tot{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:center;padding:12px;border-radius:14px;background:#e9f6ff;border:1.5px solid #c4e2f7}
+.cty-bg-tot .ms{font-size:26px;color:#1f7ab8;grid-row:span 2}
+.cty-bg-tot small{display:block;font:600 11px 'Inter',sans-serif;color:#5b6f7c;text-transform:uppercase;letter-spacing:.05em}
+.cty-bg-tot b{font:800 20px 'Manrope',sans-serif;color:#1f8a4c;font-variant-numeric:tabular-nums}
+.cty-bg-tot em{font:500 11.5px/1.35 'Inter',sans-serif;color:#5b6f7c;font-style:normal}
+.cty-bg-tot.neg{background:#fff3e6;border-color:#f6d2a8}.cty-bg-tot.neg .ms{color:#d97a14}.cty-bg-tot.neg b{color:#c2412d}
+.cty.dk .cty-bg-box.gain{background:rgba(47,158,99,.1);border-color:rgba(47,158,99,.35)}
+.cty.dk .cty-bg-box.cost{background:rgba(224,98,76,.1);border-color:rgba(224,98,76,.35)}
+.cty.dk .gain .cty-bg-h,.cty.dk .gain .cty-bg-row b{color:#5fd99a}
+.cty.dk .cost .cty-bg-h,.cty.dk .cost .cty-bg-row b{color:#ff8f7a}
+.cty.dk .cty-bg-row{color:#d5ddd9}
+.cty.dk .cty-bg-tot{background:rgba(79,170,230,.1);border-color:rgba(79,170,230,.35)}
+.cty.dk .cty-bg-tot small,.cty.dk .cty-bg-tot em{color:#a9b6bf}
+.cty.dk .cty-bg-tot b{color:#5fd99a}.cty.dk .cty-bg-tot.neg{background:rgba(230,150,60,.1);border-color:rgba(230,150,60,.35)}.cty.dk .cty-bg-tot.neg b{color:#ff8f7a}
+.cty.dk .cty-blist{background:rgba(255,255,255,.08)}
+.cty.dk .cty-study{background:linear-gradient(135deg,rgba(79,209,197,.12),rgba(80,140,255,.1));border-color:rgba(79,209,197,.3)}
+.cty.dk .cty-study b{color:#7fe3d6}.cty.dk .cty-study small{color:#b7c1bc}

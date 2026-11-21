@@ -100,8 +100,7 @@ document.addEventListener('click', function _delegationHub(e) {
 
     /* ── Outils ── */
     case 'openPomodoro':
-      if (typeof openModal === 'function') openModal('modal-pomodoro');
-      if (window.Pomodoro) window.Pomodoro.show();
+      if (window.Pomodoro) window.Pomodoro.show(); else if (typeof openModal === 'function') openModal('modal-pomodoro');
       break;
     case 'openPdfInput':
       document.getElementById('kine-pdf-input')?.click();
@@ -379,7 +378,7 @@ window.renderMatieresHub = function () {
     const dn = sec === 'done';
     return `<div class="matiere-hub-item${dn ? ' mh-done' : ''}" data-fid="${fid}" data-sec="${sec}" onclick="openMatiereOptions('${fid}','${fname}')">
       <span class="mh-grip ms" title="Glisser pour changer l'ordre" onclick="event.stopPropagation()">drag_indicator</span>
-      <div class="matiere-hub-dot" style="background:${f.color || 'var(--primary)'}"></div>
+      <button type="button" class="matiere-hub-dot mh-dot-btn" style="background:${f.color || 'var(--primary)'}" title="Changer la couleur" aria-label="Changer la couleur de ${f.name.replace(/"/g, '&quot;')}" onclick="event.stopPropagation();mhPickColor('${fid}',this)"></button>
       <div class="matiere-hub-info">
         <div class="matiere-hub-name">${f.name}</div>
         <div class="matiere-hub-meta">${nc} cours · ${a.n} question${a.n !== 1 ? 's' : ''}${a.h && !dn ? ` · <span style="color:var(--error)">${a.h} difficile${a.h > 1 ? 's' : ''}</span>` : ''}${dn ? ' · <span class="mh-done-lbl">terminée</span>' : ''}</div>
@@ -415,9 +414,7 @@ window.renderMatieresHub = function () {
   el.innerHTML = html
   + `<div class="mh-new-row"><button class="btn btn-g mh-new" onclick="openModal('modal-nf')">
        <span class="ms" style="font-size:16px">add</span> Nouvelle matière
-     </button><button class="btn btn-g mh-new" onclick="kcDriveOpen()">
-       <span class="ms" style="font-size:16px">cloud</span> Drive commun
-     </button></div>`;
+     </button></div>`;   /* v84 : le bouton « Drive commun » est déjà en haut de la page (il était en double) */
   _mhInitDrag(el);
 };
 
@@ -499,6 +496,7 @@ window.openRenameMatiere = function () {
   if (!f) return;
   const inp = document.getElementById('rename-matiere-input');
   if (inp) inp.value = f.name;
+  mhFillColors('rename-matiere-colors', f.color);
   if (typeof openModal === 'function') openModal('modal-rename-matiere');
   setTimeout(() => inp?.select(), 80);
 };
@@ -509,6 +507,7 @@ window.saveRenameMatiere = function () {
   const f = (typeof folders !== 'undefined' ? folders : []).find(x => x.id === window._currentMatiereId);
   if (!f) return;
   f.name = newName;
+  const col = mhSelColor('rename-matiere-colors'); if (col) f.color = col;
   if (typeof saveAll === 'function') saveAll();
   const titleEl = document.getElementById('matiere-opt-title');
   if (titleEl) titleEl.textContent = newName;
@@ -516,6 +515,51 @@ window.saveRenameMatiere = function () {
   if (typeof renderMatieresHub === 'function') renderMatieresHub();
   if (typeof showNotif === 'function') showNotif(`Matière renommée en "${newName}"`, 'ok');
 };
+
+/* ── Couleur d'une matière (v84, 21 nov. 2026) : clic sur la pastille, ou dans « Renommer la matière » ── */
+const MH_COLS = ['#E5394F','#F97316','#F59E0B','#EAB308','#84CC16','#22C55E','#10B981','#14B8A6','#06B6D4','#0EA5E9','#3B82F6','#6366F1','#8B5CF6','#A855F7','#EC4899','#F472B6','#64748B','#2D5A3D'];
+function mhColorsHTML(cur) {
+  const c = String(cur || '').toUpperCase(), custom = c && !MH_COLS.includes(c);
+  return MH_COLS.map(x => `<button type="button" class="mh-sw${x === c ? ' on' : ''}" data-col="${x}" style="--sw:${x}" title="${x}" aria-label="Couleur ${x}"><span class="ms">check</span></button>`).join('')
+    + `<label class="mh-sw mh-sw-cust${custom ? ' on' : ''}" title="Ma couleur" style="${custom ? '--sw:' + c : ''}" data-col="${custom ? c : ''}"><span class="ms">colorize</span><input type="color" value="${custom ? c.toLowerCase() : '#e5394f'}"></label>`;
+}
+window.mhFillColors = function (id, cur) {
+  const box = document.getElementById(id); if (!box) return;
+  box.innerHTML = mhColorsHTML(cur); box.dataset.sel = cur || '';
+  if (!box._wired) { box._wired = true;
+    box.addEventListener('click', e => { const b = e.target.closest('.mh-sw'); if (!b || b.classList.contains('mh-sw-cust')) return; box.querySelectorAll('.mh-sw').forEach(x => x.classList.toggle('on', x === b)); box.dataset.sel = b.dataset.col; });
+    box.addEventListener('input', e => { if (e.target.type !== 'color') return; const l = e.target.closest('.mh-sw-cust'); l.style.setProperty('--sw', e.target.value); box.querySelectorAll('.mh-sw').forEach(x => x.classList.toggle('on', x === l)); box.dataset.sel = e.target.value.toUpperCase(); });
+  }
+};
+window.mhSelColor = function (id) { const b = document.getElementById(id); return b && /^#[0-9A-F]{6}$/i.test(b.dataset.sel || '') ? b.dataset.sel : null; };
+window.mhPickColor = function (fid, anchor) {
+  const f = (typeof folders !== 'undefined' ? folders : []).find(x => x.id === fid); if (!f) return;
+  document.querySelectorAll('.mh-cpop').forEach(x => x.remove());
+  const p = document.createElement('div'); p.className = 'mh-cpop'; p.setAttribute('role', 'dialog'); p.setAttribute('aria-label', 'Couleur de la matière');
+  p.innerHTML = `<div class="mh-cpop-t">Couleur de « ${String(f.name).replace(/[<>&]/g, '')} »</div><div class="mh-colors" id="mh-cpop-cols"></div>`;
+  document.body.appendChild(p); mhFillColors('mh-cpop-cols', f.color);
+  const r = anchor.getBoundingClientRect(), w = p.offsetWidth;
+  p.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left - 8)) + 'px';
+  p.style.top = (r.bottom + 8 + p.offsetHeight > innerHeight ? Math.max(8, r.top - p.offsetHeight - 8) : r.bottom + 8) + 'px';
+  const apply = () => { const c = mhSelColor('mh-cpop-cols'); if (!c || c === f.color) return; f.color = c; if (typeof saveAll === 'function') saveAll(); anchor.style.background = c; };
+  p.addEventListener('click', e => { if (e.target.closest('.mh-sw:not(.mh-sw-cust)')) { apply(); close(); } });
+  p.addEventListener('change', e => { if (e.target.type === 'color') { apply(); close(); } });
+  const close = () => { p.remove(); document.removeEventListener('pointerdown', out, true); document.removeEventListener('keydown', key, true); if (typeof renderMatieresHub === 'function') renderMatieresHub(); };
+  const out = e => { if (!p.contains(e.target)) close(); };
+  const key = e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  setTimeout(() => { document.addEventListener('pointerdown', out, true); document.addEventListener('keydown', key, true); }, 0);
+};
+/* fenêtre « Renommer la matière » de la page d'une matière (content.js) : on y ajoute aussi la couleur */
+(function () {
+  const wrap = () => {
+    if (typeof window.openRenameFolder !== 'function' || window.openRenameFolder._mh) return;
+    const o1 = window.openRenameFolder, o2 = window.confirmRenameFolder;
+    window.openRenameFolder = function (fid) { const r = o1.apply(this, arguments); const f = (folders || []).find(x => x.id === fid); mhFillColors('rename-folder-colors', f && f.color); window._mhRenFid = fid; return r; };
+    window.openRenameFolder._mh = true;
+    window.confirmRenameFolder = function () { const f = (folders || []).find(x => x.id === window._mhRenFid), c = mhSelColor('rename-folder-colors'); if (f && c) f.color = c; return o2.apply(this, arguments); };
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(wrap, 0)); else setTimeout(wrap, 0);
+})();
 
 /* ── Supprimer ── */
 window.confirmDeleteMatiere = function () {

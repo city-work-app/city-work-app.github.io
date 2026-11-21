@@ -2106,7 +2106,7 @@ function spawnCar(c,fleet){
     const out=opts[(Math.random()*opts.length)|0],from=OPP(out),t0=Math.random();
     const lane=E._lanes&&E._lanes.get(i*8+from);if(lane&&lane.some(o=>o!==c&&Math.abs(o.t-t0)<.45))continue;   // pas d'apparition sur une autre voiture
     c.i=i;c.from=from;c.to=out;c.t=t0;c.ov=null;c.ok=0;c.nmv=null;c.nmvX=0;c.bt=0;c.sp=1.1+Math.random()*.8;
-    c.leave=0;c.out=null;c.dead=false;c.ghost=0;c.by=null;c.sc=seenXZ(i%N+.5,((i/N)|0)+.5)?0:1;c.px=c.pz=null;c.col=CAR_COLS[(Math.random()*CAR_COLS.length)|0];c.fresh=true;c.dest=car?commuteDest():fleet===E.taxis?taxiDest():null;if(c.id==null)c.id=++_carId;return true;
+    c.leave=0;c.out=null;c.dead=false;c.ghost=0;c.by=null;c.trip=null;c.up=null;c.pkA=null;c.car=car?1:0;c.exit=0;c.sc=seenXZ(i%N+.5,((i/N)|0)+.5)?0:1;c.px=c.pz=null;c.col=CAR_COLS[(Math.random()*CAR_COLS.length)|0];c.fresh=true;c.dest=car?commuteDest():fleet===E.taxis?taxiDest():null;if(c.id==null)c.id=++_carId;return true;
   }
   return false;
 }
@@ -2137,13 +2137,89 @@ function carPos(c,o){
   let tx=2*u*(x-p0x)+2*t*(p2x-x),tz=2*u*(z-p0z)+2*t*(p2z-z);const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
   o[0]=px-tz*.17;o[1]=pz+tx*.17;o[2]=Math.atan2(tx,tz);
 }
+/* v84 (21 nov. 2026) : voitures logiques. Chaque voiture part de l'allée d'une maison (ou du parking d'un commerce, d'un
+   bureau, d'un service), suit le chemin le plus court jusqu'à sa destination, puis entre dans le terrain d'arrivée et s'y
+   gare. Matin : maison → travail ; soir : travail → maison ; journée : courses, services, loisirs et retour ; nuit : retour
+   à la maison. Plus de voitures qui tournent en rond au hasard ni qui disparaissent au milieu de la rue. */
+function lotRoad(i){   // route devant un terrain + point d'entrée (allée) au bord du terrain
+  const x=i%N,z=(i/N)|0;let best=null;
+  for(let d=0;d<4;d++){const X=x+DIRS[d][0],Z=z+DIRS[d][1];if(X<0||Z<0||X>=N||Z>=N)continue;const j=Z*N+X;if(!road[j]||noCar(j)||showBlocked(j)||ter[j]||mtn[j])continue;
+    const sc_=(rx[j]===2||SIG[j]?0:armCnt(j)<=2?3:1)+(dg[j]?-2:0);if(!best||sc_>best.s)best={s:sc_,j,d};}
+  if(!best||best.s<1)return null;const D=DIRS[best.d],rxc=best.j%N+.5,rzc=((best.j/N)|0)+.5;
+  return{r:best.j,lx:rxc-D[0]*.62,lz:rzc-D[1]*.62,ux:-D[0],uz:-D[1]};   // u : de la route vers le terrain
+}
+let _tpT=-9,_tpH=[],_tpW=[],_tpS=[];
+function tripLists(){
+  if(E.t-_tpT<3)return;_tpT=E.t;_tpH=[];_tpW=[];_tpS=[];
+  for(let i=0;i<NN;i++){if(!lvl[i]||!zone[i]||st[i]!==OK)continue;if(zone[i]===ZR)_tpH.push(i);else{_tpW.push(i);if(zone[i]===ZC)_tpS.push(i);}}
+  for(const s of SV.values()){const c=BT[s.t]&&BT[s.t].cat;if(c==='services'||c==='loisirs'||c==='parcs'||c==='monuments'||c==='economie'){const F=svcFront(s);if(F)_tpS.push(F.bi);}}
+}
+function tripPick(L){for(let k=0;k<8&&L.length;k++){const i=rpick(L),R=lotRoad(i);if(R)return{i,R};}return null;}
+function tripMake(c,fromTile){   // fromTile : la voiture roule déjà (sortie d'un parking) → seulement la destination
+  tripLists();if(!_tpH.length)return false;
+  const h=hourNow(),night=h<6||h>=22;let A=null,B=null;
+  const home=()=>tripPick(_tpH),work=()=>tripPick(_tpW.length?_tpW:_tpS),shop=()=>tripPick(_tpS.length?_tpS:_tpW);
+  if(fromTile!=null){B=night||(h>=16.5&&h<20)||Math.random()<.45?home():(h<10?work():shop());}
+  else if(h>=6.5&&h<9.5){A=home();B=Math.random()<.8?work():shop();}
+  else if(h>=16.5&&h<19.5){A=Math.random()<.8?work():shop();B=home();}
+  else if(night){A=Math.random()<.7?(shop()||work()):home();B=home();}
+  else if(Math.random()<.5){A=home();B=shop();}else{A=shop();B=home();}
+  if(!B||(fromTile==null&&!A))return false;
+  const a=fromTile!=null?fromTile:A.R.r,b=B.R.r;if(a===b)return false;
+  const P_=roadPathBFS(a,b,true);if(!P_||P_.length<3)return false;
+  c.trip={path:P_,k:0,b,R:B.R,A:A?A.R:null};return true;
+}
+/* nouvelle voiture : elle sort de l'allée du terrain de départ et s'insère sur sa voie */
+function tripSpawn(c){
+  for(let k=0;k<4;k++){const t_={};if(!tripMake(t_))continue;const T=t_.trip,a=T.path[0],n1=T.path[1];
+    const to=[0,1,2,3].find(d=>roadNb(a,d)===n1);if(to==null)continue;
+    const lane=E._lanes&&E._lanes.get(a*8+OPP(to));if(lane&&lane.some(o=>o!==c&&o.t>.2))continue;
+    c.i=a;c.from=OPP(to);c.to=to;c.t=.75;c.ov=null;c.ok=0;c.nmv=null;c.nmvX=0;c.bt=0;c.sp=1.1+Math.random()*.7;
+    c.leave=0;c.out=null;c.dead=false;c.ghost=0;c.by=null;c.sc=1;c.px=c.pz=null;c.col=CAR_COLS[(Math.random()*CAR_COLS.length)|0];c.fresh=true;c.dest=null;c.exit=0;
+    c.trip=T;c.car=1;c.pkA=null;c.up={u:0,w:0,x0:T.A.lx,z0:T.A.lz,ux:T.A.ux,uz:T.A.uz};if(c.id==null)c.id=++_carId;return true;}
+  return false;
+}
+/* direction à prendre en entrant sur la case j (suivre le chemin du trajet) */
+function tripDir(c,j,o){
+  let T=c.trip;
+  if(!T&&c.car&&!c.leave&&!c.up&&!c.pkA){if(tripMake(c,j))T=c.trip;}   // voiture sortie d'un parking : elle se choisit une destination
+  if(!T)return null;
+  let k=T.path.indexOf(j,Math.max(0,T.k-1));
+  if(k<0){const P_=roadPathBFS(j,T.b,true);if(!P_){c.trip=null;return null;}T.path=P_;T.k=0;k=0;}   // détour (rue fermée) : nouveau chemin
+  T.k=k;if(k>=T.path.length-1)return o.includes(c.to)?c.to:null;
+  const nx=T.path[k+1],d=o.find(d=>d<4&&roadNb(j,d)===nx);return d==null?null:d;
+}
+/* arrivée : la voiture ralentit, tourne et entre dans l'allée / le parking du terrain */
+function tripArrive(c){const T=c.trip,R=T.R;c.pkA={u:0,x0:c.px,z0:c.pz,a0:c.pa,hx:Math.sin(c.pa),hz:Math.cos(c.pa),lx:R.lx,lz:R.lz,ux:R.ux,uz:R.uz};c.trip=null;}
+function bez2(ax,az,bx_,bz,cx,cz,t,o){const u=1-t;o[0]=u*u*ax+2*u*t*bx_+t*t*cx;o[1]=u*u*az+2*u*t*bz+t*t*cz;const tx=2*u*(bx_-ax)+2*t*(cx-bx_),tz=2*u*(bz-az)+2*t*(cz-bz);o[2]=Math.atan2(tx,tz);}
 const _fsv=new THREE.Vector3();
+/* animation de sortie (c.up) ou d'arrivée (c.pkA) ; dessine la voiture à l'emplacement n. Renvoie true si elle est animée. */
+function tripAnim(c,C,dt,o,n){
+  let k_=1;
+  if(c.up){const U=c.up;carPos(c,o);const Lx=o[0],Lz=o[1];
+    if(U.u===0){const lane=E._lanes&&E._lanes.get(c.i*8+c.from);U.w+=dt;
+      if(lane&&lane.some(q=>q!==c&&!q.up&&q.t>.15&&q.t<1)&&U.w<6){/* on attend que la voie soit libre */}else U.u=1e-4;}
+    else U.u=Math.min(1,U.u+dt*.62);
+    const d0=(Lx-U.x0)*(-U.ux)+(Lz-U.z0)*(-U.uz),P1x=U.x0-U.ux*d0,P1z=U.z0-U.uz*d0;
+    bez2(U.x0,U.z0,P1x,P1z,Lx,Lz,U.u,o);if(U.u<=1e-4)o[2]=Math.atan2(-U.ux,-U.uz);
+    k_=clamp(.4+U.u/.35*.6,.4,1);if(U.u>=1){c.up=null;carPos(c,o);}}
+  else{const A=c.pkA;A.u=Math.min(1,A.u+dt*.7);
+    let pr=(A.lx-A.x0)*A.hx+(A.lz-A.z0)*A.hz;if(pr<.12)pr=.12;const P1x=A.x0+A.hx*pr,P1z=A.z0+A.hz*pr;
+    bez2(A.x0,A.z0,P1x,P1z,A.lx,A.lz,A.u,o);k_=A.u<.62?1:clamp(1-(A.u-.62)/.38*.6,.4,1);
+    if(A.u>=1){c.dead=true;return true;}}
+  c.px=o[0];c.pz=o[1];c.pa=o[2];
+  C.m.makeRotationY(o[2]);if(k_<.999){_fsv.set(k_,k_,k_);C.m.scale(_fsv);}C.m.setPosition(o[0],mtn[c.i]?mtnH(o[0],o[1])+.012:0,o[1]);
+  C.mesh.setMatrixAt(n,C.m);if(C.lights)C.lights.setMatrixAt(n,C.m);if(C.cone)C.cone.setMatrixAt(n,C.m);
+  if(c.fresh||c.n!==n){C.col.set(c.col);C.mesh.setColorAt(n,C.col);c.fresh=false;c.n=n;C.colDirty=true;}
+  return true;
+}
 function stepFleet(C,target,dt,fixCol){
   /* v75 : plus aucune voiture qui disparaît d'un coup. Trop de voitures (nuit, fin de l'heure de pointe) → elles finissent
      leur trajet et s'en vont quand elles sont hors de l'écran (ou s'effacent doucement au bout de 30 s si toute la ville est
      visible). Les nouvelles naissent hors de l'écran (spawnCar) ou apparaissent en fondu. */
   let act=0;for(const c of C.list)if(!c.leave)act++;
-  for(let g=0;act<target&&g<40;g++){const c={};if(!spawnCar(c,C))break;C.list.push(c);act++;}
+  const first_=C.list.length<target*.5;let em_=0;
+  for(let g=0;act<target&&g<40;g++){const c={};if(!(C===E.cars&&!first_&&em_<2&&Math.random()<.9&&tripSpawn(c)&&++em_)&&!spawnCar(c,C))break;C.list.push(c);act++;}   /* v84 : les voitures sortent des allées des maisons / parkings (2 par image au plus) */
   if(act>target){let ex=act-target;for(let pass=0;pass<2&&ex>0;pass++)for(const c of C.list){if(ex<=0)break;if(c.leave||(pass===0&&c.px!=null&&seenXZ(c.px,c.pz)))continue;c.leave=E.t||1e-3;ex--;}}
   const CAP=C.mesh.instanceMatrix.count;
   if(C.list.length>CAP){C.list.sort((a,b)=>(b.leave?1:0)-(a.leave?1:0));C.list.splice(0,C.list.length-CAP);}
@@ -2151,7 +2227,9 @@ function stepFleet(C,target,dt,fixCol){
   for(const c of C.list){
     if(c.ov!=null&&!S.ovs[c.ov]&&!spawnCar(c,C))continue;
     if(c.ov==null&&!road[c.i]&&!spawnCar(c,C))continue;   /* v75 : sur le parcours du marathon, la voiture n'est plus téléportée : elle en sort */
-    if(c.leave&&c.out==null&&dt>0){if(c.px==null||!seenXZ(c.px,c.pz)){c.dead=dead=true;continue;}if(E.t-c.leave>30)c.out=1;}
+    if(c.leave&&c.out==null&&dt>0&&!c.pkA){if(c.px==null||!seenXZ(c.px,c.pz)){c.dead=dead=true;continue;}if(E.t-c.leave>(c.trip?90:30))c.out=1;}
+    if((c.up||c.pkA)&&tripAnim(c,C,dt,o,n)){if(c.dead){dead=true;continue;}n++;continue;}   /* v84 : sortie de l'allée / entrée dans le terrain */
+    if(c.trip&&c.i===c.trip.b&&c.t>=.3&&c.t<.8&&c.ov==null&&c.from!==c.to&&!onRb(c)&&c.px!=null){tripArrive(c);if(tripAnim(c,C,dt,o,n)){if(c.dead){dead=true;continue;}n++;continue;}}
     if(c.out!=null&&dt>0){c.out-=dt*1.4;if(c.out<=0){if(c.leave){c.dead=dead=true;continue;}spawnCar(c,C);}}
     if(c.sc!=null&&c.sc<1&&dt>0)c.sc=Math.min(1,c.sc+dt*1.8);
     if(fixCol)c.col=fixCol;
@@ -2168,7 +2246,7 @@ function stepFleet(C,target,dt,fixCol){
     if(adv>0){const r_=carRoom(c),k_=onRb(c)?RBP[c.from][c.to].len:c.from===c.to?UT_LEN:1;if(r_<9){adv=Math.min(adv,Math.max(0,r_/k_));if(r_<.02){c.bt=(c.bt||0)+dt;
         /* v75 : bloquée longtemps (embouteillage en boucle) : hors de l'écran elle est replacée ailleurs ; à l'écran elle fait
            demi-tour si elle est en ligne droite, sinon elle se faufile (comme avant) */
-        if(c.bt>6&&!seenXZ(c.px,c.pz)){spawnCar(c,C);continue;}
+        if(c.bt>6&&!seenXZ(c.px,c.pz)){if(!(C===E.cars&&tripSpawn(c)))spawnCar(c,C);continue;}
         if(c.bt>9){c.bt=0;if(c.from===OPP(c.to)&&c.to<4&&c.t<.45&&!onRb(c)&&c.ov==null){c.to=c.from;c.t/=UT_LEN;c.nmv=null;c.nmvX=0;}else c.ghost=E.t+1.2;}}else c.bt=0;}else c.bt=0;}   /* v15 : plus de voitures qui se touchent */
     if(c.ov==null&&c.to<4&&c.from===OPP(c.to)&&c.t>.22&&c.t<.5&&!c.nmvX&&!c.exit&&!onRb(c)){const m_=nextMove(c,C);c.nmvX=1;c.nmv=m_;c.nmvK=c.i*8+c.to;
       if(!m_){c.to=c.from;c.t/=UT_LEN;c.nmvX=0;c.nmv=null;}}   /* v75 : la rue devant est fermée → demi-tour maintenant (avant : disparition au bout) */
@@ -3380,6 +3458,20 @@ function spark(){
   const z=mn<0?(H-(0-mn)/(mx-mn||1)*H).toFixed(1):null;
   return `<svg class="cty-spark" viewBox="-2 -2 ${W+4} ${H+4}" preserveAspectRatio="none">${z?`<line x1="0" x2="${W}" y1="${z}" y2="${z}" stroke="#e04f4f" stroke-dasharray="3 3" stroke-width="1"/>`:''}<polyline points="${pts}" fill="none" stroke="#0e8c87" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 }
+/* v84 (21 nov. 2026) : budget lisible — deux blocs « Ce que la ville gagne » (vert) / « Ce que la ville dépense » (rouge),
+   chaque ligne avec une icône et une barre proportionnelle, puis le bilan du mois en grand. Avant : une liste blanche
+   illisible en mode sombre. */
+function budgetBlocks(L,inc,up,catN){
+  const IC={energie:'bolt',services:'local_hospital',parcs:'park',monuments:'account_balance',transports:'directions_bus',loisirs:'attractions'};
+  const G=[['Habitants','home',inc.r],['Commerces','storefront',inc.c],['Industrie','factory',inc.i]];if(S.ms>=3)G.push(['Bureaux','apartment',inc.o]);
+  if(inc.t)G.push(['Tourisme','luggage',inc.t]);if(inc.x)G.push(['Commerce avec les villes voisines','local_shipping',inc.x]);
+  const P_=Object.entries(up).map(([k,v])=>['Entretien '+(catN[k]||k).toLowerCase(),IC[k]||'build',v]);P_.push(['Entretien des routes','add_road',L.rd]);if(L.pc)P_.push(['Arrêtés municipaux','gavel',L.pc]);
+  const sum=a=>a.reduce((t,r)=>t+Math.abs(r[2]||0),0),gi=sum(G),pd=sum(P_),mx=Math.max(1,...G.map(r=>Math.abs(r[2]||0)),...P_.map(r=>Math.abs(r[2]||0)));
+  const row=(r,neg)=>`<div class="cty-bg-row"><span class="ms">${r[1]}</span><span class="cty-bg-n">${r[0]}<i style="width:${Math.max(3,Math.round(Math.abs(r[2]||0)/mx*100))}%"></i></span><b>${neg?'−':'+'}${money(Math.abs(r[2]||0))}</b></div>`;
+  return `<div class="cty-bg"><div class="cty-bg-box gain"><div class="cty-bg-h"><span class="ms">trending_up</span>Ce que la ville gagne<b>+${money(gi)}</b></div>${G.map(r=>row(r,false)).join('')}</div>
+    <div class="cty-bg-box cost"><div class="cty-bg-h"><span class="ms">trending_down</span>Ce que la ville dépense<b>−${money(pd)}</b></div>${P_.map(r=>row(r,true)).join('')}</div>
+    <div class="cty-bg-tot ${L.net<0?'neg':''}"><span class="ms">${L.net<0?'warning':'savings'}</span><div><small>Bilan du mois</small><b>${L.net<0?'−':'+'}${money(Math.abs(L.net))}</b></div><em>${L.net<0?'La ville perd de l’argent : baisse l’entretien ou monte un peu les impôts.':'La ville gagne de l’argent chaque mois.'}</em></div></div>`;
+}
 function panelBudget(){
   const L=S.last,inc=L?L.inc:{r:0,c:0,i:0,o:0},up=L?L.up:{},t=S.tax;
   const catN={energie:'Réseaux',services:'Services',parcs:'Parcs',monuments:'Monuments',transports:'Transports',loisirs:'Loisirs'};
@@ -3388,10 +3480,7 @@ function panelBudget(){
   return head('account_balance','Budget',`Solde : ${money(S.money)}`)
     +`<div class="cty-study"><div><b>Révise pour financer ta ville</b><small>Chaque XP gagnée sur City Work rapporte ${XP_MONEY} § · déjà reçu : ${money(S.grants||0)}</small></div><button class="cty-btn" data-act="study"><span class="ms">bolt</span>Flash 10 questions</button></div>`
     +`<div class="cty-sec">Le mois dernier</div>`
-    +(L?`<div class="cty-blist">${line('Impôts habitants',inc.r)}${line('Impôts commerces',inc.c)}${line('Impôts industrie',inc.i)}${S.ms>=3?line('Impôts bureaux',inc.o):''}${inc.t?line('Tourisme',inc.t):''}${inc.x?line('Commerce avec les villes voisines',inc.x):''}
-      ${Object.entries(up).map(([k,v])=>line('Entretien '+(catN[k]||k).toLowerCase(),v,true)).join('')}${line('Entretien des routes',L.rd,true)}${L.pc?line('Arrêtés municipaux',L.pc,true):''}
-      <div class="cty-bl tot"><span>Bilan</span><b class="${L.net<0?'neg':''}">${L.net<0?'−':'+'}${money(Math.abs(L.net))}</b></div></div>`
-      :`<p class="cty-p">Le premier bilan arrive à la fin du mois.</p>`)
+    +(L?budgetBlocks(L,inc,up,catN):`<p class="cty-p">Le premier bilan arrive à la fin du mois.</p>`)
     +spark()+`<button class="cty-btn ghost" data-act="panel" data-p="trade"><span class="ms">local_shipping</span>Commerce avec les villes voisines</button>`
     +`<div class="cty-sec">Impôts</div><p class="cty-p small">Plus d’impôts = plus d’argent, mais moins de demande et des habitants moins heureux. 9 % est un bon équilibre.</p>`
     +tax('r',1)+tax('c',2)+tax('i',3)+tax('o',4);
@@ -4657,7 +4746,7 @@ function panelJournal(){
 function roadNear(i){if(road[i])return i;const x=i%N;for(const j of[i+N,x<N-1?i+1:-1,i-N,x>0?i-1:-1,i+2*N,x<N-2?i+2:-1,i-2*N,x>1?i-2:-1])if(j>=0&&j<NN&&road[j])return j;return -1;}
 function roadPathBFS(a,b,veh){   /* veh : véhicule, évite les rues piétonnes (14 nov. 2026) */
   if(a<0||b<0)return null;const prev=new Int32Array(NN).fill(-1),q=[a];prev[a]=a;
-  for(let h=0;h<q.length;h++){const i=q[h];if(i===b)break;const x=i%N;for(const j of[x>0?i-1:-1,x<N-1?i+1:-1,i-N,i+N])if(j>=0&&j<NN&&road[j]&&prev[j]<0&&!(veh&&j!==b&&noCar(j))){prev[j]=i;q.push(j);}}
+  for(let h=0;h<q.length;h++){const i=q[h];if(i===b)break;const x=i%N;for(const j of[x>0?i-1:-1,x<N-1?i+1:-1,i-N,i+N])if(j>=0&&j<NN&&road[j]&&prev[j]<0&&!(veh&&j!==b&&(noCar(j)||showBlocked(j)))){prev[j]=i;q.push(j);}}
   if(prev[b]<0)return null;const p=[];for(let i=b;i!==a;i=prev[i])p.push(i);p.push(a);return p.reverse();
 }
 function followStart(home,cit){   // cit = habitant nommé (panneau Habitants, v5)
@@ -6406,6 +6495,7 @@ function ovpY(c){const s=S.ovs[c.ov];if(!s)return 0;return c.ok===1?OVP_H*c.t:c.
 // déplacement des voitures : directions possibles en entrant sur une case (routes + entrée d'un pont routier)
 function dirsAt(j,from){const o=[];for(let d=0;d<8;d++)if(d!==from&&roadNb(j,d)>=0)o.push(d);const L=OVE.get(j);if(L)for(const e of L)if(e.d!==from&&!o.includes(e.d))o.push(e.d);return o;}
 function pickDir(c,j,o){
+  if(c.trip||c.car){const d=tripDir(c,j,o);if(d!=null)return d;}   /* v84 : trajet logique */
   if(c.dest!=null&&Math.random()<.72){const dx=c.dest%N,dz=(c.dest/N)|0,x=j%N,z=(j/N)|0;let best=null,bd=1e9;
     for(const d of o){const v=Math.abs(x+DIRS8[d][0]-dx)+Math.abs(z+DIRS8[d][1]-dz);if(v<bd){bd=v;best=d;}}if(best!=null)return best;}
   return o.includes(c.to)&&Math.random()<.6?c.to:o[(Math.random()*o.length)|0];
@@ -6678,7 +6768,7 @@ function showBuild(){
     {const e=path[L-1],x=e%N,z=(e/N)|0;TX.x=x+.5;TX.z=z+.5;TX.k=0;bx(.3,-.12,.44,.12,0,.06,'#f4f6f8');for(let k=0;k<6;k++)bc(.33+(k%2)*.07,-.09+((k/2)|0)*.09,.008,.008,.06,.09,'#4fb0d8');bc(.42,.18,.03,.03,0,.07,'#3fa34d');O.spec.push({x:x+.9,z:z+.5,a:-Math.PI/2,L:humLookC(e*3+77),ph:0});}
     for(const [k,gg] of GB)if(gg.p.length){const ms=new THREE.Mesh(toGeo(gg),E.mat[k]||E.mat.plain);ms.castShadow=true;g.add(ms);}
     [GB,TX.x,TX.z,TX.k]=keep;
-    for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)if(O.block.has(c.i)&&!c.leave)c.leave=E.t||1e-3;}   // v75 : les voitures sur le parcours le quittent en roulant (avant : téléportées)
+    for(const C of[E.cars,E.buses,E.taxis])if(C)for(const c of C.list)if(O.block.has(c.i))showEvict(c,C);}   // v84 : les voitures sur le parcours se garent tout de suite (avant : elles roulaient au milieu des coureurs)   // v75 : les voitures sur le parcours le quittent en roulant (avant : téléportées)
   else{const s=SV.get(sh.sid);if(!s){S.show=null;return;}const cx=s.x+s.w/2,cz=s.z+s.d/2,P_=[],C=[],cc=new THREE.Color();
     if(sh.k==='match'){for(const[dx,dz]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const x=cx+dx*(s.w/2+.1),z=cz+dz*(s.d/2+.1),pole=new THREE.Mesh(new THREE.BoxGeometry(.05,1.6,.05),new THREE.MeshLambertMaterial({color:'#7d858c'}));pole.position.set(x,.8,z);g.add(pole);
         for(let k=0;k<6;k++){P_.push(x+(k%3-1)*.07,1.62+((k/3)|0)*.07,z);cc.set('#fff6d8');C.push(cc.r,cc.g,cc.b);}}}
@@ -6689,6 +6779,14 @@ function showBuild(){
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(P_,3).setUsage(THREE.DynamicDrawUsage));geo.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
     O.pts=new THREE.Points(geo,new THREE.PointsMaterial({size:sh.k==='match'?.5:.14,map:glowTex(),vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));O.pts.frustumCulled=false;g.add(O.pts);O.cx=cx;O.cz=cz;}
   E.gD.add(g);E.show=O;
+}
+/* v84 : marathon — une voiture sur le parcours se gare dans le terrain voisin (ou part hors de l'écran) */
+function showEvict(c,C){
+  if(c.px==null||!seenXZ(c.px,c.pz)||C===E.buses){c.leave=E.t||1e-3;if(C===E.buses&&c.px!=null&&seenXZ(c.px,c.pz))c.out=1;return;}
+  const x=c.i%N,z=(c.i/N)|0;let best=null;
+  for(let d=0;d<4;d++){const X=x+DIRS[d][0],Z=z+DIRS[d][1];if(X<0||Z<0||X>=N||Z>=N)continue;const j=Z*N+X;if(road[j]||ter[j])continue;const sc_=(zone[j]&&lvl[j])?3:svcAt[j]?2:1;if(!best||sc_>best.s)best={s:sc_,d};}
+  c.leave=E.t||1e-3;if(!best){c.out=1;return;}
+  const D=DIRS[best.d];c.trip=null;c.up=null;c.pkA={u:0,x0:c.px,z0:c.pz,a0:c.pa,hx:Math.sin(c.pa),hz:Math.cos(c.pa),lx:x+.5+D[0]*.62,lz:z+.5+D[1]*.62};
 }
 function showBlocked(j){return !!(E&&E.show&&E.show.block&&E.show.block.has(j));}
 /* v75 : position d'un coureur du marathon à la distance s (en cases depuis le centre de la case de départ).
@@ -7179,6 +7277,7 @@ function v6SchoolBuses(){
 function stepEV(dt,run){
   const V=E.v6,EM=V.evm,cnt={};for(const q in EVK)cnt[q]=0;let nb=0,ns=0;
   for(let k=V.ev.length-1;k>=0;k--){const v=V.ev[k];
+    if(v.st==='stay'&&!(v.beacon!=null?v.beacon:EVK[v.k].beacon)&&showBlocked(v.path[v.path.length-1])){evGarage(v);}
     if(v.st==='stay'){v.w-=run;const burning=v.k==='fire'&&v.target!=null&&st[v.target]===FIRE;
       if(v.k==='fire'&&burning&&v.w<v.stay-2.5){st[v.target]=OK;tmr[v.target]=0;touch(v.target);D.icons=true;toastOnce('fireout','local_fire_department','Les pompiers ont éteint l’incendie.',30);}
       if(v.w<=0){if(v.k==='tow'&&RL.acc&&v.target===RL.acc.i)accClear();
@@ -7191,6 +7290,9 @@ function stepEV(dt,run){
     else if(v.st==='gar'){v.gu+=run*.8;if(v.gu>=1){V.ev.splice(k,1);continue;}}   /* v75 : il rentre au garage / dans le bâtiment */
     else if(v.ut){v.ut.u+=run*v.sp*.55/(Math.PI*.17);if(v.ut.u>=1)v.ut=null;}
     else{let adv=run*v.sp;const bc=v.beacon!=null?v.beacon:EVK[v.k].beacon;
+      if(E.show&&E.show.block&&(v.chk==null||E.t-v.chk>.4)){v.chk=E.t;const P0_=v.path,cur=P0_[Math.min(v.pi,P0_.length-1)];   /* v84 : marathon → le camion contourne le parcours, ou rentre dans le bâtiment le plus proche */
+        if(!bc&&(showBlocked(cur)||showBlocked(P0_[P0_.length-1]))){evGarage(v);continue;}
+        if(P0_.slice(v.pi+1,v.pi+4).some(showBlocked)){const np=roadPathBFS(cur,P0_[P0_.length-1],true);if(np&&np.length>=2&&!np.slice(1,-1).some(showBlocked)){v.path=np;v.pi=0;}else if(!bc){evGarage(v);continue;}}}
       if(adv>0&&v.px!=null){const r_=carRoom(v);if(r_<9){adv=Math.min(adv,Math.max(0,r_));if(r_<.02){v.bt=(v.bt||0)+run;if(v.bt>(bc?2.5:7)){v.ghost=E.t+1.2;v.bt=0;}}else v.bt=0;}else v.bt=0;}   /* v75 : distance de sécurité comme les voitures */
       if(!bc&&adv>0&&v.t<.9&&v.pi<v.path.length-1){const j=v.path[v.pi+1];if(SIG[j]){const hd=evHead(v.path,v.pi+1);if(hd&&sigState(j,(hd[0]?1:0))!==0)adv=Math.min(adv,Math.max(0,.86-v.t));}}   /* feu rouge (les urgences passent) */
       v.t+=adv;while(v.t>=1&&v.pi<v.path.length-1){v.t-=1;v.pi++;}
@@ -8384,33 +8486,124 @@ function walkSpawn(F){
   const L=residentialLots();if(!L.length)return;for(let k=0;k<4&&F.walk.length<want;k++){const w=walkNew(L,h,we,vet);if(w)F.walk.push(w);}
 }
 /* v15 : walkDest, doorPt, walkPos, walkNew et walkStep sont dans le bloc v15 (portes, trottoirs, passages piétons) */
-// ── Plage animée l'été (juin à août, en journée, sans pluie) : serviettes, parasols, baigneurs allongés, promeneurs, nageurs ──
+// ── Plage l'été (v84, 21 nov. 2026 : refaite) : de vrais groupes (familles, couples, amis) arrivent à pied depuis la rue,
+// posent leurs serviettes côte à côte (et un parasol), bronzent, vont nager puis reviennent, et repartent à pied en fin
+// de journée ou quand il pleut. Avant, toute la plage était retirée au hasard à chaque jour de jeu (1,3 s) : les gens
+// disparaissaient tout de suite. Les groupes se forment près des autres (coins de plage animés). ──
+const BCH_C=['#e63946','#f2b134','#2e86ab','#3fa34d','#ff7ad9','#ffffff','#9b5de5','#ff8c42','#06d6a0','#ffd6e0'];
+function beachSites(){
+  const out=[],seen=new Int16Array(NN);
+  for(let i=0;i<NN;i++){const x=i%N,z=(i/N)|0;if(!inArea(x,z))continue;
+    if(ter[i]||wdist[i]!==1||road[i]||svcAt[i]||zone[i]||lvl[i]||deco[i]||hill[i]||mtn[i])continue;
+    let w=-1;for(const j of[i-1,i+1,i-N,i+N])if(j>=0&&j<NN&&ter[j]&&!road[j]){w=j;break;}if(w<0)continue;
+    // accès : route la plus proche (en marchant sur la terre ferme, 8 cases au plus)
+    const prev=new Map([[i,-1]]),q=[i];let r=-1;
+    for(let h=0;h<q.length&&r<0;h++){const a=q[h];if(q.length>300)break;const ax=a%N;
+      for(const j of[ax>0?a-1:-1,ax<N-1?a+1:-1,a-N,a+N]){if(j<0||j>=NN||prev.has(j)||ter[j])continue;prev.set(j,a);
+        if(road[j]){r=j;break;}if(svcAt[j]||(lvl[j]&&zone[j]))continue;q.push(j);}}
+    if(r<0)continue;const chain=[];for(let a=prev.get(r);a!==i&&a!=null&&a>=0;a=prev.get(a))chain.push(a);
+    if(chain.length>8)continue;
+    const p0=prev.get(r),sx=(p0%N)-(r%N),sz=((p0/N)|0)-((r/N)|0);
+    const rd=[0,1,2,3].map(d=>roadNb(r,d)).filter(j=>j>=0);
+    out.push({i,w,r,sx,sz,rd,chain,wx:(w%N)-x,wz:((w/N)|0)-z});}
+  return out;
+}
+function bchPts(B,pt){   // trajet depuis le trottoir jusqu'au point de la plage (par les cases, pas à travers les maisons)
+  const r=B.r,cx=r%N+.5,cz=((r/N)|0)+.5,P_=[];
+  for(const a of B.chain)P_.push([a%N+.5+(Math.random()-.5)*.25,((a/N)|0)+.5+(Math.random()-.5)*.25]);
+  P_.push(pt);return{start:[cx+B.sx*.42,cz+B.sz*.42],pts:P_};
+}
+function bchStreet(B,far){   // un point sur le trottoir, un peu plus loin dans la rue (on arrive / repart par là)
+  const r=B.r,cx=r%N+.5,cz=((r/N)|0)+.5;if(!B.rd.length)return[cx+B.sx*.42,cz+B.sz*.42];
+  const j=rpick(B.rd),ux=(j%N)-(r%N),uz=((j/N)|0)-((r/N)|0);return[cx+B.sx*.42+ux*far,cz+B.sz*.42+uz*far];
+}
+function bchWalk(m,run){
+  let d=run*m.sp;
+  while(d>0&&m.pk<m.pts.length){const P_=m.pts[m.pk],dx=P_[0]-m.x,dz=P_[1]-m.z,l=Math.hypot(dx,dz);
+    if(l>1e-4)m.a=Math.atan2(dx,dz);
+    if(l<=d){m.x=P_[0];m.z=P_[1];m.pk++;d-=l;m.ph+=l*HUM_STEP;}else{m.x+=dx/l*d;m.z+=dz/l*d;m.ph+=d*HUM_STEP;d=0;}}
+  return m.pk>=m.pts.length;
+}
+function bchNewGroup(Bc,sites){
+  // 70 % des groupes s'installent près d'un autre groupe (coins de plage animés)
+  let B=null;
+  if(Bc.groups.length&&Math.random()<.7){const g=rpick(Bc.groups),gx=g.B.i%N,gz=(g.B.i/N)|0;const near=sites.filter(s=>Math.abs(s.i%N-gx)+Math.abs(((s.i/N)|0)-gz)<=2);if(near.length)B=rpick(near);}
+  if(!B)B=rpick(sites);
+  const used=Bc.used.get(B.i)||0;let qd=-1;for(const k of[0,1,2,3].sort(()=>Math.random()-.5))if(!(used&(1<<k))){qd=k;break;}if(qd<0)return null;
+  Bc.used.set(B.i,used|(1<<qd));
+  // les serviettes regardent l'eau (pieds vers l'eau) ; on reste sur la moitié du sable côté terre (pas dans les vagues)
+  const a=Math.atan2(B.wx,B.wz),px=Math.cos(a),pz=-Math.sin(a),rw=(qd>>1)?-.3:-.06,cl=(qd&1)?.21:-.21;
+  const cx=B.i%N+.5+B.wx*rw+px*cl,cz=((B.i/N)|0)+.5+B.wz*rw+pz*cl;
+  const kind=rpick(['fam','fam','couple','amis','amis','seul']),n=kind==='seul'?1:kind==='couple'?2:kind==='fam'?3+(Math.random()<.5?1:0):3;
+  const tc=rpick(BCH_C),G_={B,qd,st:'arr',left:40+Math.random()*80,tw:false,umb:Math.random()<.7?{x:cx-Math.sin(a)*.09+px*.02,z:cz-Math.cos(a)*.09+pz*.02,c:rpick(BCH_C)}:null,m:[],T:[]};
+  const sp0=bchStreet(B,1.6+Math.random());
+  for(let k=0;k<n;k++){
+    const kid=kind==='fam'&&k>=2,off=(k-(n-1)/2)*.062,tx=cx+px*off,tz=cz+pz*off;
+    if(!kid||Math.random()<.5)G_.T.push({x:tx,z:tz,a,c:k%2?rpick(BCH_C):tc});
+    const L=humLook((Math.random()*1e9)|0,kid?{kid:true,v:rpick([5,0,10])}:{kid:false,v:rpick([5,5,9,10,1])});
+    const tr=bchPts(B,[tx,tz]);
+    G_.m.push({L,kid,sx:tx,sz:tz,a,ra:a,x:sp0[0],z:sp0[1],pts:[tr.start].concat(tr.pts),pk:0,ph:Math.random()*6,sp:(kid?.25:.21)*(L.sp||1),
+      wait:k*.7,st:'walk',pose:kid?'stand':Math.random()<.65?'lie':'sit',sea:0,fade:seenXZ(sp0[0],sp0[1])?0:1});}
+  return G_;
+}
+function bchLeave(G_){
+  if(G_.st==='dep')return;G_.st='dep';G_.tl=1.2;
+  for(const m of G_.m){const tr=bchPts(G_.B,[m.sx,m.sz]),back=tr.pts.slice(0,-1).reverse();back.push(tr.start,bchStreet(G_.B,1.6+Math.random()));
+    m.lr=m.st==='rest';m.pts=(m.st==='swim'||m.st==='toSea'||m.st==='play'||m.st==='back'?[[m.sx,m.sz]]:[]).concat(back);m.pk=0;m.st='walk';m.wait=m.lr?Math.random()*1.5:0;}
+}
 function beachStep(run){
   const mo=month(),h=hourNow(),wx=S.wx&&S.wx.k,on=!VISIT&&mo>=5&&mo<=7&&h>=9&&h<19.5&&wx!=='rain'&&wx!=='storm'&&SNOW.value<.2;
   if(!E.beach){if(!on)return;GB=new Map();TX.x=0;TX.z=0;TX.k=0;bx(-.026,-.055,.026,.055,.004,.008,'#ffffff');const tg=toGeo(GB.get('plain'));
     GB=new Map();bc(0,0,.003,.003,0,.13,'#d0d0d0');cone2(0,0,.12,.035,.075,8,'#ffffff','#e9e4da');const ug=toGeo(GB.get('plain'));GB=null;
     const mk=(g,n)=>{const M=new THREE.InstancedMesh(g,new THREE.MeshLambertMaterial({vertexColors:true}),n);M.count=0;M.frustumCulled=false;M.setColorAt(0,new THREE.Color('#fff'));E.gC.add(M);return M;};
-    E.beach={tow:mk(tg,60),umb:mk(ug,30),list:null,key:''};}
-  const Bc=E.beach;if(!on){Bc.tow.count=Bc.umb.count=0;Bc.list=null;return;}
-  const key=(S.day|0)+'|'+(E.roadList?E.roadList.length:0);
-  if(Bc.key!==key||!Bc.list){Bc.key=key;const R=rng((S.day|0)*31+7),sand=[],sea=[];
-    for(let i=0;i<NN;i++){const x=i%N,z=(i/N)|0;if(!inArea(x,z))continue;if(!ter[i]&&wdist[i]===1&&!road[i]&&!svcAt[i]&&!zone[i]&&!lvl[i]&&!deco[i]&&!hill[i]&&!mtn[i])sand.push(i);else if(ter[i]&&(wdist[i]===0)){for(const j of[i-1,i+1,i-N,i+N])if(j>=0&&j<NN&&!ter[j]&&wdist[j]===1){sea.push(i);break;}}}
-    const L=[];const tc=['#e63946','#f2b134','#2e86ab','#3fa34d','#ff7ad9','#ffffff','#9b5de5'];
-    const pickT=Math.min(24,sand.length);for(let k=0;k<pickT;k++){const i=sand[(R()*sand.length)|0],x=i%N+.2+R()*.6,z=((i/N)|0)+.2+R()*.6,a=R()*6.28;
-      L.push({k:'tow',x,z,a,c:pick(R,tc)});if(R()<.55)L.push({k:'umb',x:x+.05,z:z+.05,c:pick(R,tc)});
-      L.push({k:'lie',x,z,a,L:humLook((R()*1e9)|0,{kid:false,v:pick(R,[5,9,10,1,5])})});if(R()<.3)L.push({k:'sit',x:x+.07,z:z-.05,a:a+1.2,L:humLook((R()*1e9)|0,{v:pick(R,[5,9,10,1])})});}
-    for(let k=0;k<Math.min(12,sea.length);k++){const i=sea[(R()*sea.length)|0];L.push({k:'swim',x:i%N+.2+R()*.6,z:((i/N)|0)+.2+R()*.6,a:R()*6.28,L:humLook((R()*1e9)|0,{v:5}),ph:R()*6});}
-    for(let k=0;k<Math.min(8,sand.length);k++){const i=sand[(R()*sand.length)|0];L.push({k:'stand',x:i%N+.3+R()*.4,z:((i/N)|0)+.3+R()*.4,a:R()*6.28,L:humLook((R()*1e9)|0,{v:pick(R,[5,9,10,1,3])})});}
-    Bc.list=L;}
-  const m=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),p=new THREE.Vector3(),s=new THREE.Vector3(1,1,1),c=new THREE.Color();let nt=0,nu=0;
-  for(const o of Bc.list){
-    if(o.k==='tow'&&nt<60){e.set(0,o.a,0);q.setFromEuler(e);p.set(o.x,0,o.z);m.compose(p,q,s);Bc.tow.setMatrixAt(nt,m);Bc.tow.setColorAt(nt,c.set(o.c));nt++;}
-    else if(o.k==='umb'&&nu<30){e.set(0,0,0);q.setFromEuler(e);p.set(o.x,0,o.z);m.compose(p,q,s);Bc.umb.setMatrixAt(nu,m);Bc.umb.setColorAt(nu,c.set(o.c));nu++;}
-    else if(o.k==='lie')humPut(o.L,o.x+Math.sin(o.a)*.045,.012,o.z+Math.cos(o.a)*.045,o.a,.8,0,0,true);
-    else if(o.k==='sit')humPut(o.L,o.x,-.02,o.z,o.a,.8,0,0);
-    else if(o.k==='swim'){o.ph+=run*2;humPut(o.L,o.x+Math.sin(o.ph*.2)*.05,-.165+Math.sin(o.ph)*.004,o.z,o.a+Math.sin(o.ph*.1),.8,o.ph,.35);}
-    else if(o.k==='stand')humPut(o.L,o.x,0,o.z,o.a,.8,0,0);
-  }
+    E.beach={tow:mk(tg,120),umb:mk(ug,50),groups:[],used:new Map(),sites:null,sk:'',nt:0};}
+  const Bc=E.beach;
+  const sk=(E.roadList?E.roadList.length:0)+'|'+SV.size+'|'+(S.ms|0);
+  if(Bc.sk!==sk||!Bc.sites||E.t-(Bc.st||0)>30){Bc.sk=sk;Bc.st=E.t;Bc.sites=beachSites();}
+  const sites=Bc.sites;
+  // nombre de groupes voulu : la plage se remplit le matin, pleine l'après-midi, se vide le soir ; plus de monde le week-end
+  const f=h<9?0:h<11?(h-9)/2:h<17?1:h<19.5?(19.5-h)/2.5:0;
+  const want=on&&sites.length?Math.round(Math.min(16,Math.max(2,sites.length*.9))*f*(weekend()?1.25:1)):0;
+  if(!on)for(const g of Bc.groups)bchLeave(g);
+  else{let act=0;for(const g of Bc.groups)if(g.st!=='dep')act++;
+    if(run>0&&act<want&&E.t>Bc.nt){Bc.nt=E.t+2+Math.random()*4;const g=bchNewGroup(Bc,sites);if(g)Bc.groups.push(g);}
+    if(run>0&&act>want+1){const g=Bc.groups.find(q=>q.st==='stay');if(g)bchLeave(g);}}
+  // les groupes vivent
+  const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),e=new THREE.Euler(),p=new THREE.Vector3(),s=new THREE.Vector3(1,1,1),c=new THREE.Color();let nt=0,nu=0;
+  for(let gi=Bc.groups.length-1;gi>=0;gi--){const G_=Bc.groups[gi];
+    if(G_.st==='stay'){G_.left-=run;if(G_.left<=0)bchLeave(G_);}
+    if(G_.st==='dep'){G_.tl-=run;if(G_.tl<=0)G_.tw=false;}
+    let alive=0,arrived=0;
+    for(const m of G_.m){
+      if(m.gone)continue;alive++;
+      if(m.fade<1)m.fade=Math.min(1,m.fade+run*2);
+      if(m.wait>0){m.wait-=run;if(G_.st!=='dep'&&m.st==='walk'&&m.pk===0)continue;}
+      if(m.st==='walk'){if(m.wait<=0&&bchWalk(m,run)){
+          if(G_.st==='dep'){if(seenXZ(m.x,m.z)&&!m.fo){m.fo=1;}else{m.gone=true;alive--;continue;}}
+          else{m.st='rest';m.wait=8+Math.random()*25;G_.tw=true;}}}
+      else if(m.st==='rest'){arrived++;if(m.wait<=0&&G_.st==='stay'&&run>0){
+          // envie d'aller nager (ou de jouer au bord de l'eau pour les enfants)
+          const r_=Math.random();if(r_<(m.kid?.6:.35)){const W=G_.B.w,wx_=W%N+.5+(Math.random()-.5)*.6,wz_=((W/N)|0)+.5+(Math.random()-.5)*.6;
+            const ex=(m.sx+wx_)/2+(G_.B.wx?0:(Math.random()-.5)*.1),ez=(m.sz+wz_)/2;
+            if(m.kid&&Math.random()<.5){m.st='toSea';m.play=1;m.pts=[[m.sx+G_.B.wx*.3,m.sz+G_.B.wz*.3]];}else{m.st='toSea';m.play=0;m.pts=[[ex,ez],[wx_,wz_]];}m.pk=0;}
+          else m.wait=10+Math.random()*25;}}
+      else if(m.st==='toSea'){if(bchWalk(m,run)){m.st=m.play?'play':'swim';m.wait=12+Math.random()*30;}}
+      else if(m.st==='swim'||m.st==='play'){m.wait-=run;m.ph+=run*2;if(m.wait<=0){m.st='back';m.pts=[[m.sx,m.sz]];m.pk=0;}}
+      else if(m.st==='back'){if(bchWalk(m,run)){m.st='rest';m.wait=15+Math.random()*30;}}
+      if(m.fo){m.fade-=run*2.2;if(m.fade<=0){m.gone=true;alive--;continue;}}
+      // dessin
+      m.ra=angLerp(m.ra,m.a,Math.min(1,run*8));const sc=.8*Math.max(.01,Math.min(1,m.fade));
+      if(m.st==='rest'||(m.st==='walk'&&m.wait>0&&m.lr)){
+        if(m.pose==='lie')humPut(m.L,m.x+Math.sin(m.a)*.045,.012,m.z+Math.cos(m.a)*.045,m.a,sc,0,0,true);
+        else if(m.pose==='sit')humPut(m.L,m.x,-.02,m.z,m.a,sc,0,0);
+        else humPut(m.L,m.x,0,m.z,m.a+Math.sin(E.t*.5+m.ph)*.6,sc,0,0);}
+      else if(m.st==='swim')humPut(m.L,m.x+Math.sin(m.ph*.2)*.05,-.165+Math.sin(m.ph)*.004,m.z,m.ra+Math.sin(m.ph*.1),sc,m.ph,.35);
+      else if(m.st==='play')humPut(m.L,m.x+Math.sin(m.ph*.7)*.04,0,m.z+Math.cos(m.ph*.5)*.03,m.ra+Math.sin(m.ph*.9)*1.5,sc,m.ph*3,.6);
+      else humPut(m.L,m.x,0,m.z,m.ra,sc,m.ph,run>0?.55:0);}
+    if(!alive){Bc.used.set(G_.B.i,(Bc.used.get(G_.B.i)||0)&~(1<<G_.qd));Bc.groups.splice(gi,1);continue;}
+    if(G_.st==='arr'&&arrived===G_.m.length)G_.st='stay';
+    if(G_.tw){for(const T of G_.T)if(nt<120){e.set(0,T.a,0);q.setFromEuler(e);p.set(T.x,0,T.z);m4.compose(p,q,s);Bc.tow.setMatrixAt(nt,m4);Bc.tow.setColorAt(nt,c.set(T.c));nt++;}
+      if(G_.umb&&nu<50){e.set(0,0,0);q.setFromEuler(e);p.set(G_.umb.x,0,G_.umb.z);m4.compose(p,q,s);Bc.umb.setMatrixAt(nu,m4);Bc.umb.setColorAt(nu,c.set(G_.umb.c));nu++;}}}
   Bc.tow.count=nt;Bc.umb.count=nu;[Bc.tow,Bc.umb].forEach(M=>{M.instanceMatrix.needsUpdate=true;if(M.instanceColor)M.instanceColor.needsUpdate=true;});
 }
 // ── Bateaux (v13) : yacht, péniche, chalutier, remorqueur, catamaran en plus des vedettes et voiliers ──
@@ -8828,7 +9021,7 @@ function pkGeom(k){   // géométrie d'une place : route, sens de circulation, p
   return{r,rc,t,dt,R,s0,lane,curb,Ap,spot:[x,z],A,sg};}
 function pkPoly(P_){const C=[0];for(let k=1;k<P_.length;k++)C.push(C[k-1]+Math.hypot(P_[k][0]-P_[k-1][0],P_[k][1]-P_[k-1][1]));return{pts:P_,cum:C,len:C[C.length-1]};}
 function pkStart(k,w){
-  const g=pkGeom(k);if(!g)return false;const L=E.parkL;
+  const g=pkGeom(k);if(!g)return false;const L=E.parkL;if(showBlocked(g.r))return false;   /* v84 : pas de manœuvre sur le parcours du marathon */
   if(w){   // arrivée : on prend une voiture de la circulation qui arrive sur cette route, dans le bon sens
     const C=E.cars;let pick_=-1;for(let j=0;j<C.list.length;j++){const c=C.list[j];if(c.ov!=null||c.px==null||c.bt>0)continue;
       if((c.i===g.r&&c.to===g.dt&&c.from===OPP(g.dt)&&c.t<.25)||(roadNb(c.i,c.to)===g.r&&c.to===g.dt&&c.t>.45&&c.from===OPP(g.dt))){pick_=j;break;}}
@@ -9770,6 +9963,6 @@ function unmount(){
   toolCancel();PTR.clear();GEST=null;extUnmount();save();
 }
 function refresh(){if(E&&E.running){if(!VISIT)syncGrants();refreshHUD(true);extRefresh();}}
-return {mount,unmount,refresh,_debug:()=>({S,ST,E,CAM,road,zone,lvl,st,ter,tree,svcAt,SV,pw,wt,lval,hap,cap,setTool,simDay,simRefresh,placeAt,commitRoad,commitRect,applyCam,setView,openPanel,SEL:()=>SEL,setSel:t=>{SEL=t;showSelection();openPanel('inspect');},
+return {mount,unmount,refresh,visit:uid=>{const go=()=>{if(VISIT&&VISIT.user===uid)return;if(VISIT)visitEnd();visitStart(uid);};E?go():setTimeout(go,1500);},_debug:()=>({S,ST,E,CAM,road,zone,lvl,st,ter,tree,svcAt,SV,pw,wt,lval,hap,cap,setTool,simDay,simRefresh,placeAt,commitRoad,commitRect,applyCam,setView,openPanel,SEL:()=>SEL,setSel:t=>{SEL=t;showSelection();openPanel('inspect');},
   X:{placeLow,patientSpawn,patientAnswer,crisisMonth,crisisQuiz,fireworks,followStart,followStop,refreshRepairs,festCheck,tlMaybeSnap,checkAch,catMonth,recomputeTraffic,distNew,visitStart,visitEnd,extToolUp,extPreview,extPick,TOOL:()=>TOOL,trf,rail,rx,deco,hill,dist,renderPanel,TORN:()=>TORN,setTorn:t=>{TORN=t;},tradeIncome,FOLLOW:()=>FOLLOW,SND,sndInit,citySnapshot,SOC,quizAnswer,QZ:()=>QZ,quizNext,PANEL:()=>PANEL,news,SIG,sigState,carTarget,timeK,animK,newLandscape,setProf,BIO,mtnH,mtn,nextMove,ovpY,OVT,REW,patientDay,extToolUp,lane,E6:()=>E.v6,sosStart,sosWin,sosActive,v6Quest,gzStats,gzSection,anaAsk,skyPick,moonPhase,evSend,v6FireTruck,ignite,laneCount,hourNow,svcFront,carsSaved,ANAT,accStart,accClear,RL,setBuilding,siteStage,addSvc,placeCheck,thumbFor,THUMBS,rebuildLights,D,humLook,svcOK,lmBuild,showStart,xmasBuild,V15:()=>V15}})};
 })();
